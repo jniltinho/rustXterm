@@ -107,7 +107,10 @@ pub(crate) fn render(info: &BannerInfo, cols: usize, scheme: &TerminalScheme) ->
             lines.push(check(ssh.agent, "Agent forwarding", String::new()));
             let keep = s.ssh.keepalive_secs;
             lines.push(check(keep > 0, "Keepalive", if keep > 0 { format!("every {keep} s") } else { String::new() }));
-            lines.push(check(s.ssh.follow_terminal_folder, "Follow terminal folder", String::new()));
+            // Following the terminal folder moves the SFTP browser: off without SFTP.
+            let no_sftp = ssh.sftp == Some(false);
+            let follow_note = if no_sftp && s.ssh.follow_terminal_folder { "needs SFTP" } else { "" };
+            lines.push(check(s.ssh.follow_terminal_folder && !no_sftp, "Follow terminal folder", follow_note.into()));
             if !ssh.server_id.is_empty() || !ssh.host_key_fingerprint.is_empty() {
                 let mut text = clean(&ssh.server_id);
                 if !ssh.host_key_fingerprint.is_empty() {
@@ -333,6 +336,8 @@ mod tests {
         let s = ssh_session();
         let line = |sftp| plain(&draw(&s, Some(&SshInfo { sftp, ..facts() }), 120, true, false)).join("\n");
         assert!(line(Some(false)).contains("✗ SFTP browser (not offered by the server)"));
+        assert!(line(Some(false)).contains("✗ Follow terminal folder (needs SFTP)"));
+        assert!(line(Some(true)).contains("✓ Follow terminal folder"));
         assert!(line(Some(true)).contains("✓ SFTP browser\u{20}"));
         assert!(line(None).contains("✓ SFTP browser (opens on demand)"));
     }
