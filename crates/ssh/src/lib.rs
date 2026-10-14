@@ -172,6 +172,11 @@ fn config(session: &Session) -> Arc<russh::client::Config> {
     })
 }
 
+/// A keyboard-interactive round that only asks the password (one hidden "Password:" prompt).
+fn is_password_round(prompts: &[russh::client::Prompt]) -> bool {
+    matches!(prompts, [p] if !p.echo && p.prompt.to_ascii_lowercase().contains("password"))
+}
+
 /// One hop of the chain (jump hosts first, then the target).
 struct Hop {
     host: String,
@@ -378,6 +383,7 @@ async fn authenticate(
 
     if o.allow_keyboard_interactive && allowed(&methods, MethodKind::KeyboardInteractive) {
         let mut resp = handle.authenticate_keyboard_interactive_start(user, None).await.map_err(conn_err)?;
+        let mut retry = false;
         loop {
             match resp {
                 KeyboardInteractiveAuthResponse::Success => return Ok(()),
@@ -388,6 +394,15 @@ async fn authenticate(
                 KeyboardInteractiveAuthResponse::InfoRequest { name, instructions, prompts } => {
                     let answers = if prompts.is_empty() {
                         Vec::new()
+                    } else if is_password_round(&prompts) {
+                        // PAM and network gear ask the password this way; a Password prompt
+                        // offers "Save password" and is answered from the saved one.
+                        let kind = PromptKind::Password { user: user.to_owned(), host: hop.host.clone(), retry };
+                        retry = true;
+                        match prompter.prompt(kind).await {
+                            PromptAnswer::Secret(s) => vec![s.0],
+                            _ => return Err(Error::Cancelled),
+                        }
                     } else {
                         let kind = PromptKind::KeyboardInteractive {
                             name,
@@ -658,6 +673,16 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
     use super::*;
+
+    #[test]
+    fn only_a_single_hidden_password_prompt_is_a_password_round() {
+        let p = |prompt: &str, echo| russh::client::Prompt { prompt: prompt.into(), echo };
+        assert!(is_password_round(&[p("Password: ", false)]));
+        assert!(is_password_round(&[p("admin@sw1's password:", false)]));
+        assert!(!is_password_round(&[p("Password: ", true)]));
+        assert!(!is_password_round(&[p("Verification code: ", false)]));
+        assert!(!is_password_round(&[p("Password: ", false), p("OTP: ", false)]));
+    }
 
     #[test]
     fn legacy_algorithms_come_after_safe_defaults() {

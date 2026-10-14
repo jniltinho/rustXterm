@@ -47,14 +47,14 @@ async fn ssh_auth_publickey_bob() {
 #[tokio::test]
 #[ignore = "lab"]
 async fn ssh_auth_keyboard_interactive_carol() {
-    let script = Script::new(HostKeyDecision::AcceptOnce, &[]);
-    script.kbd.lock().unwrap().push_back(vec![CAROL_PASS.into()]);
+    // PAM's single hidden "Password:" round is asked as a Password prompt (offers "Save password").
+    let script = Script::new(HostKeyDecision::AcceptOnce, &[CAROL_PASS]);
     let s = session("carol", SSHD);
     let client = connect_with(&s, script.clone()).await.unwrap();
     let out = run(&client, &s, "id -un").await;
     assert!(out.text.contains("carol"), "{out:?}");
-    assert!(script.prompts().iter().any(|p| matches!(p, PromptKind::KeyboardInteractive { .. })));
-    assert!(!script.prompts().iter().any(|p| matches!(p, PromptKind::Password { .. })));
+    assert!(script.prompts().iter().any(|p| matches!(p, PromptKind::Password { .. })));
+    assert!(!script.prompts().iter().any(|p| matches!(p, PromptKind::KeyboardInteractive { .. })));
 }
 
 #[tokio::test]
