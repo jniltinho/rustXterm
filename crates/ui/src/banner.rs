@@ -200,11 +200,12 @@ fn fit(text: &str, max: usize, ell: char) -> String {
 
 /// Notice written into the terminal when its session stops: a rule, then the keys
 /// the stopped tab answers to (see [`crate::tabs::ended_session_key`]).
-pub(crate) fn stopped(cols: usize, unicode: bool, scheme: &TerminalScheme, why: &str, next: Option<&str>) -> Vec<u8> {
+pub(crate) fn stopped(cols: usize, scheme: &TerminalScheme, why: &str, next: Option<&str>) -> Vec<u8> {
     let pick = |c: (u8, u8)| if is_dark(scheme) { c.1 } else { c.0 };
     let (red, key, muted) = (pick(NO), pick(TARGET), pick(MUTED));
-    let rule = (if unicode { "─" } else { "-" }).repeat(cols.saturating_sub(1).max(1));
-    let mut out = format!("\r\n{rule}\r\n\x1b[{red}mSession stopped\x1b[0m");
+    // ASCII dashes in red whatever the font (owner choice, like the session box).
+    let rule = "-".repeat(cols.saturating_sub(1).max(1));
+    let mut out = format!("\r\n\x1b[{red}m{rule}\x1b[0m\r\n\x1b[{red}mSession stopped\x1b[0m");
     if !why.is_empty() {
         out += &format!(" \x1b[{muted}m({})\x1b[0m", clean(why));
     }

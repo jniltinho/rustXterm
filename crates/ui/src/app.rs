@@ -1364,13 +1364,10 @@ impl App {
             ConnState::Error(e) => (e.as_str(), None),
             _ => return,
         };
-        // Every bundled monospace family falls back to DejaVu Sans Mono, which has the box and
-        // check glyphs (egui's `has_glyph` misreports glyphs of the primary face).
-        let unicode = true;
         let Some(pos) = self.tabs.iter().position(|t| t.id == tab) else { return };
         let config = self.view_config(&self.tabs[pos].session);
         let Some(term) = self.tabs[pos].term.as_mut() else { return };
-        let mut bytes = banner::stopped(term.cols(), unicode, &config.scheme, why, next.as_deref());
+        let mut bytes = banner::stopped(term.cols(), &config.scheme, why, next.as_deref());
         if term.renderable().cursor.point.column.0 == 0 {
             bytes.drain(..2);
         }
