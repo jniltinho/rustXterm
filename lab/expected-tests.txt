@@ -1,0 +1,116 @@
+# Executed lab test names, one per line (libtest names, e.g. `ssh_auth::password`).
+# `cargo xtask lab test` fails unless the executed set equals this list exactly.
+
+# rxt-ssh (crates/ssh/tests/lab_ssh.rs)
+ssh_auth_keyboard_interactive_carol
+ssh_auth_password_alice
+ssh_auth_publickey_bob
+ssh_auth_wrong_password_then_retry
+ssh_compression_and_keepalive_in_server_log
+ssh_disconnect_detected_then_reconnect
+ssh_environment_and_startup_directory
+ssh_hostkey_changed_refused_without_auth
+ssh_hostkey_revoked_refused
+ssh_hostkey_unknown_prompt_then_accept_and_save
+ssh_hostkey_unreadable_known_hosts_blocks
+ssh_jump_chain_verifies_each_hop_before_auth
+ssh_remote_command_output_then_exit_status
+ssh_tunnel_dynamic_socks5_via_bastion
+ssh_tunnel_local_forward_via_bastion
+ssh_tunnel_remote_forward_loopback_only
+ssh_x11_forwarding_with_cookie_substitution
+ssh_x11_not_requested_has_no_display
+
+# rxt-ssh gates (crates/ssh/tests/lab_gates.rs, task 3.4)
+ssh_gate_flood_input_echo_resize_one_connection
+
+# rxt-sftp (crates/sftp/tests/lab_sftp.rs)
+sftp_100mb_put_get_checksum
+sftp_cancel_removes_partials
+sftp_file_operations_round_trip
+sftp_follows_osc7_from_shell
+sftp_open_with_upload_back
+sftp_overwrite_decided_by_stat_before_put
+sftp_same_connection_as_shell_no_reauth
+
+# rxt-ui gates (crates/ui/src/lab_gates.rs, task 3.4)
+lab_gates::ui_gate_flood_tab_switch_echo_memory_resize
+
+# rxt-ui gates (crates/ui/src/lab_gates.rs, tasks 5.2/5.3)
+lab_gates::ui_gate_tab_switch_during_rdp_video
+lab_gates::ui_gate_tab_switch_during_vnc_video
+
+# rxt-engine (crates/engine/tests/lab_logs.rs, task 5.4)
+engine_debug_log_has_no_secrets
+telnet_engine_auto_login_reconnects_after_server_close
+
+# rxt-engine (crates/engine/tests/lab_follow.rs, SFTP side panel follows the shell directory)
+ssh_follow_terminal_folder_without_osc7
+
+# rxt-engine (crates/engine/tests/lab_monitor.rs, add-remote-monitoring 2.1)
+ssh_monitoring_bar_data_then_no_leftover_process
+ssh_monitoring_refused_channel_is_unavailable_and_shell_works
+
+# rxt-ftp (crates/ftp/tests/lab_ftp.rs, task 5.1)
+ftp_active_10mb_put_get_checksum
+ftp_cancel_removes_partials
+ftp_explicit_tls_changed_certificate_refused_before_login
+ftp_explicit_tls_prompt_shows_fingerprint_then_lists
+ftp_implicit_tls_prompt_then_transfer
+ftp_passive_10mb_put_get_checksum
+ftp_plain_login_list_and_file_ops
+
+# rxt-vnc (crates/vnc/tests/lab_vnc.rs, task 5.3)
+vnc_auth_password
+vnc_encoding_copyrect_on_xterm_scroll
+vnc_encoding_raw
+vnc_encoding_tight
+vnc_encoding_zrle
+vnc_hidden_tab_sends_no_requests_and_redraws_within_500ms
+vnc_through_ssh_direct_tcpip_without_local_listener
+vnc_view_only_sends_no_input
+
+# rxt-rdp (crates/rdp/tests/lab_rdp.rs, task 5.2; hostile-peer tests in hostile_rdp.rs run without the lab)
+rdp_cert_cancelled_asks_no_password
+rdp_cert_changed_refused_without_password
+rdp_cert_unknown_prompt_then_accept_and_save
+rdp_fixed_resolution_ignores_tab_size
+rdp_hidden_tab_suppresses_output_then_resumes
+rdp_login_alice_updates_and_input
+rdp_resize_via_display_control
+
+# rxt-ui end-to-end (crates/ui/src/lab_e2e.rs): App + real engine + protocol crates, driven like a user
+lab_e2e::e2e_ftp_plain_marker_and_listing
+lab_e2e::e2e_ftps_explicit_cert_prompt_then_listing
+lab_e2e::e2e_ftps_implicit_cert_prompt_then_listing
+lab_e2e::e2e_locked_store_quick_connect_still_works
+lab_e2e::e2e_rdp_desktop_renders_and_accepts_input
+lab_e2e::e2e_sftp_side_panel_follows_ssh_tab
+lab_e2e::e2e_sftp_standalone_dual_pane_transfer
+lab_e2e::e2e_ssh_quick_connect_runs_command
+lab_e2e::e2e_ssh_session_box_then_server_banner_then_prompt
+lab_e2e::e2e_tunnel_local_forward_through_bastion
+lab_e2e::e2e_vnc_desktop_renders
+lab_e2e::e2e_vnc_via_ssh_gateway_renders
+
+# rustxterm agent control (apps/rustxterm/tests/agent.rs, task 9.1; other-UID check: lab/agent/uid-test.sh)
+agent_approval_expires_after_ttl
+agent_lab_ask_approval_replay_and_changed_params
+agent_lab_failed_login_discloses_no_secret
+agent_lab_mcp_send_input_and_wait_for_output
+agent_lab_multiexec_reaches_only_allow_tabs
+
+# rxt-serial (crates/serial/tests/lab_serial.rs, add-serial-sessions task 2.1; socat pty pairs)
+serial_break_succeeds_and_pty_modem_lines_report_unsupported
+serial_busy_port_reported
+serial_echo_both_directions_with_enter_variants_and_local_echo
+serial_line_settings_8n1_and_7e1_read_back_with_stty
+serial_permission_denied_names_group
+serial_unplug_reports_gone_then_replug_reconnects
+
+# rxt-telnet (crates/telnet/tests/lab_telnet.rs, add-telnet-sessions 2.1)
+telnet_auto_login_opt_in
+telnet_auto_login_opt_out_types_nothing
+telnet_login_echo_and_terminal_type
+telnet_naws_resize_seen_by_stty_size
+telnet_raw_echo

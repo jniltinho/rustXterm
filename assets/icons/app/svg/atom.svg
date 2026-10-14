@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" stroke-linejoin="miter" stroke-linecap="butt">
+  <g fill="none" stroke="#64b4f6" stroke-width="2"><ellipse cx="16" cy="16" rx="14" ry="6"/><ellipse cx="16" cy="16" rx="14" ry="6" transform="rotate(60 16 16)"/><ellipse cx="16" cy="16" rx="14" ry="6" transform="rotate(120 16 16)"/></g><circle cx="16" cy="16" r="4" fill="#bbd348"/><circle cx="27" cy="19" r="2" fill="#2a6dac"/>
+</svg>

@@ -1,0 +1,91 @@
+# rustXterm protocol test lab (design D11). Every port binds 127.0.0.1 only; credentials are fictional.
+# Run through lab/lab.sh, which generates lab/.generated/ (client key, sshd logs) and builds images first.
+name: rxt-lab
+
+x-ssh: &ssh
+  image: rxt-lab-ssh:dev
+  init: true
+  volumes: ["./.generated:/lab"]
+  healthcheck: &tcp22
+    test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/22"]
+    interval: 2s
+    timeout: 2s
+    retries: 15
+
+services:
+  sshd:
+    <<: *ssh
+    build: ssh
+    hostname: sshd
+    ports: ["127.0.0.1:2222:22"]
+
+  bastion:
+    <<: *ssh
+    hostname: bastion
+    networks: [default, internal]
+    ports: ["127.0.0.1:2223:22"]
+
+  internal:
+    <<: *ssh
+    hostname: internal
+    networks: [internal]
+
+  ftp:
+    init: true  # vsftpd as PID 1 segfaults after TLS sessions; tini reaps children
+    build: ftp
+    image: rxt-lab-ftp:dev
+    ports: ["127.0.0.1:2121:21", "127.0.0.1:30000-30009:30000-30009"]
+    healthcheck:
+      <<: *tcp22
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/21"]
+
+  ftps-implicit:
+    init: true
+    image: rxt-lab-ftp:dev
+    depends_on: [ftp]
+    command: ["/etc/vsftpd-implicit.conf"]
+    ports: ["127.0.0.1:2990:990", "127.0.0.1:30010-30019:30010-30019"]
+    healthcheck:
+      <<: *tcp22
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/990"]
+
+  rdp:
+    init: true
+    build: rdp
+    image: rxt-lab-rdp:dev
+    ports: ["127.0.0.1:13389:3389"]
+    healthcheck:
+      <<: *tcp22
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/3389"]
+
+  vnc:
+    init: true
+    build: vnc
+    image: rxt-lab-vnc:dev
+    ports: ["127.0.0.1:5901:5900"]
+    healthcheck:
+      <<: *tcp22
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/5900"]
+
+  telnetd:
+    init: true
+    build: telnet
+    image: rxt-lab-telnet:dev
+    ports: ["127.0.0.1:2323:23"]
+    healthcheck:
+      <<: *tcp22
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/23"]
+
+  echo:
+    init: true
+    image: rxt-lab-telnet:dev
+    depends_on: [telnetd]
+    command: ["socat", "TCP-LISTEN:7,fork,reuseaddr", "EXEC:cat"]
+    ports: ["127.0.0.1:2007:7"]
+    healthcheck:
+      <<: *tcp22
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/7"]
+
+networks:
+  internal:
+    internal: true

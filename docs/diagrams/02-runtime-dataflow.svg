@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1128" viewBox="0 0 1400 1128" font-family="Noto Sans, DejaVu Sans, Liberation Sans, Arial, sans-serif">
+<title>02-runtime-dataflow</title>
+<defs><filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.07"/></filter><marker id="a-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-start-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-start-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-start-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-start-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-start-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-start-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-start-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-start-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-start-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker><marker id="a-start-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker></defs>
+<rect x="1" y="1" width="1398" height="1126" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+<path d="M36 101 H1364" stroke="#e2e8f0"/>
+<rect x="36" y="142" width="244" height="670" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2"/>
+<rect x="754" y="142" width="256" height="670" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<path d="M280,201.0 L754,201.0" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M754,317.5 L280,317.5" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M280,434.0 L754,434.0" fill="none" stroke="#db2777" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-pink)"/>
+<path d="M754,571.5 L280,571.5" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M754,730.0 L280,730.0" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M1010,220.0 L1046,220.0" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M1010,349.5 L1046,349.5" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M1010,479.0 L1046,479.0" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-teal)"/>
+<path d="M1010,608.5 L1046,608.5" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M1010,738.0 L1046,738.0" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M1196,220.0 L1208,220.0 L1208,271.75 L1232,271.75" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M1196,349.5 L1220,349.5 L1220,297.75 L1232,297.75" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M1196,479.0 L1232,479.0" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-teal)"/>
+<path d="M1196,608.5 L1232,608.5" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M1196,738.0 L1232,738.0" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M596,933.0 L690,933.0 L690,850 L882,850 L882,812" fill="none" stroke="#db2777" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-pink)"/>
+<path d="M970,812 L970,892" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-green)" marker-start="url(#a-start-green)"/>
+<text x="36" y="49" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700">Runtime data flow</text>
+<text x="36" y="79" font-size="14" fill="#475569" text-anchor="start">Everything is a command: the UI never blocks on network or disk</text>
+<rect x="48" y="150" width="152.6" height="32" rx="6" fill="#f3e8ff" stroke="#f3e8ff" stroke-width="0"/>
+<text x="54" y="172" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-ui (egui)</text>
+<rect x="54" y="206" width="208" height="124" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="72" y="235" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Terminal widget</text>
+<text x="72" y="264" font-size="14" fill="#0f172a" text-anchor="start">alacritty grid,</text>
+<text x="72" y="285.0" font-size="14" fill="#0f172a" text-anchor="start">damage-tracked</text>
+<text x="72" y="306.0" font-size="14" fill="#0f172a" text-anchor="start">painting</text>
+<rect x="54" y="372.66666666666663" width="208" height="105" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="72" y="401.66666666666663" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Framebuffer</text>
+<text x="72" y="424.66666666666663" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">widget</text>
+<text x="72" y="453.66666666666663" font-size="14" fill="#0f172a" text-anchor="start">RDP / VNC</text>
+<rect x="54" y="520.3333333333333" width="208" height="124" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="72" y="549.3333333333333" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">File panes</text>
+<text x="72" y="578.3333333333333" font-size="14" fill="#0f172a" text-anchor="start">SFTP / FTP</text>
+<text x="72" y="599.3333333333333" font-size="14" fill="#0f172a" text-anchor="start">dual-pane, shared</text>
+<text x="72" y="620.3333333333333" font-size="14" fill="#0f172a" text-anchor="start">FileOps</text>
+<rect x="54" y="686.9999999999999" width="208" height="105" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="72" y="715.9999999999999" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Prompts &amp;</text>
+<text x="72" y="738.9999999999999" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">approvals</text>
+<text x="72" y="767.9999999999999" font-size="14" fill="#0f172a" text-anchor="start">GUI dialogs</text>
+<rect x="766" y="150" width="203.6" height="32" rx="6" fill="#eff6ff" stroke="#eff6ff" stroke-width="0"/>
+<text x="772" y="172" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-engine (tokio)</text>
+<rect x="772" y="206" width="220" height="54" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="790" y="235" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Command registry</text>
+<rect x="772" y="333.25" width="220" height="54" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="790" y="362.25" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Session manager</text>
+<rect x="772" y="460.5" width="220" height="54" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="790" y="489.5" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">MultiExec fan-out</text>
+<rect x="772" y="587.75" width="220" height="54" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="790" y="616.75" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Transfer queue</text>
+<rect x="772" y="715.0" width="220" height="77" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="790" y="744.0" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Authorization</text>
+<text x="790" y="767.0" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">boundary</text>
+<rect x="1046" y="179.0" width="150" height="82" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="1064" y="208.0" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">rxt-ssh</text>
+<text x="1064" y="237.0" font-size="14" fill="#0f172a" text-anchor="start">SSH</text>
+<rect x="1046" y="308.5" width="150" height="82" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="1064" y="337.5" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">rxt-sftp</text>
+<text x="1064" y="366.5" font-size="14" fill="#0f172a" text-anchor="start">SFTP</text>
+<rect x="1046" y="438.0" width="150" height="82" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="1064" y="467.0" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">rxt-ftp</text>
+<text x="1064" y="496.0" font-size="14" fill="#0f172a" text-anchor="start">FTP / FTPS</text>
+<rect x="1046" y="567.5" width="150" height="82" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="1064" y="596.5" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">rxt-rdp</text>
+<text x="1064" y="625.5" font-size="14" fill="#0f172a" text-anchor="start">RDP</text>
+<rect x="1046" y="697.0" width="150" height="82" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="1064" y="726.0" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">rxt-vnc</text>
+<text x="1064" y="755.0" font-size="14" fill="#0f172a" text-anchor="start">VNC</text>
+<rect x="1232" y="243.75" width="132" height="82" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="1250" y="272.75" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">SSH server</text>
+<text x="1250" y="301.75" font-size="14" fill="#0f172a" text-anchor="start">SSH + SFTP</text>
+<rect x="1232" y="440.5" width="132" height="77" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="1250" y="469.5" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">FTP/FTPS</text>
+<text x="1250" y="492.5" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">server</text>
+<rect x="1232" y="581.5" width="132" height="54" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="1250" y="610.5" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">RDP server</text>
+<rect x="1232" y="711.0" width="132" height="54" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="1250" y="740.0" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">VNC server</text>
+<rect x="36" y="892" width="560" height="82" rx="10" fill="#fdf2f8" stroke="#db2777" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="921" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-agent • CLI / MCP</text>
+<text x="54" y="950" font-size="14" fill="#0f172a" text-anchor="start">Sends the same Command types via the control socket.</text>
+<rect x="754" y="892" width="610" height="82" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="772" y="921" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-store • encrypted SQLCipher</text>
+<text x="772" y="950" font-size="14" fill="#0f172a" text-anchor="start">Sessions, credentials, trust records, audit</text>
+<rect x="36" y="1010" width="1328" height="82" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="1039" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Cancellation</text>
+<text x="54" y="1068" font-size="14" fill="#0f172a" text-anchor="start">Cancellation drops the session handle and fires its CancellationToken.</text>
+<rect x="314" y="160" width="406" height="82" rx="16" fill="#ffffff" stroke="#2563eb" stroke-width="1"/>
+<text x="332" y="189" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">1 • Commands →</text>
+<text x="332" y="218" font-size="14" fill="#0f172a" text-anchor="start">Bounded channel • UI → engine</text>
+<rect x="314" y="266" width="406" height="103" rx="16" fill="#ffffff" stroke="#7c3aed" stroke-width="1"/>
+<text x="332" y="295" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">2 • Events ←</text>
+<text x="332" y="324" font-size="14" fill="#0f172a" text-anchor="start">Bounded channel: state, prompts, approvals,</text>
+<text x="332" y="345.0" font-size="14" fill="#0f172a" text-anchor="start">progress. egui repaints on events.</text>
+<rect x="314" y="393" width="406" height="82" rx="16" fill="#ffffff" stroke="#db2777" stroke-width="1"/>
+<text x="332" y="422" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">3 • Input →</text>
+<text x="332" y="451" font-size="14" fill="#0f172a" text-anchor="start">Separate high-priority queue • UI → engine</text>
+<rect x="314" y="499" width="406" height="145" rx="16" fill="#ffffff" stroke="#0891b2" stroke-width="1"/>
+<text x="332" y="528" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">4 • Terminal output ←</text>
+<text x="332" y="557" font-size="14" fill="#0f172a" text-anchor="start">Per-session byte-bounded buffer; default 4</text>
+<text x="332" y="578.0" font-size="14" fill="#0f172a" text-anchor="start">MiB. Full ⇒ reader stops (SSH window</text>
+<text x="332" y="599.0" font-size="14" fill="#0f172a" text-anchor="start">backpressure). UI drains round-robin per</text>
+<text x="332" y="620.0" font-size="14" fill="#0f172a" text-anchor="start">frame with a byte budget, visible tab first.</text>
+<rect x="314" y="668" width="406" height="124" rx="16" fill="#ffffff" stroke="#ea580c" stroke-width="1"/>
+<text x="332" y="697" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">5 • Framebuffer ←</text>
+<text x="332" y="726" font-size="14" fill="#0f172a" text-anchor="start">Dirty RGBA rects → one texture per tab; only</text>
+<text x="332" y="747.0" font-size="14" fill="#0f172a" text-anchor="start">dirty regions uploaded. Hidden tabs stop</text>
+<text x="332" y="768.0" font-size="14" fill="#0f172a" text-anchor="start">requesting updates.</text>
+<rect x="605.4" y="857" width="133.2" height="30" rx="15" fill="#ffffff" stroke="#db2777" stroke-width="1"/>
+<text x="672" y="876" font-size="13" fill="#0f172a" text-anchor="middle">control socket</text>
+<rect x="956.3" y="837" width="359.4" height="30" rx="15" fill="#ffffff" stroke="#16a34a" stroke-width="1"/>
+<text x="1136" y="856" font-size="13" fill="#0f172a" text-anchor="middle">sessions, credentials, trust records, audit</text>
+</svg>

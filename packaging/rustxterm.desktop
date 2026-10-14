@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=rustXterm
+GenericName=Terminal and Remote Session Manager
+Comment=SSH, SFTP, FTP, RDP and VNC sessions in one window
+Exec=rustxterm
+Icon=rustxterm
+Terminal=false
+Categories=Network;RemoteAccess;System;TerminalEmulator;
+Keywords=ssh;sftp;ftp;rdp;vnc;terminal;
+StartupWMClass=rustxterm

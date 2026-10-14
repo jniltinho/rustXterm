@@ -1,0 +1,10 @@
+base/
+docs/prints/
+target/
+dist/
+.git/
+.claude/
+.agents/
+analysis/
+.env
+.env.*

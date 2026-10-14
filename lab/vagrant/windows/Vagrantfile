@@ -1,0 +1,17 @@
+# Optional Windows evaluation box for RDP tests against a real Windows host (NLA/CredSSP)
+# and for Windows smoke runs of rustXterm (driver: rxt.sh).
+# Evaluation images expire; accept Microsoft's evaluation terms yourself. Never used in CI.
+# Fictional lab credentials: alice / Lab-Alice-Pass1 (Windows requires complexity).
+Vagrant.configure("2") do |config|
+  config.vm.box = "gusztavvargadr/windows-server-2022-standard"
+  config.vm.communicator = "winrm"
+  config.vm.network "forwarded_port", guest: 3389, host: 53389, host_ip: "127.0.0.1", id: "rdp"
+  config.vm.provider("virtualbox") { |vb| vb.name = "rustxterm-windows"; vb.memory = 4096; vb.cpus = 2 }
+  config.vm.provision "shell", inline: <<~PS
+    $pw = ConvertTo-SecureString 'Lab-Alice-Pass1' -AsPlainText -Force
+    if (-not (Get-LocalUser -Name alice -ErrorAction SilentlyContinue)) { New-LocalUser -Name alice -Password $pw }
+    Add-LocalGroupMember -Group 'Remote Desktop Users' -Member alice -ErrorAction SilentlyContinue
+    Set-ItemProperty 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' -Name fDenyTSConnections -Value 0
+    Enable-NetFirewallRule -DisplayGroup 'Remote Desktop'
+  PS
+end

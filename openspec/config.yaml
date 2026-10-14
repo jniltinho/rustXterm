@@ -1,0 +1,13 @@
+schema: spec-driven
+
+context: |
+  Language: English
+  All artifacts, tasks, code comments, and CLI messages must be written in English.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Project: rustXterm (machine name rustxterm), a native Rust Linux terminal and remote session manager.
+  Phase 1: SSH, SFTP, FTP/FTPS, RDP, VNC. Phase 2: local shell, Telnet, Serial, Mosh.
+  One crate per protocol plus a platform contract crate with a Linux adapter; macOS/Windows adapters later.
+  Stack mirrors rust-microsip (Cargo workspace, edition 2024, Rust 1.99 pinned, egui/eframe, Docker-only builds, AppImage) and PhotoCraft (layers, commands, thin UI, theme tokens, snapshots).
+  The UI uses the original bundled icon set in assets/icons/app/; every third-party asset is listed in ATTRIBUTION.md.
+  base/ and docs/prints/ are local-only: never track, upload, package or include in build context.
+  Code first, tests in batches per milestone; commit and push each verified milestone.

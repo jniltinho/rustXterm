@@ -1,0 +1,33 @@
+size 80x24
+cursor 3 0 Block
+mode TermMode(SHOW_CURSOR | APP_CURSOR | APP_KEYPAD | BRACKETED_PASTE | LINE_WRAP | ALT_SCREEN | ALTERNATE_SCROLL | URGENCY_HINTS)
+--- text
+ 0|red bold underline truecolor
+ 1|bin   dev  home  lib64  mnt  out   record.sh  run   srv  tmp  var
+ 2|boot  etc  lib   media  opt  proc  root       sbin  sys  usr
+ 3|
+ 4|
+ 5|
+ 6|
+ 7|
+ 8|
+ 9|
+10|
+11|
+12|
+13|
+14|
+15|
+16|
+17|
+18|
+19|
+20|
+21|
+22|
+23|[0] 0:tmux*                                                "lab" 15:13 13-Oct-26
+--- attributes (runs differing from default)
+ 0:0-7 fg=Named(Red) bg=Named(Background) flags=Flags(BOLD)
+ 0:9-17 fg=Named(Foreground) bg=Named(Background) flags=Flags(UNDERLINE)
+ 0:19-27 fg=Indexed(40) bg=Named(Background) flags=Flags(0x0)
+23:0-79 fg=Named(Black) bg=Named(Green) flags=Flags(0x0)

@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="2100" viewBox="0 0 1600 2100" font-family="Noto Sans, DejaVu Sans, Liberation Sans, Arial, sans-serif">
+<title>03-ssh-connection-sequence</title>
+<defs><filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.07"/></filter><marker id="a-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-start-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-start-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-start-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-start-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-start-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-start-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-start-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-start-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-start-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker><marker id="a-start-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker></defs>
+<rect x="1" y="1" width="1598" height="2098" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+<path d="M36 101 H1564" stroke="#e2e8f0"/>
+<rect x="28" y="309" width="1544" height="850" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+<rect x="28" y="1185" width="1544" height="835" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2"/>
+<path d="M155 229 V2000" fill="none" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.5"/>
+<path d="M397 229 V2000" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.5"/>
+<path d="M639 229 V2000" fill="none" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.5"/>
+<path d="M881 229 V2000" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.5"/>
+<path d="M1123 229 V2000" fill="none" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.5"/>
+<path d="M1365 229 V2000" fill="none" stroke="#e11d48" stroke-width="1.5" stroke-dasharray="6 6" opacity="0.5"/>
+<rect x="392" y="265" width="10" height="1719" rx="4" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+<rect x="634" y="355" width="10" height="1625" rx="4" fill="#ecfeff" stroke="#0891b2" stroke-width="1"/>
+<rect x="876" y="529" width="10" height="242" rx="4" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+<rect x="876" y="1301" width="10" height="149" rx="4" fill="#f0fdf4" stroke="#16a34a" stroke-width="1"/>
+<rect x="1118" y="423" width="10" height="716" rx="4" fill="#fff7ed" stroke="#ea580c" stroke-width="1"/>
+<rect x="1360" y="1237" width="10" height="743" rx="4" fill="#fff1f2" stroke="#e11d48" stroke-width="1"/>
+<path d="M155,273 L397,273" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M397,373 L639,373" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M639,437 L1123,437" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M1123,489 L639,489" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)" stroke-dasharray="6 5"/>
+<path d="M639,549 L881,549" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-green)"/>
+<path d="M881,761 L397,761" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-green)" stroke-dasharray="6 5"/>
+<path d="M397,821 L155,821" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M155,881 L397,881" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M639,943 L1123,943" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M639,1129 L1123,1129" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M639,1249 L1365,1249" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M639,1321 L881,1321" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-green)"/>
+<path d="M639,1516 L1365,1516" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M639,1580 L1365,1580" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M639,1644 L397,1644" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M397,1706 L155,1706" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M639,1772 L1365,1772" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-teal)"/>
+<path d="M639,1846 L1365,1846" fill="none" stroke="#db2777" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-pink)"/>
+<text x="36" y="49" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700">SSH connection sequence</text>
+<text x="36" y="79" font-size="14" fill="#475569" text-anchor="start">Host-key gate before authentication on every hop; SFTP and tunnels reuse the same connection</text>
+<rect x="46" y="126" width="218" height="103" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="64" y="155" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">User/UI</text>
+<rect x="288" y="126" width="218" height="103" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="306" y="155" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-engine</text>
+<rect x="530" y="126" width="218" height="103" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="548" y="155" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-ssh</text>
+<rect x="772" y="126" width="218" height="103" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="790" y="155" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Trust store</text>
+<text x="790" y="184" font-size="14" fill="#0f172a" text-anchor="start">known_hosts read-only</text>
+<text x="790" y="205.0" font-size="14" fill="#0f172a" text-anchor="start">+ app trust records</text>
+<rect x="1014" y="126" width="218" height="103" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="1032" y="155" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Bastion</text>
+<text x="1032" y="184" font-size="14" fill="#0f172a" text-anchor="start">jump host</text>
+<rect x="1256" y="126" width="218" height="103" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="1274" y="155" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Target host</text>
+<circle cx="49" cy="273" r="16" fill="#7c3aed"/>
+<text x="49" y="278" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">1</text>
+<circle cx="49" cy="373" r="16" fill="#2563eb"/>
+<text x="49" y="378" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">2</text>
+<circle cx="49" cy="437" r="16" fill="#0891b2"/>
+<text x="49" y="442" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">3</text>
+<circle cx="49" cy="549" r="16" fill="#16a34a"/>
+<text x="49" y="554" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">4</text>
+<rect x="704" y="591" width="810" height="124" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="722" y="620" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Host-key gate • fail closed on every hop</text>
+<text x="722" y="649" font-size="14" fill="#0f172a" text-anchor="start">Trusted → continue. Unknown → prompt user (Event). Changed → refuse. @revoked → refuse.</text>
+<text x="722" y="670.0" font-size="14" fill="#0f172a" text-anchor="start">Unreadable known_hosts file or locked database → refuse. Authentication cannot precede this</text>
+<text x="722" y="691.0" font-size="14" fill="#0f172a" text-anchor="start">gate.</text>
+<circle cx="49" cy="821" r="16" fill="#7c3aed"/>
+<text x="49" y="826" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">5</text>
+<circle cx="49" cy="943" r="16" fill="#ea580c"/>
+<text x="49" y="948" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">6</text>
+<rect x="704" y="985" width="810" height="82" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="722" y="1014" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Authentication methods</text>
+<text x="722" y="1043" font-size="14" fill="#0f172a" text-anchor="start">Password, public key, agent, keyboard-interactive</text>
+<circle cx="49" cy="1129" r="16" fill="#ea580c"/>
+<text x="49" y="1134" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">7</text>
+<rect x="40" y="317" width="162.79999999999998" height="32" rx="6" fill="#fff7ed" stroke="#fff7ed" stroke-width="0"/>
+<text x="46" y="339" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">hop 1: bastion</text>
+<circle cx="49" cy="1249" r="16" fill="#e11d48"/>
+<text x="49" y="1254" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">8</text>
+<rect x="704" y="1363" width="810" height="103" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="722" y="1392" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Repeat the host-key gate</text>
+<text x="722" y="1421" font-size="14" fill="#0f172a" text-anchor="start">Prompt if unknown; refuse changed / @revoked / unreadable / locked. Only then authenticate</text>
+<text x="722" y="1442.0" font-size="14" fill="#0f172a" text-anchor="start">on the target.</text>
+<circle cx="49" cy="1580" r="16" fill="#0891b2"/>
+<text x="49" y="1585" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">9</text>
+<circle cx="49" cy="1772" r="16" fill="#0d9488"/>
+<text x="49" y="1777" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">10</text>
+<circle cx="49" cy="1846" r="16" fill="#db2777"/>
+<text x="49" y="1851" font-size="14" fill="#ffffff" text-anchor="middle" font-weight="700">11</text>
+<rect x="318" y="1888" width="1196" height="108" rx="10" fill="#fdf2f8" stroke="#db2777" stroke-width="2" filter="url(#shadow)"/>
+<text x="336" y="1917" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Forwarding defaults and confirmations</text>
+<text x="336" y="1946" font-size="14" fill="#0f172a" text-anchor="start">Local listeners default to 127.0.0.1; remote forwards request localhost. Other addresses need per-tunnel confirmation.</text>
+<text x="336" y="1972.0" font-size="14" fill="#0f172a" text-anchor="start">X11 forwarding is off by default; fake MIT-MAGIC-COOKIE-1.</text>
+<rect x="40" y="1193" width="560.5999999999999" height="32" rx="6" fill="#fff1f2" stroke="#fff1f2" stroke-width="0"/>
+<text x="46" y="1215" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">hop 2: target • forwarded through the bastion channel</text>
+<text x="36" y="2058" font-size="14" fill="#475569" text-anchor="start">Solid arrows: requests / channel operations</text>
+<text x="740" y="2058" font-size="14" fill="#475569" text-anchor="start">Dashed arrows: host-key responses / prompt events</text>
+<rect x="178.2" y="234" width="195.6" height="30" rx="15" fill="#ffffff" stroke="#7c3aed" stroke-width="1"/>
+<text x="276.0" y="253" font-size="13" fill="#0f172a" text-anchor="middle">Command::Open(session)</text>
+<rect x="424.1" y="334" width="187.79999999999998" height="30" rx="15" fill="#ffffff" stroke="#2563eb" stroke-width="1"/>
+<text x="518.0" y="353" font-size="13" fill="#0f172a" text-anchor="middle">connect bastion (TCP)</text>
+<rect x="822.2" y="398" width="117.6" height="30" rx="15" fill="#ffffff" stroke="#0891b2" stroke-width="1"/>
+<text x="881.0" y="417" font-size="13" fill="#0f172a" text-anchor="middle">key exchange</text>
+<rect x="810.5" y="450" width="141.0" height="30" rx="15" fill="#ffffff" stroke="#ea580c" stroke-width="1"/>
+<text x="881.0" y="469" font-size="13" fill="#0f172a" text-anchor="middle">server host key</text>
+<rect x="646.6" y="510" width="226.79999999999998" height="30" rx="15" fill="#ffffff" stroke="#16a34a" stroke-width="1"/>
+<text x="760.0" y="529" font-size="13" fill="#0f172a" text-anchor="middle">check_server_key (bastion)</text>
+<rect x="513.9" y="722" width="250.2" height="30" rx="15" fill="#ffffff" stroke="#16a34a" stroke-width="1"/>
+<text x="639.0" y="741" font-size="13" fill="#0f172a" text-anchor="middle">unknown → prompt user (Event)</text>
+<rect x="205.5" y="782" width="141.0" height="30" rx="15" fill="#ffffff" stroke="#7c3aed" stroke-width="1"/>
+<text x="276.0" y="801" font-size="13" fill="#0f172a" text-anchor="middle">host-key prompt</text>
+<rect x="193.8" y="842" width="164.4" height="30" rx="15" fill="#ffffff" stroke="#7c3aed" stroke-width="1"/>
+<text x="276.0" y="861" font-size="13" fill="#0f172a" text-anchor="middle">accept once / save</text>
+<rect x="740.3" y="904" width="281.4" height="30" rx="15" fill="#ffffff" stroke="#ea580c" stroke-width="1"/>
+<text x="881.0" y="923" font-size="13" fill="#0f172a" text-anchor="middle">authenticate • only after trusted</text>
+<rect x="744.2" y="1090" width="273.6" height="30" rx="15" fill="#ffffff" stroke="#ea580c" stroke-width="1"/>
+<text x="881.0" y="1109" font-size="13" fill="#0f172a" text-anchor="middle">direct-tcpip channel → target:22</text>
+<rect x="837.9" y="1210" width="328.2" height="30" rx="15" fill="#ffffff" stroke="#e11d48" stroke-width="1"/>
+<text x="1002.0" y="1229" font-size="13" fill="#0f172a" text-anchor="middle">key exchange over the forwarded channel</text>
+<rect x="650.5" y="1282" width="219.0" height="30" rx="15" fill="#ffffff" stroke="#16a34a" stroke-width="1"/>
+<text x="760.0" y="1301" font-size="13" fill="#0f172a" text-anchor="middle">check_server_key (target)</text>
+<rect x="822.3" y="1477" width="359.4" height="30" rx="15" fill="#ffffff" stroke="#e11d48" stroke-width="1"/>
+<text x="1002.0" y="1496" font-size="13" fill="#0f172a" text-anchor="middle">authenticate on target • only after trusted</text>
+<rect x="853.5" y="1541" width="297.0" height="30" rx="15" fill="#ffffff" stroke="#0891b2" stroke-width="1"/>
+<text x="1002.0" y="1560" font-size="13" fill="#0f172a" text-anchor="middle">shell channel • pty, xterm-256color</text>
+<rect x="412.4" y="1605" width="211.2" height="30" rx="15" fill="#ffffff" stroke="#0891b2" stroke-width="1"/>
+<text x="518.0" y="1624" font-size="13" fill="#0f172a" text-anchor="middle">output → terminal buffer</text>
+<rect x="205.5" y="1667" width="141.0" height="30" rx="15" fill="#ffffff" stroke="#0891b2" stroke-width="1"/>
+<text x="276.0" y="1686" font-size="13" fill="#0f172a" text-anchor="middle">terminal output</text>
+<rect x="853.5" y="1733" width="297.0" height="30" rx="15" fill="#ffffff" stroke="#0d9488" stroke-width="1"/>
+<text x="1002.0" y="1752" font-size="13" fill="#0f172a" text-anchor="middle">SFTP subsystem channel • side panel</text>
+<rect x="861.3" y="1807" width="281.4" height="30" rx="15" fill="#ffffff" stroke="#db2777" stroke-width="1"/>
+<text x="1002.0" y="1826" font-size="13" fill="#0f172a" text-anchor="middle">same connection • tunnels and X11</text>
+</svg>

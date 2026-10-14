@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" stroke-linejoin="miter" stroke-linecap="butt">
+  <rect x="2" y="3" width="28" height="23" fill="#bdbdbd"/><rect x="4" y="5" width="24" height="19" fill="#343434"/><path d="M6 8L10 11L6 14" fill="none" stroke="#bdbdbd" stroke-width="2"/><rect x="11" y="14" width="5" height="2" fill="#bdbdbd"/><path d="M19 17H27L31 23L24 30L17 23Z" fill="#9951a4"/><path d="M19 17L24 23L17 23ZM27 17L24 23L24 30L31 23Z" fill="#b1a7b3"/>
+</svg>

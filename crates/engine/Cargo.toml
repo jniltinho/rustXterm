@@ -1,0 +1,43 @@
+[package]
+name = "rxt-engine"
+description = "Session manager, command registry, transfer queue and output buffers"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+rxt-core.workspace = true
+rxt-platform.workspace = true
+rxt-store.workspace = true
+rxt-term.workspace = true
+rxt-ssh.workspace = true
+rxt-sftp.workspace = true
+rxt-ftp.workspace = true
+rxt-rdp.workspace = true
+rxt-vnc.workspace = true
+rxt-telnet.workspace = true
+rxt-serial.workspace = true
+secrecy.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+bytes.workspace = true
+parking_lot.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+cap-std.workspace = true
+regex.workspace = true
+image.workspace = true
+data-encoding.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tracing-subscriber.workspace = true
+zeroize.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,349 @@
+[
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "list_sessions"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "session": {
+          "description": "Session id or exact name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session"
+      ],
+      "type": "object"
+    },
+    "name": "show_session"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "list_folders"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "list_tunnels"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "export"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "session": {
+          "description": "Session id or exact name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session"
+      ],
+      "type": "object"
+    },
+    "name": "open_session"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "list_tabs"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "lines": {
+          "description": "Only the last N lines",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab"
+      ],
+      "type": "object"
+    },
+    "name": "read_terminal"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "text": {
+          "description": "Text to send",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tab",
+        "text"
+      ],
+      "type": "object"
+    },
+    "name": "send_input"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "pattern": {
+          "description": "Pattern to wait for",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timeout_ms": {
+          "description": "Timeout in milliseconds (default 10000)",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab",
+        "pattern"
+      ],
+      "type": "object"
+    },
+    "name": "wait_for_output"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab"
+      ],
+      "type": "object"
+    },
+    "name": "screenshot_tab"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Remote directory (default .)",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab"
+      ],
+      "type": "object"
+    },
+    "name": "file_list"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "local": {
+          "description": "Path inside the agent workspace",
+          "type": "string"
+        },
+        "remote": {
+          "description": "Remote file path",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab",
+        "remote",
+        "local"
+      ],
+      "type": "object"
+    },
+    "name": "file_get"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "local": {
+          "description": "Path inside the agent workspace",
+          "type": "string"
+        },
+        "remote": {
+          "description": "Remote file path",
+          "type": "string"
+        },
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab",
+        "local",
+        "remote"
+      ],
+      "type": "object"
+    },
+    "name": "file_put"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Tunnel name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "name": "tunnel_start"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Tunnel name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "name": "tunnel_stop"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab"
+      ],
+      "type": "object"
+    },
+    "name": "close_tab"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "required": [],
+      "type": "object"
+    },
+    "name": "serial_list_ports"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ms": {
+          "description": "Break length in milliseconds (default 250)",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab"
+      ],
+      "type": "object"
+    },
+    "name": "serial_send_break"
+  },
+  {
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "dtr": {
+          "description": "1 = on, 0 = off",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rts": {
+          "description": "1 = on, 0 = off",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tab": {
+          "description": "Tab id from list_tabs",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tab"
+      ],
+      "type": "object"
+    },
+    "name": "serial_set_lines"
+  }
+]

@@ -1,0 +1,174 @@
+# Checks only; no binaries are built or uploaded here (releases: release.yml).
+# Everything runs in the pinned toolchain image; the runner needs only Docker.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Free runner disk space (preinstalled SDKs we never use)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune -af >/dev/null
+          df -h /
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the guard scans the full history
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build toolchain image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: toolchain
+          load: true
+          tags: rustxterm-toolchain:dev
+          cache-from: type=gha,scope=toolchain
+          cache-to: type=gha,scope=toolchain,mode=max
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target/cargo-home
+          key: cargo-home-${{ hashFiles('Cargo.lock') }}
+      - run: scripts/cargo-docker.sh cargo fmt --all --check
+      - run: scripts/cargo-docker.sh cargo clippy --workspace --all-targets --locked -- -D warnings
+      - run: scripts/cargo-docker.sh cargo test --workspace --locked
+      - run: scripts/cargo-docker.sh cargo xtask layers
+      - run: scripts/cargo-docker.sh cargo xtask guard --ci
+      - run: scripts/cargo-docker.sh cargo xtask scenarios
+      - name: cargo deny (licenses, advisories, bans, sources; deny.toml)
+        env:
+          DENY: cargo-deny-0.20.2-x86_64-unknown-linux-musl
+          DENY_SHA256: 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f
+        run: |
+          mkdir -p target/tools
+          curl --fail --show-error --silent --location --retry 3 \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/$DENY.tar.gz" -o "$RUNNER_TEMP/deny.tgz"
+          echo "$DENY_SHA256  $RUNNER_TEMP/deny.tgz" | sha256sum --check --strict -
+          tar -xzf "$RUNNER_TEMP/deny.tgz" -C target/tools --strip-components=1 "$DENY/cargo-deny"
+          scripts/cargo-docker.sh target/tools/cargo-deny check
+
+  # Integration tests against the Docker lab (lab/README.md); test names must equal lab/expected-tests.txt.
+  lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Free runner disk space (preinstalled SDKs we never use)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune -af >/dev/null
+          df -h /
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build toolchain image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: toolchain
+          load: true
+          tags: rustxterm-toolchain:dev
+          cache-from: type=gha,scope=toolchain
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target/cargo-home
+          key: cargo-home-${{ hashFiles('Cargo.lock') }}
+      - run: lab/lab.sh up
+      - run: lab/lab.sh test
+      - if: failure()
+        run: docker compose -f lab/compose.yaml logs --no-color | tail -n 300
+      - if: always()
+        run: lab/lab.sh down
+
+  # Windows (add-windows-port design W10): Windows-target clippy and the cross build in Docker,
+  # then the cross-compiled test executables run on a Windows runner (no Rust toolchain there).
+  windows-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Free runner disk space (preinstalled SDKs we never use)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune -af >/dev/null
+          df -h /
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build Windows toolchain image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: windows-toolchain
+          load: true
+          tags: rustxterm-windows-toolchain:dev
+          cache-from: |
+            type=gha,scope=toolchain
+            type=gha,scope=windows-toolchain
+          cache-to: type=gha,scope=windows-toolchain,mode=max
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: target/cargo-home
+          key: cargo-home-windows-${{ hashFiles('Cargo.lock') }}
+      - name: Windows-target clippy (enforces the unsafe lints of rxt-platform-windows)
+        run: |
+          RXT_TOOLCHAIN_STAGE=windows-toolchain scripts/cargo-docker.sh \
+            cargo clippy --target x86_64-pc-windows-gnu --workspace --all-targets --locked -- -D warnings
+      - name: Cross-compile the executables and the test executables
+        run: |
+          RXT_TOOLCHAIN_STAGE=windows-toolchain scripts/cargo-docker.sh sh -c '
+            cargo build --release --locked --target x86_64-pc-windows-gnu -p rustxterm &&
+            CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_DEV_STRIP=symbols \
+              cargo test --workspace --no-run --locked --target x86_64-pc-windows-gnu --message-format=json \
+              > target/windows-tests.json'
+          mkdir -p windows-ci/tests
+          cp target/docker/x86_64-pc-windows-gnu/release/rustxterm.exe \
+            target/docker/x86_64-pc-windows-gnu/release/rustxterm-cli.exe windows-ci/
+          python3 - <<'EOF'
+          import json, shutil
+          # Every test executable except xtask's (a Linux host tool).
+          for line in open("target/windows-tests.json"):
+              m = json.loads(line)
+              if m.get("reason") == "compiler-artifact" and m["profile"]["test"] and m.get("executable") \
+                      and "/xtask#" not in m["package_id"]:
+                  shutil.copy(m["executable"].removeprefix("/work/"), "windows-ci/tests/")
+          EOF
+          ls -l windows-ci windows-ci/tests
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-ci
+          path: windows-ci/
+          retention-days: 7
+          if-no-files-found: error
+
+  windows-test:
+    needs: windows-build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      # Sources only: tests read fixtures under CARGO_MANIFEST_DIR (/work/... at build time, which
+      # resolves to \work on the current drive); no toolchain is installed or invoked.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Map /work to the checkout
+        shell: pwsh
+        run: New-Item -ItemType Junction -Path \work -Target $PWD | Out-Null
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-ci
+          path: windows-ci
+      - name: Run every test executable and the self-test with a minimal PATH
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $failed = @()
+          foreach ($t in Get-ChildItem windows-ci\tests\*.exe | Sort-Object Name) {
+            Write-Host "== $($t.Name)"
+            & $t.FullName
+            if ($LASTEXITCODE -ne 0) { $failed += "$($t.Name) (exit $LASTEXITCODE)" }
+          }
+          Write-Host "== rustxterm-cli.exe --self-test"
+          & windows-ci\rustxterm-cli.exe --self-test
+          if ($LASTEXITCODE -ne 0) { $failed += "rustxterm-cli.exe --self-test (exit $LASTEXITCODE)" }
+          if ($failed.Count -gt 0) { Write-Error "failed: $($failed -join ', ')"; exit 1 }

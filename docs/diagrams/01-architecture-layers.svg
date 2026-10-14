@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1824" viewBox="0 0 1400 1824" font-family="Noto Sans, DejaVu Sans, Liberation Sans, Arial, sans-serif">
+<title>01-architecture-layers</title>
+<defs><filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.07"/></filter><marker id="a-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-start-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-start-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-start-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-start-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-start-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-start-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-start-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-start-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-start-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker><marker id="a-start-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker></defs>
+<rect x="1" y="1" width="1398" height="1822" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+<path d="M36 101 H1364" stroke="#e2e8f0"/>
+<rect x="28" y="120" width="1344" height="139" rx="10" fill="#fdf2f8" stroke="#db2777" stroke-width="1"/>
+<rect x="42" y="134" width="126" height="36" rx="8" fill="#db2777" stroke="#db2777" stroke-width="0"/>
+<text x="105.0" y="158" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="700">App</text>
+<rect x="28" y="295" width="1344" height="139" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="1"/>
+<rect x="42" y="309" width="138" height="36" rx="8" fill="#7c3aed" stroke="#7c3aed" stroke-width="0"/>
+<text x="111.0" y="333" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="700">L4 • front ends</text>
+<rect x="28" y="474" width="1344" height="139" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1"/>
+<rect x="42" y="488" width="126" height="36" rx="8" fill="#2563eb" stroke="#2563eb" stroke-width="0"/>
+<text x="105.0" y="512" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="700">L3 • engine</text>
+<rect x="28" y="669" width="1344" height="160" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="1"/>
+<rect x="42" y="683" width="126" height="36" rx="8" fill="#0891b2" stroke="#0891b2" stroke-width="0"/>
+<text x="105.0" y="707" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="700">L2 • protocols</text>
+<rect x="28" y="947" width="1344" height="160" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="1"/>
+<rect x="42" y="961" width="126" height="36" rx="8" fill="#0d9488" stroke="#0d9488" stroke-width="0"/>
+<text x="105.0" y="985" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="700">L1 • adapters</text>
+<rect x="28" y="1143" width="1344" height="139" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="1"/>
+<rect x="42" y="1157" width="138" height="36" rx="8" fill="#d97706" stroke="#d97706" stroke-width="0"/>
+<text x="111.0" y="1181" font-size="15" fill="#ffffff" text-anchor="middle" font-weight="700">L0 • contracts</text>
+<path d="M579,241 L579,277 L466.5,277 L466.5,313" fill="none" stroke="#db2777" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-pink)"/>
+<path d="M579,241 L579,277 L1061.5,277 L1061.5,313" fill="none" stroke="#db2777" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-pink)"/>
+<path d="M466.5,416 L466.5,454 L530,454 L530,492" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M1061.5,416 L1061.5,454 L940,454 L940,492" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M730,595 L730,641 L293.0,641 L293.0,687" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M730,595 L730,641 L529.0,641 L529.0,687" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M730,595 L730,641 L765.0,641 L765.0,687" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M730,595 L730,641 L1001.0,641 L1001.0,687" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M730,595 L730,641 L1237.0,641 L1237.0,687" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M529,811 L529,851 L264,851 L264,811" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M1237,811 L1237,883 L322,883 L322,811" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M400,567 L174,567 L174,931 L760.5,931 L760.5,965" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-green)"/>
+<path d="M1060,567 L1360,567 L1360,915 L1158,915 L1158,965" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<text x="36" y="49" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700">Architecture: crate layers</text>
+<text x="36" y="79" font-size="14" fill="#475569" text-anchor="start">Layered Cargo workspace; a crate may depend only on lower layers (checked by cargo xtask layers)</text>
+<rect x="184" y="138" width="790" height="103" rx="10" fill="#fdf2f8" stroke="#db2777" stroke-width="2" filter="url(#shadow)"/>
+<text x="202" y="167" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">apps/rustxterm</text>
+<text x="202" y="196" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">Single binary: GUI by default, CLI subcommands, mcp, --self-test. Wires</text>
+<text x="202" y="217.0" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-platform-linux in.</text>
+<rect x="1000" y="138" width="346" height="103" rx="10" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="7 5" filter="url(#shadow)"/>
+<text x="1018" y="167" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Phase 2 • L2 additions</text>
+<text x="1018" y="196" font-size="14" fill="#0f172a" text-anchor="start">Adds rxt-pty, rxt-telnet, rxt-serial</text>
+<text x="1018" y="217.0" font-size="14" fill="#0f172a" text-anchor="start">without touching other crates.</text>
+<rect x="184" y="313" width="565" height="103" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="202" y="342" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-ui</text>
+<text x="202" y="371" font-size="14" fill="#0f172a" text-anchor="start">egui/eframe shell: tabs, sidebar, dialogs, terminal /</text>
+<text x="202" y="392.0" font-size="14" fill="#0f172a" text-anchor="start">framebuffer / file-pane widgets, themes.</text>
+<rect x="779" y="313" width="565" height="103" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="797" y="342" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-agent</text>
+<text x="797" y="371" font-size="14" fill="#0f172a" text-anchor="start">Control client, CLI, MCP server; no egui.</text>
+<rect x="400" y="492" width="660" height="103" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="418" y="521" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-engine</text>
+<text x="418" y="550" font-size="14" fill="#0f172a" text-anchor="start">Session manager, command registry, transfer queue, authorization /</text>
+<text x="418" y="571.0" font-size="14" fill="#0f172a" text-anchor="start">approval / audit boundary, control server; owns tokio.</text>
+<rect x="184" y="687" width="218" height="124" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="202" y="716" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-ssh</text>
+<text x="202" y="745" font-size="14" fill="#0f172a" text-anchor="start">russh: auth, host-key</text>
+<text x="202" y="766.0" font-size="14" fill="#0f172a" text-anchor="start">gate, jump hosts,</text>
+<text x="202" y="787.0" font-size="14" fill="#0f172a" text-anchor="start">X11, tunnels</text>
+<rect x="420" y="687" width="218" height="124" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="438" y="716" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-sftp</text>
+<text x="438" y="745" font-size="14" fill="#0f172a" text-anchor="start">russh-sftp; FileOps</text>
+<rect x="656" y="687" width="218" height="124" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="674" y="716" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-ftp</text>
+<text x="674" y="745" font-size="14" fill="#0f172a" text-anchor="start">suppaftp FTP/FTPS;</text>
+<text x="674" y="766.0" font-size="14" fill="#0f172a" text-anchor="start">FileOps</text>
+<rect x="892" y="687" width="218" height="124" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="910" y="716" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-rdp</text>
+<text x="910" y="745" font-size="14" fill="#0f172a" text-anchor="start">IronRDP → RGBA dirty</text>
+<text x="910" y="766.0" font-size="14" fill="#0f172a" text-anchor="start">rects</text>
+<rect x="1128" y="687" width="218" height="124" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="1146" y="716" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-vnc</text>
+<text x="1146" y="745" font-size="14" fill="#0f172a" text-anchor="start">vnc-rs → RGBA dirty</text>
+<text x="1146" y="766.0" font-size="14" fill="#0f172a" text-anchor="start">rects; VNC over SSH</text>
+<rect x="184" y="965" width="365" height="124" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="202" y="994" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-platform-linux</text>
+<text x="202" y="1023" font-size="14" fill="#0f172a" text-anchor="start">XDG dirs; Secret Service via oo7; XDG</text>
+<text x="202" y="1044.0" font-size="14" fill="#0f172a" text-anchor="start">portal via ashpd; Unix socket +</text>
+<text x="202" y="1065.0" font-size="14" fill="#0f172a" text-anchor="start">SO_PEERCRED; file dialogs.</text>
+<rect x="578" y="965" width="365" height="124" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="596" y="994" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-store</text>
+<text x="596" y="1023" font-size="14" fill="#0f172a" text-anchor="start">TOML/.env settings; SQLCipher DB; key</text>
+<text x="596" y="1044.0" font-size="14" fill="#0f172a" text-anchor="start">envelope; trust records; audit; INI</text>
+<text x="596" y="1065.0" font-size="14" fill="#0f172a" text-anchor="start">bookmark importer.</text>
+<rect x="972" y="965" width="372" height="124" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="990" y="994" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-term</text>
+<text x="990" y="1023" font-size="14" fill="#0f172a" text-anchor="start">alacritty_terminal grid/parser; OSC 7</text>
+<text x="990" y="1044.0" font-size="14" fill="#0f172a" text-anchor="start">scanner; selection, search, logging.</text>
+<rect x="184" y="1161" width="565" height="103" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" filter="url(#shadow)"/>
+<text x="202" y="1190" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-core</text>
+<text x="202" y="1219" font-size="14" fill="#0f172a" text-anchor="start">Domain types: Session, Folder, Protocol, Tunnel, theme tokens,</text>
+<text x="202" y="1240.0" font-size="14" fill="#0f172a" text-anchor="start">Command/Event, FileOps trait, errors; no IO.</text>
+<rect x="779" y="1161" width="565" height="103" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="797" y="1190" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-platform</text>
+<text x="797" y="1219" font-size="14" fill="#0f172a" text-anchor="start">OS contracts: paths, keyring, theme source, clipboard,</text>
+<text x="797" y="1240.0" font-size="14" fill="#0f172a" text-anchor="start">notifications, control transport, file dialogs.</text>
+<text x="36" y="1336" font-size="18" fill="#0f172a" text-anchor="start" font-weight="700">Dependency ledger • dependent → dependencies</text>
+<text x="36" y="1364" font-size="14" fill="#475569" text-anchor="start">Arrows show key paths; the ledger includes lower-layer links omitted from the drawing.</text>
+<rect x="36" y="1394" width="650" height="254" rx="10" fill="#f1f5f9" stroke="#334155" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="1423" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">Contracts, adapters and protocols</text>
+<text x="54" y="1452" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-platform → rxt-core</text>
+<text x="54" y="1476.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-platform-linux → rxt-platform, rxt-core</text>
+<text x="54" y="1501.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-store → rxt-platform, rxt-core</text>
+<text x="54" y="1525.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-term → rxt-core</text>
+<text x="54" y="1550.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-ssh → rxt-core</text>
+<text x="54" y="1574.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-sftp → rxt-ssh, rxt-term, rxt-core</text>
+<text x="54" y="1599.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-ftp → rxt-core; rxt-rdp → rxt-core</text>
+<text x="54" y="1623.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-vnc → rxt-ssh, rxt-core</text>
+<rect x="716" y="1394" width="648" height="254" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="734" y="1423" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">Engine, front ends and app</text>
+<text x="734" y="1452" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-engine → rxt-store, rxt-term, rxt-ssh, rxt-sftp, rxt-ftp, rxt-rdp,</text>
+<text x="734" y="1471.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-vnc, rxt-platform, rxt-core</text>
+<text x="734" y="1496.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-ui → rxt-engine, rxt-store, rxt-term, rxt-platform, rxt-core</text>
+<text x="734" y="1520.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-agent → rxt-engine, rxt-store, rxt-platform-linux, rxt-platform,</text>
+<text x="734" y="1540.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">rxt-core</text>
+<text x="734" y="1564.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">apps/rustxterm → rxt-ui, rxt-agent, rxt-engine, rxt-platform-linux, …</text>
+<rect x="36" y="1684" width="1328" height="103" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="1713" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Layer rules</text>
+<text x="54" y="1742" font-size="14" fill="#0f172a" text-anchor="start">Every crate also depends on rxt-core. Same-layer exceptions: rxt-platform → rxt-core, rxt-sftp → rxt-ssh; also rxt-vnc → rxt-ssh for VNC over SSH.</text>
+<text x="54" y="1763.0" font-size="14" fill="#0f172a" text-anchor="start">Protocol and store crates never depend on a concrete platform adapter; UI crates (egui) are forbidden below L4.</text>
+<rect x="360.0" y="836" width="102.0" height="30" rx="15" fill="#ffffff" stroke="#0891b2" stroke-width="1"/>
+<text x="411" y="855" font-size="13" fill="#0f172a" text-anchor="middle">SFTP → SSH</text>
+<rect x="894.9" y="868" width="94.2" height="30" rx="15" fill="#ffffff" stroke="#e11d48" stroke-width="1"/>
+<text x="942" y="887" font-size="13" fill="#0f172a" text-anchor="middle">VNC → SSH</text>
+<rect x="603.4" y="916" width="133.2" height="30" rx="15" fill="#ffffff" stroke="#16a34a" stroke-width="1"/>
+<text x="670" y="935" font-size="13" fill="#0f172a" text-anchor="middle">engine → store</text>
+<rect x="1185.3" y="900" width="125.39999999999999" height="30" rx="15" fill="#ffffff" stroke="#0891b2" stroke-width="1"/>
+<text x="1248" y="919" font-size="13" fill="#0f172a" text-anchor="middle">engine → term</text>
+</svg>

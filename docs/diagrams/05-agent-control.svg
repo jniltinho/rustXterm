@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1528" viewBox="0 0 1400 1528" font-family="Noto Sans, DejaVu Sans, Liberation Sans, Arial, sans-serif">
+<title>05-agent-control</title>
+<defs><filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.07"/></filter><marker id="a-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-start-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-start-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-start-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-start-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-start-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-start-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-start-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-start-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-start-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker><marker id="a-start-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker></defs>
+<rect x="1" y="1" width="1398" height="1526" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+<path d="M36 101 H1364" stroke="#e2e8f0"/>
+<rect x="324" y="630" width="1040" height="697" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2"/>
+<rect x="332" y="638" width="1024" height="681" rx="8" fill="none" stroke="#e11d48" stroke-width="1"/>
+<rect x="36" y="891" width="240" height="463.78" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2"/>
+<path d="M276,307.0 L296,307.0 L296,185.0 L324,185.0" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M276,327.0 L306,327.0 L306,459.5 L324,459.5" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M644,185.0 L690,185.0" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M644,434 L664,434 L664,276 L690,276" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M644,459.5 L690,459.5" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-teal)"/>
+<path d="M324,162 L20,162 L20,584 L900,584 L900,542" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M844,823 L844,849" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M844,931 L844,957" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M844,1065 L844,1091" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M844,1173 L844,1199" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M1364,234 L1380,234 L1380,734 L1344,734" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M1250,542 L1250,694" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-teal)"/>
+<path d="M844,1307 L844,1357 L474,1357 L474,1389" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M624,1416.0 L694,1416.0" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M994,1416.0 L1064,1416.0" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-teal)"/>
+<text x="36" y="49" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700">Agent control: CLI and MCP</text>
+<text x="36" y="79" font-size="14" fill="#475569" text-anchor="start">Off by default, same user only, one authorization boundary, no secret disclosure</text>
+<rect x="324" y="144" width="320" height="82" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="342" y="173" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">rustxterm &lt;subcommand&gt;</text>
+<text x="342" y="202" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">CLI</text>
+<rect x="324" y="408" width="320" height="103" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="342" y="437" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">rustxterm mcp</text>
+<text x="342" y="466" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">MCP server over stdio; JSON-RPC.</text>
+<text x="342" y="487.0" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">17 tools live, 5 offline.</text>
+<rect x="36" y="290" width="240" height="54" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="319" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">AI agent / scripts</text>
+<rect x="690" y="144" width="674" height="160" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="708" y="173" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Live • Unix control socket</text>
+<text x="708" y="202" font-size="14" fill="#0f172a" text-anchor="start">$XDG_RUNTIME_DIR/rustxterm/</text>
+<text x="708" y="228.0" font-size="14" fill="#0f172a" text-anchor="start">Directory 0700; socket 0600</text>
+<text x="708" y="254.0" font-size="14" fill="#0f172a" text-anchor="start">SO_PEERCRED same-UID check; 1 MiB frames</text>
+<text x="708" y="280.0" font-size="14" fill="#0f172a" text-anchor="start">Present only while agent control is enabled in the GUI. Same Command types.</text>
+<rect x="690" y="408" width="674" height="134" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="708" y="437" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Offline • in-process engine</text>
+<text x="708" y="466" font-size="14" fill="#0f172a" text-anchor="start">Reads open the store directly: keyring or master password.</text>
+<text x="708" y="492.0" font-size="14" fill="#0f172a" text-anchor="start">Changes need an interactive TTY master password.</text>
+<text x="708" y="518.0" font-size="14" fill="#0f172a" text-anchor="start">Both use the same engine authorization in-process.</text>
+<rect x="344" y="694" width="1000" height="129" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="362" y="723" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">1 • Permission matrix</text>
+<text x="362" y="752" font-size="14" fill="#0f172a" text-anchor="start">command id × entry point: cli-live, cli-offline, mcp-live, mcp-offline</text>
+<text x="362" y="778.0" font-size="14" fill="#0f172a" text-anchor="start">GUI-only commands rejected from EVERY agent entry point: approvals, trust decisions, credentials, policies, master</text>
+<text x="362" y="799.0" font-size="14" fill="#0f172a" text-anchor="start">password, agent settings.</text>
+<rect x="344" y="849" width="1000" height="82" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" filter="url(#shadow)"/>
+<text x="362" y="878" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">2 • Per-session policy</text>
+<text x="362" y="907" font-size="14" fill="#0f172a" text-anchor="start">deny (default for new sessions) / ask / allow + content-read flag</text>
+<rect x="344" y="957" width="1000" height="108" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="362" y="986" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">3 • Approval when policy = ask</text>
+<text x="362" y="1015" font-size="14" fill="#0f172a" text-anchor="start">GUI prompt bound to sha256(command id ‖ canonical params ‖ connection id ‖ target).</text>
+<text x="362" y="1041.0" font-size="14" fill="#0f172a" text-anchor="start">Single use; 60 s expiry</text>
+<rect x="344" y="1091" width="1000" height="82" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="362" y="1120" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">4 • Audit write</text>
+<text x="362" y="1149" font-size="14" fill="#0f172a" text-anchor="start">Every allowed or denied call</text>
+<rect x="344" y="1199" width="1000" height="108" rx="10" fill="#fdf2f8" stroke="#db2777" stroke-width="2" filter="url(#shadow)"/>
+<text x="362" y="1228" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">5 • Redaction and file scope</text>
+<text x="362" y="1257" font-size="14" fill="#0f172a" text-anchor="start">Credentials serialize as &quot;saved&quot; / &quot;absent&quot;.</text>
+<text x="362" y="1283.0" font-size="14" fill="#0f172a" text-anchor="start">Agent file scope: cap-std directory rooted at the agent workspace. No .., absolute paths or symlink escapes.</text>
+<rect x="336" y="638" width="377.0" height="32" rx="6" fill="#fff1f2" stroke="#fff1f2" stroke-width="0"/>
+<text x="342" y="660" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rxt-engine • authorization boundary</text>
+<rect x="36" y="630" width="240" height="229" rx="10" fill="#f1f5f9" stroke="#334155" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="659" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">CLI exit codes</text>
+<text x="54" y="688" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">0 ok</text>
+<text x="54" y="712.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">1 failed</text>
+<text x="54" y="737.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">2 usage</text>
+<text x="54" y="761.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">3 locked</text>
+<text x="54" y="786.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">4 denied</text>
+<text x="54" y="810.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">5 not running</text>
+<text x="54" y="835.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">6 agent control off</text>
+<rect x="48" y="899" width="116.05" height="32" rx="6" fill="#f3e8ff" stroke="#f3e8ff" stroke-width="0"/>
+<text x="54" y="921" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">MCP tools</text>
+<text x="54" y="949" font-size="13" fill="#475569" text-anchor="start">17 live / 5 offline</text>
+<text x="54" y="979" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">list_sessions</text>
+<text x="54" y="1001" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">show_session</text>
+<text x="54" y="1023" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">list_folders</text>
+<text x="54" y="1045" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">list_tunnels</text>
+<text x="54" y="1067" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">export</text>
+<text x="54" y="1089" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">open_session</text>
+<text x="54" y="1111" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">list_tabs</text>
+<text x="54" y="1133" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">read_terminal</text>
+<text x="54" y="1155" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">send_input</text>
+<text x="54" y="1177" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">wait_for_output</text>
+<text x="54" y="1199" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">screenshot_tab</text>
+<text x="54" y="1221" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">file_list</text>
+<text x="54" y="1243" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">file_get</text>
+<text x="54" y="1265" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">file_put</text>
+<text x="54" y="1287" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">tunnel_start</text>
+<text x="54" y="1309" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">tunnel_stop</text>
+<text x="54" y="1331" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">close_tab</text>
+<rect x="324" y="1389" width="300" height="54" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="342" y="1418" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Engine executes</text>
+<rect x="694" y="1389" width="300" height="54" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="712" y="1418" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Sessions / tabs</text>
+<rect x="1064" y="1389" width="300" height="54" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="1082" y="1418" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Remote servers</text>
+<text x="36" y="1485" font-size="14" fill="#475569" text-anchor="start">Both live and offline agent calls cross the same authorization boundary; GUI-only decisions stay in the GUI.</text>
+<rect x="423.1" y="569" width="109.8" height="30" rx="15" fill="#ffffff" stroke="#2563eb" stroke-width="1"/>
+<text x="478" y="588" font-size="13" fill="#0f172a" text-anchor="middle">CLI offline</text>
+<rect x="621.175" y="371" width="89.64999999999999" height="30" rx="15" fill="#ffffff" stroke="#7c3aed" stroke-width="1"/>
+<text x="666" y="390" font-size="13" fill="#0f172a" text-anchor="middle">MCP live</text>
+</svg>

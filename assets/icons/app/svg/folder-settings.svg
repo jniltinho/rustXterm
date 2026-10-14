@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" stroke-linejoin="miter" stroke-linecap="butt">
+  <path fill="#ff9f01" d="M2 6H12L16 10H30V27H2Z"/>
+  <path fill="#ffcb27" d="M2 11H30V27H2Z"/>
+  <path fill="#4c59a9" fill-rule="evenodd" d="M21 15H26V18L29 19L31 18V23L29 24V27L31 28L28 31L25 29H22L20 31L16 28L18 25V22L15 20L18 17L20 19L21 18Z M26 24A3 3 0 1 0 20 24A3 3 0 1 0 26 24Z"/>
+</svg>

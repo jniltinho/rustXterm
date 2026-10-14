@@ -1,0 +1,158 @@
+# The only workflow that builds and publishes binaries: runs on version tags (v0.1.0, v0.2.0-rc.1).
+# Checks (fmt, clippy, tests, lab, deny, distro matrix) run in ci.yml on main; tag a commit whose CI is green.
+name: release
+on:
+  push:
+    tags: ['v*.*.*']
+  # Dry run on any branch: every build, check, receipt and signing step, but nothing is published.
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read # the green-CI gate reads ci.yml runs
+    steps:
+      - name: Free runner disk space (preinstalled SDKs we never use)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache /usr/local/share/boost \
+            /usr/local/share/powershell /usr/share/swift /usr/local/.ghcup
+          sudo docker image prune -af >/dev/null
+          df -h /
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the guard scans the full history
+      - name: Require a green CI run for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" \
+            --status success --json conclusion -q '.[0].conclusion')
+          if [ "$conclusion" != success ]; then
+            echo "no successful ci.yml run for $GITHUB_SHA; release only commits whose CI is green" >&2
+            exit 1
+          fi
+      - name: Tag matches the workspace version
+        id: version
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          workspace=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)
+          [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && version=$workspace
+          if [ "$version" != "$workspace" ]; then
+            echo "tag $GITHUB_REF_NAME does not match workspace version $workspace" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build toolchain image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: toolchain
+          load: true
+          tags: rustxterm-toolchain:dev
+          cache-from: type=gha,scope=toolchain
+      - name: Build Windows toolchain image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: windows-toolchain
+          load: true
+          tags: rustxterm-windows-toolchain:dev
+          cache-from: |
+            type=gha,scope=toolchain
+            type=gha,scope=windows-toolchain
+      - name: Source date (committer time; the receipt's source commit for a receipt-only commit)
+        id: date
+        run: |
+          src=$(sed -n 's/^- Source commit: .\([0-9a-f]*\).$/\1/p' docs/gates/windows.md | head -n 1)
+          if [ -z "$src" ] || ! git merge-base --is-ancestor "$src" HEAD 2>/dev/null \
+            || [ -n "$(git diff --name-only "$src" HEAD -- . ':!docs/gates/windows.md')" ]; then
+            src=HEAD
+          fi
+          echo "epoch=$(git log -1 --format=%ct "$src")" >> "$GITHUB_OUTPUT"
+      - name: Build release artifacts (Linux and Windows, unsigned)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: dist
+          build-args: |
+            RXT_VERSION=${{ steps.version.outputs.version }}
+            SOURCE_DATE_EPOCH=${{ steps.date.outputs.epoch }}
+          outputs: type=local,dest=dist
+          cache-from: |
+            type=gha,scope=toolchain
+            type=gha,scope=windows-toolchain
+      # The rebuild below ignores the cache, so drop it: two Linux+Windows builds overflow the runner disk.
+      - name: Drop the build cache
+        run: docker buildx prune -af >/dev/null && df -h /
+      - name: Second clean build for the reproducibility check
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: dist
+          no-cache: true
+          build-args: |
+            RXT_VERSION=${{ steps.version.outputs.version }}
+            SOURCE_DATE_EPOCH=${{ steps.date.outputs.epoch }}
+          outputs: type=local,dest=dist-rebuild
+      - name: dist-check (allowlists, PE headers, self-test, guard, byte-identical rebuild)
+        run: RXT_TOOLCHAIN_STAGE=windows-toolchain scripts/cargo-docker.sh cargo xtask dist-check dist --reproduce dist-rebuild
+      # The Windows artifacts ship only with a passing receipt (docs/gates/windows.md) bound to this
+      # commit and to these unsigned bytes; otherwise the Linux release goes out without them.
+      - name: Windows receipt
+        id: receipt
+        run: |
+          if RXT_TOOLCHAIN_STAGE=windows-toolchain scripts/cargo-docker.sh cargo xtask windows-receipt --check dist; then
+            echo "windows=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "windows=no" >> "$GITHUB_OUTPUT"
+            rm -f dist/*-windows-x86_64.zip dist/*.msi
+          fi
+      - name: Sign the Windows artifacts (when the signing secret exists)
+        id: sign
+        if: steps.receipt.outputs.windows == 'yes'
+        env:
+          PFX: ${{ secrets.WINDOWS_SIGNING_PFX }}
+          PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SOURCE_DATE_EPOCH: ${{ steps.date.outputs.epoch }}
+        run: |
+          if [ -z "$PFX" ]; then echo "signed=no" >> "$GITHUB_OUTPUT"; exit 0; fi
+          mkdir -p target/signing
+          printf '%s' "$PFX" | base64 -d > target/signing/key.pfx
+          printf '%s' "$PFX_PASSWORD" > target/signing/password
+          RXT_TOOLCHAIN_STAGE=windows-toolchain scripts/cargo-docker.sh env \
+            WINDOWS_SIGNING_PFX=target/signing/key.pfx WINDOWS_SIGNING_PASSWORD_FILE=target/signing/password \
+            WINDOWS_SIGNING_TIMESTAMP_URL=http://timestamp.digicert.com SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
+            sh packaging/windows/sign.sh dist "$VERSION"
+          rm -rf target/signing
+          echo "signed=yes" >> "$GITHUB_OUTPUT"
+      - name: Guard the final artifacts and write SHA256SUMS last
+        run: |
+          set -- --ci
+          for f in dist/*.tar.gz dist/*.AppImage dist/*.zip dist/*.msi; do [ -e "$f" ] && set -- "$@" --artifact "$f"; done
+          RXT_TOOLCHAIN_STAGE=windows-toolchain scripts/cargo-docker.sh cargo xtask guard "$@"
+          (cd dist && rm -f SHA256SUMS && sha256sum -- * > SHA256SUMS)
+      - name: Publish GitHub Release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          WINDOWS: ${{ steps.receipt.outputs.windows }}
+          SIGNED: ${{ steps.sign.outputs.signed }}
+        run: |
+          prerelease=
+          case "$VERSION" in *-*) prerelease=--prerelease ;; esac
+          if [ "$WINDOWS" != yes ]; then
+            notes="Windows artifacts are not part of this release: the Windows end-to-end receipt (docs/gates/windows.md) does not cover this commit."
+          elif [ "$SIGNED" = yes ]; then
+            notes="The Windows executables and MSI are Authenticode-signed."
+          else
+            notes="The Windows zip, executables and MSI are unsigned: Windows SmartScreen may show an \"unrecognized app\" prompt. Verify the download against SHA256SUMS first."
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes --notes "$notes" \
+            --title "rustXterm $VERSION" $prerelease

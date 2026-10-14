@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1120" viewBox="0 0 1400 1120" font-family="Noto Sans, DejaVu Sans, Liberation Sans, Arial, sans-serif">
+<title>07-test-lab</title>
+<defs><filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.07"/></filter><marker id="a-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-start-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-start-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-start-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-start-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-start-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-start-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-start-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-start-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-start-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker><marker id="a-start-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker></defs>
+<rect x="1" y="1" width="1398" height="1118" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+<rect x="410" y="144" width="954" height="893" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2"/>
+<path d="M36 101 H1364" stroke="#e2e8f0"/>
+<rect x="36" y="144" width="324" height="322" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2"/>
+<rect x="886" y="388" width="454" height="184" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" stroke-dasharray="7 5"/>
+<path d="M198,262 L198,294" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M198,396 L198,420" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M1120,340 L1120,364 L1324,364 L1324,432 L997,432 L997,450" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M1086,501.0 L1120,501.0" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M360,345.0 L388,345.0 L388,184 L410,184" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<text x="36" y="49" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700">Docker protocol test lab</text>
+<text x="36" y="79" font-size="14" fill="#475569" text-anchor="start">Disposable lab (lab/compose.yaml); every port binds 127.0.0.1; fictional credentials</text>
+<rect x="54" y="208" width="288" height="54" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="72" y="237" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">lab/lab.sh test</text>
+<rect x="54" y="294" width="288" height="102" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="72" y="323" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">cargo xtask lab test</text>
+<text x="72" y="352" font-size="13" fill="#0f172a" text-anchor="start">Toolchain container; host</text>
+<text x="72" y="371.5" font-size="13" fill="#0f172a" text-anchor="start">network</text>
+<text x="54" y="442" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">cargo test -- --ignored</text>
+<rect x="48" y="152" width="183.2" height="32" rx="6" fill="#f3e8ff" stroke="#f3e8ff" stroke-width="0"/>
+<text x="54" y="174" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Host • 127.0.0.1</text>
+<rect x="36" y="506" width="324" height="103" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="535" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Exact executed-name check</text>
+<text x="54" y="564" font-size="14" fill="#0f172a" text-anchor="start">Executed names must equal</text>
+<text x="54" y="585.0" font-size="14" fill="#0f172a" text-anchor="start">lab/expected-tests.txt.</text>
+<rect x="36" y="645" width="324" height="156" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="674" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Fictional accounts</text>
+<text x="54" y="703" font-size="13" fill="#0f172a" text-anchor="start">alice — password</text>
+<text x="54" y="727.5" font-size="13" fill="#0f172a" text-anchor="start">bob — public key</text>
+<text x="54" y="752.0" font-size="13" fill="#0f172a" text-anchor="start">carol — keyboard-interactive</text>
+<text x="54" y="776.5" font-size="13" fill="#0f172a" text-anchor="start">sftponly — chroot SFTP</text>
+<rect x="36" y="837" width="324" height="103" rx="10" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="7 5" filter="url(#shadow)"/>
+<text x="54" y="866" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Optional Vagrant VMs</text>
+<text x="54" y="895" font-size="14" fill="#0f172a" text-anchor="start">Debian; Windows evaluation box</text>
+<text x="54" y="916.0" font-size="14" fill="#0f172a" text-anchor="start">for RDP with NLA. Never in CI.</text>
+<rect x="442" y="216" width="412" height="124" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="460" y="245" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">sshd :2222</text>
+<text x="460" y="274" font-size="14" fill="#0f172a" text-anchor="start">OpenSSH; password / key /</text>
+<text x="460" y="295.0" font-size="14" fill="#0f172a" text-anchor="start">keyboard-interactive; AcceptEnv FOO; X11</text>
+<text x="460" y="316.0" font-size="14" fill="#0f172a" text-anchor="start">forwarding; compression; TCP forwarding</text>
+<rect x="910" y="216" width="420" height="124" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="928" y="245" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">bastion :2223</text>
+<text x="928" y="274" font-size="14" fill="#0f172a" text-anchor="start">Same OpenSSH image; also on the internal</text>
+<text x="928" y="295.0" font-size="14" fill="#0f172a" text-anchor="start">network</text>
+<rect x="442" y="408" width="412" height="103" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="460" y="437" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">ftp :2121</text>
+<text x="460" y="466" font-size="14" fill="#0f172a" text-anchor="start">vsftpd; plain FTP + explicit FTPS (AUTH</text>
+<text x="460" y="487.0" font-size="14" fill="#0f172a" text-anchor="start">TLS). Passive ports 30000–30009.</text>
+<rect x="908" y="450" width="178" height="102" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="926" y="479" font-size="15" fill="#0f172a" text-anchor="start" font-weight="700">Bastion second</text>
+<text x="926" y="502" font-size="15" fill="#0f172a" text-anchor="start" font-weight="700">leg</text>
+<rect x="1120" y="450" width="198" height="102" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2" filter="url(#shadow)"/>
+<text x="1138" y="479" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">internal</text>
+<text x="1138" y="508" font-size="13" fill="#0f172a" text-anchor="start">Only internal:22</text>
+<text x="1138" y="527.5" font-size="13" fill="#0f172a" text-anchor="start">through bastion</text>
+<rect x="898" y="396" width="336.2" height="32" rx="6" fill="#fff7ed" stroke="#fff7ed" stroke-width="0"/>
+<text x="904" y="418" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">internal network • no host port</text>
+<rect x="442" y="620" width="412" height="103" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="460" y="649" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">ftps-implicit :2990</text>
+<text x="460" y="678" font-size="14" fill="#0f172a" text-anchor="start">vsftpd; implicit FTPS. Passive ports</text>
+<text x="460" y="699.0" font-size="14" fill="#0f172a" text-anchor="start">30010–30019.</text>
+<rect x="910" y="620" width="420" height="103" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="928" y="649" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">rdp :13389</text>
+<text x="928" y="678" font-size="14" fill="#0f172a" text-anchor="start">xrdp + xorgxrdp</text>
+<rect x="442" y="771" width="412" height="103" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="460" y="800" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">vnc :5901</text>
+<text x="460" y="829" font-size="14" fill="#0f172a" text-anchor="start">TigerVNC; VncAuth</text>
+<rect x="910" y="771" width="420" height="103" rx="10" fill="#fdf2f8" stroke="#db2777" stroke-width="2" filter="url(#shadow)"/>
+<text x="928" y="800" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Hostile test peers</text>
+<text x="928" y="829" font-size="14" fill="#0f172a" text-anchor="start">RFB and RDP peers in Rust (xtask), for limits</text>
+<text x="928" y="850.0" font-size="14" fill="#0f172a" text-anchor="start">tests.</text>
+<rect x="442" y="914" width="888" height="103" rx="10" fill="#f1f5f9" stroke="#334155" stroke-width="2" filter="url(#shadow)"/>
+<text x="460" y="943" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Network isolation</text>
+<text x="460" y="972" font-size="14" fill="#0f172a" text-anchor="start">Every published port is loopback-only. The internal host has no host port and is reachable only</text>
+<text x="460" y="993.0" font-size="14" fill="#0f172a" text-anchor="start">through the bastion.</text>
+<rect x="422" y="152" width="509.59999999999997" height="32" rx="6" fill="#ecfeff" stroke="#ecfeff" stroke-width="0"/>
+<text x="428" y="174" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Docker services • published ports bind 127.0.0.1</text>
+<text x="36" y="1077" font-size="14" fill="#475569" text-anchor="start">Solid boxes: disposable Docker lab and Rust peers</text>
+<text x="790" y="1077" font-size="14" fill="#475569" text-anchor="start">Dashed VM box: optional, never in CI</text>
+</svg>

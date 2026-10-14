@@ -1,0 +1,11 @@
+base/
+docs/prints/
+target/
+dist/
+.env
+.env.*
+!.env.example
+/.claude/settings.local.json
+lab/.generated/
+.vagrant/
+lab/vagrant/**/.vagrant/

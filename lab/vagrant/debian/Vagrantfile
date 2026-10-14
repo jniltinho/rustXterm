@@ -1,0 +1,16 @@
+# Minimal Debian VM for cases containers cannot cover (e.g. real systemd/PAM stacks). Never used in CI.
+# Fictional credentials only; forwarded ports bind 127.0.0.1.
+Vagrant.configure("2") do |config|
+  config.vm.box = "debian/bookworm64"
+  config.vm.hostname = "rxt-lab-debian"
+  config.vm.network "forwarded_port", guest: 22, host: 2322, host_ip: "127.0.0.1", id: "ssh"
+  config.vm.provider("virtualbox") { |vb| vb.memory = 512; vb.cpus = 1 }
+  config.vm.provision "shell", inline: <<~SH
+    set -eu
+    apt-get update && apt-get install -y openssh-server xauth x11-apps
+    id alice >/dev/null 2>&1 || useradd -m -s /bin/bash alice
+    echo 'alice:lab-alice-pass' | chpasswd
+    sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+    systemctl restart ssh
+  SH
+end

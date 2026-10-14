@@ -1,0 +1,17 @@
+[package]
+name = "rxt-term"
+description = "Terminal model on alacritty_terminal with OSC 7 scanner, search and logging"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+rxt-core.workspace = true
+thiserror.workspace = true
+alacritty_terminal.workspace = true
+
+[lints]
+workspace = true

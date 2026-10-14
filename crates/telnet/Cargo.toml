@@ -1,0 +1,22 @@
+[package]
+name = "rxt-telnet"
+description = "Telnet and raw TCP client: sans-IO codec, option negotiation, opt-in auto-login"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+rxt-core.workspace = true
+secrecy.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+
+[lints]
+workspace = true

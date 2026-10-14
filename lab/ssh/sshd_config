@@ -1,0 +1,37 @@
+# Lab sshd: one account per auth method. DEBUG1 logs keepalive@openssh.com requests.
+LogLevel DEBUG1
+UsePAM yes
+PasswordAuthentication yes
+KbdInteractiveAuthentication yes
+PubkeyAuthentication yes
+AuthorizedKeysFile /etc/ssh/authorized_keys/%u
+PermitRootLogin no
+AcceptEnv FOO
+X11Forwarding yes
+X11UseLocalhost yes
+Compression yes
+AllowTcpForwarding yes
+GatewayPorts no
+Subsystem sftp internal-sftp
+# Pre-auth banner (SSH_MSG_USERAUTH_BANNER) shown by the client before the shell output.
+Banner /etc/issue.net
+# Lab tests connect in parallel; the default 10:30:100 randomly drops handshakes.
+MaxStartups 200
+
+Match User alice
+    AuthenticationMethods password
+Match User bob
+    AuthenticationMethods publickey
+Match User carol
+    AuthenticationMethods keyboard-interactive
+# Remote monitoring lab test: one session channel per connection, so the extra monitoring
+# channel is refused while the shell keeps working.
+Match User dave
+    AuthenticationMethods password
+    MaxSessions 1
+Match User sftponly
+    AuthenticationMethods password
+    ChrootDirectory /srv/sftp
+    ForceCommand internal-sftp
+    AllowTcpForwarding no
+    X11Forwarding no

@@ -1,0 +1,54 @@
+[package]
+name = "rxt-platform-windows"
+description = "Windows adapter for the platform contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+rxt-core.workspace = true
+rxt-platform.workspace = true
+
+# Windows-only: on other targets only the pure helpers build (and are unit-tested).
+[target.'cfg(windows)'.dependencies]
+tokio.workspace = true
+tracing.workspace = true
+arboard.workspace = true
+rfd.workspace = true
+notify-rust.workspace = true
+dirs.workspace = true
+serialport.workspace = true
+raw-window-handle = "=0.6.2"
+windows-sys = { version = "=0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Security_Credentials",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Pipes",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+tokio.workspace = true
+
+# User decision (add-windows-port W2): the only crate allowed to use `unsafe` (direct Win32
+# calls). It cannot inherit the workspace `forbid`, so the workspace rules are repeated here;
+# `cargo xtask layers` checks this table.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+undocumented_unsafe_blocks = "deny"
+multiple_unsafe_ops_per_block = "deny"

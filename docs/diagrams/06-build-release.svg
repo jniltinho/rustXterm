@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1564" viewBox="0 0 1400 1564" font-family="Noto Sans, DejaVu Sans, Liberation Sans, Arial, sans-serif">
+<title>06-build-release</title>
+<defs><filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.07"/></filter><marker id="a-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-start-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#7c3aed"/></marker><marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-start-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#2563eb"/></marker><marker id="a-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-start-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0891b2"/></marker><marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-start-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#0d9488"/></marker><marker id="a-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-start-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#16a34a"/></marker><marker id="a-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-start-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#d97706"/></marker><marker id="a-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-start-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#ea580c"/></marker><marker id="a-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-start-rose" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#e11d48"/></marker><marker id="a-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-start-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#db2777"/></marker><marker id="a-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker><marker id="a-start-slate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" fill="#334155"/></marker></defs>
+<rect x="1" y="1" width="1398" height="1562" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+<path d="M36 101 H1364" stroke="#e2e8f0"/>
+<rect x="336" y="126" width="708" height="456" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<rect x="36" y="852" width="1328" height="280" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+<rect x="36" y="1174" width="1328" height="230" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+<path d="M288,239.5 L356,239.5" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M671,239.5 L709,239.5" fill="none" stroke="#334155" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-slate)"/>
+<path d="M866.5,291 L866.5,339" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M709,399.5 L671,399.5" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M513.5,460 L513.5,508" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M671,535.0 L709,535.0" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M1024,535.0 L1068,535.0 L1068,314.5 L1102,314.5" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-green)"/>
+<path d="M1233,441 L1233,618 L359,618 L359,664" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-green)"/>
+<path d="M682,731.0 L720,731.0" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-teal)"/>
+<path d="M222,957.0 L240,957.0" fill="none" stroke="#334155" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-slate)"/>
+<path d="M406,957.0 L424,957.0" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M590,957.0 L608,957.0" fill="none" stroke="#0891b2" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-cyan)"/>
+<path d="M774,957.0 L792,957.0" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M958,957.0 L976,957.0" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M1142,957.0 L1160,957.0" fill="none" stroke="#ea580c" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-orange)"/>
+<path d="M244,1289.0 L272,1289.0" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-blue)"/>
+<path d="M460,1289.0 L488,1289.0" fill="none" stroke="#e11d48" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-rose)"/>
+<path d="M676,1289.0 L704,1289.0" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-violet)"/>
+<path d="M892,1289.0 L920,1289.0" fill="none" stroke="#16a34a" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-green)"/>
+<path d="M1108,1289.0 L1136,1289.0" fill="none" stroke="#0d9488" stroke-width="2" stroke-linejoin="round" marker-end="url(#a-teal)"/>
+<text x="36" y="49" font-size="24" fill="#0f172a" text-anchor="start" font-weight="700">Build and release pipeline</text>
+<text x="36" y="79" font-size="14" fill="#475569" text-anchor="start">Docker-only builds; binaries are published only from version tags</text>
+<rect x="36" y="188" width="252" height="166" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="217" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Developer</text>
+<text x="54" y="246" font-size="14" fill="#0f172a" text-anchor="start">scripts/cargo-docker.sh</text>
+<text x="54" y="267.0" font-size="14" fill="#0f172a" text-anchor="start">All cargo commands run in</text>
+<text x="54" y="288.0" font-size="14" fill="#0f172a" text-anchor="start">the pinned toolchain</text>
+<text x="54" y="309.0" font-size="14" fill="#0f172a" text-anchor="start">image; no toolchain on</text>
+<text x="54" y="330.0" font-size="14" fill="#0f172a" text-anchor="start">the desktop.</text>
+<rect x="356" y="188" width="315" height="103" rx="10" fill="#f1f5f9" stroke="#334155" stroke-width="2" filter="url(#shadow)"/>
+<text x="374" y="217" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">1 • Base image</text>
+<text x="374" y="246" font-size="14" fill="#0f172a" text-anchor="start">Pinned Ubuntu 24.04 digest +</text>
+<text x="374" y="267.0" font-size="14" fill="#0f172a" text-anchor="start">snapshot apt</text>
+<rect x="709" y="188" width="315" height="103" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="727" y="217" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">2 • Toolchain</text>
+<text x="727" y="246" font-size="14" fill="#0f172a" text-anchor="start">Pinned Rust 1.99 + zig +</text>
+<text x="727" y="267.0" font-size="14" fill="#0f172a" text-anchor="start">cargo-zigbuild</text>
+<rect x="709" y="339" width="315" height="121" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="727" y="368" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">3 • Dependency fetch</text>
+<text x="727" y="397" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">cargo fetch --locked</text>
+<text x="727" y="416.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">Only networked stage</text>
+<rect x="356" y="339" width="315" height="121" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="374" y="368" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">4 • Offline build</text>
+<text x="374" y="397" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">--network=none</text>
+<text x="374" y="416.5" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">cargo zigbuild --target</text>
+<text x="374" y="436.0" font-size="13" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">x86_64-unknown-linux-gnu.2.31</text>
+<rect x="356" y="508" width="315" height="54" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="374" y="537" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">5 • AppImage stage</text>
+<rect x="709" y="508" width="315" height="54" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="727" y="537" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">6 • dist stage</text>
+<rect x="348" y="134" width="248.64999999999998" height="32" rx="6" fill="#eff6ff" stroke="#eff6ff" stroke-width="0"/>
+<text x="354" y="156" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Multi-stage Dockerfile</text>
+<rect x="1102" y="188" width="262" height="253" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="1120" y="217" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">dist artifacts</text>
+<text x="1120" y="246" font-size="13" fill="#0f172a" text-anchor="start">rustxterm-X.Y.Z-x86_64</text>
+<text x="1120" y="265.5" font-size="13" fill="#0f172a" text-anchor="start">(portable binary)</text>
+<text x="1120" y="290.0" font-size="13" fill="#0f172a" text-anchor="start">.AppImage</text>
+<text x="1120" y="314.5" font-size="13" fill="#0f172a" text-anchor="start">.tar.gz: binary, .desktop,</text>
+<text x="1120" y="334.0" font-size="13" fill="#0f172a" text-anchor="start">icon, LICENSE,</text>
+<text x="1120" y="353.5" font-size="13" fill="#0f172a" text-anchor="start">ATTRIBUTION.md,</text>
+<text x="1120" y="373.0" font-size="13" fill="#0f172a" text-anchor="start">THIRD-PARTY-NOTICES.txt,</text>
+<text x="1120" y="392.5" font-size="13" fill="#0f172a" text-anchor="start">README.txt</text>
+<text x="1120" y="417.0" font-size="13" fill="#0f172a" text-anchor="start">SHA256SUMS</text>
+<rect x="36" y="664" width="646" height="134" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="693" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">cargo xtask dist-check</text>
+<text x="54" y="722" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">glibc ≤ 2.31 (objdump -T); allowed NEEDED libs; stripped</text>
+<text x="54" y="748.0" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">--self-test of portable binary and AppImage</text>
+<text x="54" y="774.0" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">SHA256SUMS; guard over tarball &amp; AppImage</text>
+<rect x="720" y="664" width="644" height="134" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="738" y="693" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700" font-family="DejaVu Sans Mono, monospace">scripts/distro-matrix.sh</text>
+<text x="738" y="722" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">--self-test: Ubuntu 20.04 / 22.04 / 24.04 / 26.04; Debian 12 / 13;</text>
+<text x="738" y="743.0" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">Fedora; Arch</text>
+<text x="738" y="769.0" font-size="14" fill="#0f172a" text-anchor="start" font-family="DejaVu Sans Mono, monospace">Xvfb GUI smoke: Ubuntu 24.04 / 26.04</text>
+<rect x="56" y="916" width="166" height="82" rx="10" fill="#f1f5f9" stroke="#334155" stroke-width="2" filter="url(#shadow)"/>
+<text x="74" y="945" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">fmt</text>
+<rect x="240" y="916" width="166" height="82" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="258" y="945" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">clippy</text>
+<text x="258" y="974" font-size="13" fill="#0f172a" text-anchor="start">-D warnings</text>
+<rect x="424" y="916" width="166" height="82" rx="10" fill="#ecfeff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+<text x="442" y="945" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">tests</text>
+<text x="442" y="974" font-size="13" fill="#0f172a" text-anchor="start">+ UI snapshots</text>
+<rect x="608" y="916" width="166" height="82" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="626" y="945" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">xtask layers</text>
+<rect x="792" y="916" width="166" height="82" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="810" y="945" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">xtask guard</text>
+<text x="810" y="974" font-size="13" fill="#0f172a" text-anchor="start">--ci</text>
+<rect x="976" y="916" width="166" height="82" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="994" y="945" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">xtask</text>
+<text x="994" y="968" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">scenarios</text>
+<rect x="1160" y="916" width="166" height="82" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="1178" y="945" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">cargo deny</text>
+<rect x="56" y="1030" width="1288" height="82" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="74" y="1059" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Parallel job: lab</text>
+<text x="74" y="1088" font-size="14" fill="#0f172a" text-anchor="start">lab.sh up → lab.sh test; executed names must equal lab/expected-tests.txt</text>
+<rect x="48" y="860" width="570.8" height="32" rx="6" fill="#eff6ff" stroke="#eff6ff" stroke-width="0"/>
+<text x="54" y="882" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">GitHub Actions • ci.yml • push to main / pull requests</text>
+<rect x="56" y="1238" width="188" height="102" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="2" filter="url(#shadow)"/>
+<text x="74" y="1267" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Reuse ci.yml</text>
+<text x="74" y="1296" font-size="13" fill="#0f172a" text-anchor="start">All checks + lab</text>
+<rect x="272" y="1238" width="188" height="102" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="290" y="1267" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Version gate</text>
+<text x="290" y="1296" font-size="13" fill="#0f172a" text-anchor="start">tag == workspace</text>
+<text x="290" y="1315.5" font-size="13" fill="#0f172a" text-anchor="start">version</text>
+<rect x="488" y="1238" width="188" height="102" rx="10" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+<text x="506" y="1267" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Docker dist</text>
+<text x="506" y="1296" font-size="13" fill="#0f172a" text-anchor="start">docker build</text>
+<text x="506" y="1315.5" font-size="13" fill="#0f172a" text-anchor="start">--target dist</text>
+<rect x="704" y="1238" width="188" height="102" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2" filter="url(#shadow)"/>
+<text x="722" y="1267" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">dist-check</text>
+<rect x="920" y="1238" width="188" height="102" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="2" filter="url(#shadow)"/>
+<text x="938" y="1267" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Distro matrix</text>
+<rect x="1136" y="1238" width="188" height="102" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="2" filter="url(#shadow)"/>
+<text x="1154" y="1267" font-size="16" fill="#0f172a" text-anchor="start" font-weight="700">Publish release</text>
+<text x="1154" y="1296" font-size="13" fill="#0f172a" text-anchor="start">gh release create</text>
+<text x="56" y="1380" font-size="14" fill="#475569" text-anchor="start">Tags with a &quot;-&quot; suffix are pre-releases.</text>
+<rect x="48" y="1182" width="448.4" height="32" rx="6" fill="#fff7ed" stroke="#fff7ed" stroke-width="0"/>
+<text x="54" y="1204" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">GitHub Actions • release.yml • tags v*.*.*</text>
+<rect x="36" y="1446" width="1328" height="82" rx="10" fill="#fff1f2" stroke="#e11d48" stroke-width="2" filter="url(#shadow)"/>
+<text x="54" y="1475" font-size="17" fill="#0f172a" text-anchor="start" font-weight="700">Local pre-push • cargo xtask guard</text>
+<text x="54" y="1504" font-size="14" fill="#0f172a" text-anchor="start">Forbidden-digest check of local-only material, home paths, and attribution.</text>
+<rect x="690.4" y="603" width="211.2" height="30" rx="15" fill="#ffffff" stroke="#16a34a" stroke-width="1"/>
+<text x="796" y="622" font-size="13" fill="#0f172a" text-anchor="middle">verify before publishing</text>
+</svg>

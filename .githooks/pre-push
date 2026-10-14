@@ -1,0 +1,5 @@
+#!/bin/sh
+# Publication guard (design D12). Enable once per clone: git config core.hooksPath .githooks
+set -eu
+root=$(git rev-parse --show-toplevel)
+RXT_MOUNT_BASE=1 "$root/scripts/cargo-docker.sh" cargo xtask guard

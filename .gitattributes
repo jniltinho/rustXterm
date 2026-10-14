@@ -1,0 +1,2 @@
+# Terminal reference fixtures are compared byte for byte: never convert line endings.
+crates/term/tests/fixtures/** -text

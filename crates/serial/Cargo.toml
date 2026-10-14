@@ -1,0 +1,22 @@
+[package]
+name = "rxt-serial"
+description = "Serial console sessions over the platform SerialPorts contract"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+rxt-core.workspace = true
+rxt-platform.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+
+[dev-dependencies]
+# Lab tests drive real ptys through the Linux adapter (dev-only edge, allowed by xtask layers).
+rxt-platform-linux.workspace = true
+
+[lints]
+workspace = true
