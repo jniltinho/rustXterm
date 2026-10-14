@@ -2,6 +2,7 @@ base/
 docs/prints/
 target/
 dist/
+dist-rebuild/
 .env
 .env.*
 !.env.example
