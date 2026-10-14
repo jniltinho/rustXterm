@@ -16,4 +16,4 @@ Depends on `create-native-rust-linux-terminal` being implemented (engine/UI seam
 
 - [x] 2.1 Lab tests (`#[ignore]`): bar sample has host, CPU (second sample), RAM, net, uptime and disk `/` within 5 s; after toggle off and after disconnect a second lab session's `ps -eo args` shows no `rxt-mon` process within 5 s; refused extra channel → unavailable and shell works; no files changed under `$HOME`/`/tmp`; add names to `lab/expected-tests.txt`; verify `cargo xtask lab test` green
 - [x] 2.2 `cargo xtask prints` for an SSH tab with the bar, the overflow state, Settings › SSH and the SFTP panel button, both themes; verify files exist under `docs/prints/` and `git status` shows none of them
-- [ ] 2.3 Full gates in Docker (`fmt`, `clippy -D warnings`, unit, snapshots, `cargo xtask layers`), `cargo xtask guard`, then commit "remote monitoring: 1.1–2.3" with task ids and push; verify the commit is on the remote
+- [x] 2.3 Full gates in Docker (`fmt`, `clippy -D warnings`, unit, snapshots, `cargo xtask layers`), `cargo xtask guard`, then commit "remote monitoring: 1.1–2.3" with task ids and push; verify the commit is on the remote

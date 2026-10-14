@@ -170,21 +170,23 @@ covered Wayland window cannot block exit (the default action ends the process).
 Every `#### Scenario:` of the change's specs, with its automated test (`file::test`) or receipt.
 `lab` = `#[ignore]`d test run by `lab/lab.sh test`; `receipt` = command run recorded in a gate
 document; `partial` = the test covers the rule but not every literal detail of the scenario (gap
-stated); `manual` = human receipt. `cargo xtask scenarios` (run in CI) fails unless every scenario has
-exactly one row and every cited `file::test` exists.
+stated); `manual` = human receipt; `gap` = no test yet, closest evidence named. `cargo xtask scenarios`
+(run in CI) fails unless every scenario has exactly one row and every cited `file::test` exists.
 
-Totals: 119 scenarios, 119 mapped, 0 unmapped.
+Totals: 141 scenarios, 141 mapped, 0 unmapped.
 
 | Kind | Count |
 |---|---|
-| Automated (unit/integration and/or lab tests; some also cite a gate receipt) | 108 |
-| Partial: automated, with the uncovered detail stated (Find text, Drag-and-drop upload, Open with local application, Offline list, Audit entry, Filter) | 6 |
+| Automated (unit/integration and/or lab tests; some also cite a gate receipt) | 124 |
+| Partial: automated, with the uncovered detail stated (Find text, Drag-and-drop upload, Open with local application, Offline list, Audit entry, Filter, Overflow, FreeBSD server, SFTP-only account, Agent tries to toggle, Channel limit) | 11 |
 | Receipt or configuration only (Clean host build, Milestone push, Panic path rejected, Desktop session) | 4 |
 | Manual receipt (Windows target, M2) | 1 |
+| Gap: no test, closest evidence named (Jump host untouched) | 1 |
 
 Narrower gaps noted inside automated rows: Distribution matrix (the Xvfb smoke opens no SSH tab; the
 lab E2E does), Hidden tab (hidden for seconds, not 60 s), Global defaults / Per-session font
-(resolution, not rendering), X11 forwarding (Xvfb display, real desktop in 10.4).
+(resolution, not rendering), X11 forwarding (Xvfb display, real desktop in 10.4), Nothing written on the server (seconds, not one
+minute), Hidden tab pauses (fake peer under paused time).
 
 | Spec | Scenario | Evidence | Status |
 |---|---|---|---|
@@ -307,3 +309,25 @@ lab E2E does), Hidden tab (hidden for seconds, not 60 s), Global defaults / Per-
 | session-management | Malformed line | `crates/store/tests/moba_ini.rs::malformed_lines_are_skipped_with_line_numbers` | auto |
 | session-management | Source untouched | `crates/store/tests/moba_ini.rs::source_file_is_byte_identical_after_import` | auto |
 | session-management | Round trip | `crates/store/tests/export.rs::round_trip_is_identical`, `crates/store/tests/export.rs::credential_keys_in_imported_file_are_dropped` | auto |
+| desktop-shell | Bar appears | `crates/engine/tests/lab_monitor.rs::ssh_monitoring_bar_data_then_no_leftover_process` (host, CPU, memory, net, uptime and `/` within 5 s), `crates/ui/src/tests.rs::monitoring_bar_takes_samples_closes_and_sftp_button_toggles` | lab + auto |
+| desktop-shell | Close button | `crates/ui/src/tests.rs::monitoring_bar_takes_samples_closes_and_sftp_button_toggles`, `crates/engine/src/tests.rs::monitoring_samples_toggle_reconnect_and_close_the_channel` | auto |
+| desktop-shell | Overflow | `crates/ui/src/tests.rs::snapshot_monitoring_bar` | partial: arrows appear and scroll one chip at a time; the × staying visible is only in the snapshot, not asserted |
+| desktop-shell | Dark theme thresholds | `crates/ui/src/monitor_bar.rs::thresholds_and_history`, `crates/ui/src/tests.rs::snapshot_monitoring_bar` | auto (97 % CPU rendered in the dark snapshot; the danger level is asserted) |
+| desktop-shell | Session opt-out | `crates/engine/tests/lab_monitor.rs::ssh_monitoring_bar_data_then_no_leftover_process` (session Off, global on: no `rxt-mon` process), `crates/engine/src/tests.rs::monitoring_follows_settings_and_only_ssh_terminals` | lab + auto |
+| desktop-shell | Interval change | `crates/engine/src/monitor/tests.rs::cadence_pause_until_taken_and_live_interval`, `crates/ui/src/tests.rs::monitoring_never_shown_for_telnet_and_settings_reach_the_backend` | auto |
+| desktop-shell | Toggle is per tab | `crates/ui/src/tests.rs::monitoring_bar_takes_samples_closes_and_sftp_button_toggles` | auto |
+| desktop-shell | Turn on from the panel | `crates/ui/src/tests.rs::monitoring_bar_takes_samples_closes_and_sftp_button_toggles`, `crates/ui/src/monitor_bar.rs::thresholds_and_history` (history cleared on re-enable), `crates/engine/src/tests.rs::monitoring_samples_toggle_reconnect_and_close_the_channel` | auto |
+| remote-monitoring | Nothing written on the server | `crates/engine/tests/lab_monitor.rs::ssh_monitoring_bar_data_then_no_leftover_process` (files under `$HOME`/`/tmp` unchanged, exactly one `rxt-mon` process), `crates/engine/src/monitor/tests.rs::script_is_fixed_and_marked` | lab + auto (monitoring runs for seconds, not one minute) |
+| remote-monitoring | Jump host untouched | `Client::exec_stream` in `crates/ssh/src/lib.rs` opens the channel on the final-target handle (code reading only) | gap: no test monitors a session through a jump host |
+| remote-monitoring | First samples | `crates/engine/src/monitor/tests.rs::ubuntu_first_then_second_sample`, `crates/engine/tests/lab_monitor.rs::ssh_monitoring_bar_data_then_no_leftover_process` | auto + lab |
+| remote-monitoring | Container mounts filtered | `crates/engine/src/monitor/tests.rs::loop_tmpfs_overlay_filtered_and_capped` | auto (fixture has loop, devtmpfs, overlay and proc; plain tmpfs falls under the same non-`/dev/` rule) |
+| remote-monitoring | Counter reset | `crates/engine/src/monitor/tests.rs::counter_reset_and_wrap_skip_values` | auto |
+| remote-monitoring | FreeBSD server | `crates/engine/src/monitor/tests.rs::freebsd_like_server_has_host_and_disks_only`, `crates/ui/src/tests.rs::snapshot_monitoring_bar` | partial: host and disk chips only are tested; the host tooltip text is not asserted |
+| remote-monitoring | SFTP-only account | `crates/engine/src/monitor/tests.rs::unsupported_header_closes_within_10_s` | partial: fake peer with an SFTP-only banner is unsupported at 10 s; no lab account with a forced SFTP command, terminal and SFTP panel not exercised |
+| remote-monitoring | Hidden tab pauses | `crates/engine/src/monitor/tests.rs::cadence_pause_until_taken_and_live_interval` | auto (fake peer, paused time) |
+| remote-monitoring | No leftover processes | `crates/engine/tests/lab_monitor.rs::ssh_monitoring_bar_data_then_no_leftover_process`, `crates/engine/src/monitor/tests.rs::toggle_off_closes_channel_and_refused_reopen_is_not_retried`, `crates/engine/src/monitor/tests.rs::dropped_with_the_run_closes_channel` | lab + auto |
+| remote-monitoring | Server refuses the extra channel | `crates/engine/tests/lab_monitor.rs::ssh_monitoring_refused_channel_is_unavailable_and_shell_works`, `crates/engine/src/monitor/tests.rs::toggle_off_closes_channel_and_refused_reopen_is_not_retried` | lab + auto |
+| remote-monitoring | Telnet tab | `crates/ui/src/tests.rs::monitoring_never_shown_for_telnet_and_settings_reach_the_backend`, `crates/engine/src/tests.rs::monitoring_follows_settings_and_only_ssh_terminals` | auto |
+| remote-monitoring | Agent tries to toggle | `crates/core/src/command.rs::monitoring_ids_are_gui_only`, `crates/agent/src/mcp.rs::live_calls_carry_client_name_and_audit_unknown_tools`, `crates/engine/src/tests/agent.rs::matrix_per_entry_point` | partial: the ids are GUI-only and GUI-only MCP calls are rejected and audited, but no test sends `tab.monitoring.toggle` itself |
+| ssh-sessions | Opt-out sends no exec | `crates/engine/src/tests.rs::monitoring_follows_settings_and_only_ssh_terminals` (exec-stream opens counted), `crates/engine/tests/lab_monitor.rs::ssh_monitoring_bar_data_then_no_leftover_process` (session Off: no `rxt-mon` process) | auto + lab |
+| ssh-sessions | Channel limit | `crates/engine/tests/lab_monitor.rs::ssh_monitoring_refused_channel_is_unavailable_and_shell_works`, `crates/ui/src/tests.rs::monitoring_bar_takes_samples_closes_and_sftp_button_toggles` (unavailable reason, button disabled) | partial: the shell keeps working in the lab (`MaxSessions 2`); the SFTP panel is not exercised there |
