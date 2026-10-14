@@ -415,7 +415,7 @@ impl Tree<'_> {
             ui,
             RowSpec {
                 depth: 0,
-                icon: if locked.is_some() { "lock" } else { "users" },
+                icon: if locked.is_some() { "lock" } else { "folder-user" },
                 label: "User sessions",
                 open: Some(open),
                 selected: false,
