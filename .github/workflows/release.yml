@@ -47,31 +47,14 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build toolchain image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          target: toolchain
-          load: true
-          tags: rustxterm-toolchain:dev
-          cache-from: |
-            type=gha,scope=toolchain
-            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
-      - name: Build Windows toolchain image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          target: windows-toolchain
-          load: true
-          tags: rustxterm-windows-toolchain:dev
-          cache-from: |
-            type=gha,scope=toolchain
-            type=gha,scope=windows-toolchain
-            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
+      - name: Toolchain images (published, pinned by digest; no apt download in a release)
+        run: |
+          set -eu
+          pull() { docker pull -q "docker.io/jniltinho/rustxterm-$1:snapshot-20261001@$2" >/dev/null
+                   docker tag "docker.io/jniltinho/rustxterm-$1:snapshot-20261001@$2" "rustxterm-$1:dev"; }
+          pull toolchain sha256:6872535a844a568c5fe8bf05c52c7a0adfa2370fce8990be511ff056ffdb9c70
+          pull windows-toolchain sha256:7b9892dc2cc56819f4ee1002a2eb7381b31cebcff9166716b02e9cbd2ebbb5e0
+          docker image ls 'rustxterm-*'
       - name: Source date (committer time; the receipt's source commit for a receipt-only commit)
         id: date
         run: |
@@ -86,6 +69,12 @@ jobs:
         with:
           context: .
           target: dist
+          # Tool stages come from the published images (pinned by digest), so a release never
+          # depends on the Ubuntu snapshot mirror; the source stages are always built here.
+          build-contexts: |
+            toolchain=docker-image://docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001@sha256:6872535a844a568c5fe8bf05c52c7a0adfa2370fce8990be511ff056ffdb9c70
+            windows-toolchain=docker-image://docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001@sha256:7b9892dc2cc56819f4ee1002a2eb7381b31cebcff9166716b02e9cbd2ebbb5e0
+            appimage-tools=docker-image://docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001@sha256:14cb82d3399e2d2790fd93e2f35f16036a9fd720805ecdc51e7c530d8c8467c0
           build-args: |
             RXT_VERSION=${{ steps.version.outputs.version }}
             SOURCE_DATE_EPOCH=${{ steps.date.outputs.epoch }}
@@ -104,6 +93,12 @@ jobs:
         with:
           context: .
           target: dist
+          # Tool stages come from the published images (pinned by digest), so a release never
+          # depends on the Ubuntu snapshot mirror; the source stages are always built here.
+          build-contexts: |
+            toolchain=docker-image://docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001@sha256:6872535a844a568c5fe8bf05c52c7a0adfa2370fce8990be511ff056ffdb9c70
+            windows-toolchain=docker-image://docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001@sha256:7b9892dc2cc56819f4ee1002a2eb7381b31cebcff9166716b02e9cbd2ebbb5e0
+            appimage-tools=docker-image://docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001@sha256:14cb82d3399e2d2790fd93e2f35f16036a9fd720805ecdc51e7c530d8c8467c0
           # Recompile everything from source; the tool stages (apt, Rust toolchain, mingw, AppImage
           # tools) come from the published build cache so the rebuild does not depend on the Ubuntu
           # snapshot mirror being fast.
