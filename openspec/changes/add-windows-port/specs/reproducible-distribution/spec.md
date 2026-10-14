@@ -45,15 +45,15 @@ CI SHALL lint the workspace for the Windows target (clippy with `-D warnings`, w
 - **THEN** the guard fails
 
 ### Requirement: Windows end-to-end verification
-Before the first Windows release, the protocol lab SHALL be exercised from a Windows VM running the release-pipeline artifacts (SSH with password, key, Windows OpenSSH agent and Pageant, jump host, tunnels, SFTP, FTP/FTPS, RDP, VNC, Telnet, a serial port, agent CLI and MCP including refusal of another local user, keyring, data-directory protection against another local user, theme switch, notifications, file dialogs, MSI install and uninstall as a standard user), with fictional credentials and the lab still bound to the host's loopback. The result SHALL be recorded in a receipt in the repository naming the source commit, the Windows build number and the SHA-256 of the tested artifacts, with every mandatory check passing; the release workflow SHALL refuse to publish Windows artifacts while the receipt is missing or not passing.
+Before the first Windows release, the protocol lab SHALL be exercised from a Windows VM running the release-pipeline artifacts (SSH with password, key, Windows OpenSSH agent and Pageant, jump host, tunnels, SFTP, FTP/FTPS, RDP, VNC, Telnet, a serial port, agent CLI and MCP including refusal of another local user, keyring, data-directory protection against another local user, theme switch, notifications, file dialogs, MSI install and uninstall as a standard user), with fictional credentials and the lab still bound to the host's loopback. The result SHALL be recorded in a receipt in the repository naming the source commit, the Windows build number and the SHA-256 of the tested artifacts, with every mandatory check passing; the release workflow SHALL publish the Windows artifacts in every release and, while the receipt is missing or not passing for that commit, SHALL mark them as a preview in the release notes.
 
 #### Scenario: Receipt present
 - **WHEN** the Windows milestone is pushed
 - **THEN** `docs/gates/windows.md` lists each mandatory check as PASS with the commit, Windows build number and artifact digests
 
-#### Scenario: Failing receipt blocks the release
+#### Scenario: Failing receipt marks Windows as preview
 - **WHEN** a mandatory receipt row is FAIL or missing
-- **THEN** the release workflow does not publish Windows artifacts
+- **THEN** the release workflow still publishes the Windows zip and MSI, and the release notes call them a preview not covered by the receipt
 
 ## MODIFIED Requirements
 

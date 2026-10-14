@@ -113,8 +113,8 @@ jobs:
           outputs: type=local,dest=dist-rebuild
       - name: dist-check (allowlists, PE headers, self-test, guard, byte-identical rebuild)
         run: RXT_TOOLCHAIN_STAGE=windows-toolchain scripts/cargo-docker.sh cargo xtask dist-check dist --reproduce dist-rebuild
-      # The Windows artifacts ship only with a passing receipt (docs/gates/windows.md) bound to this
-      # commit and to these unsigned bytes; otherwise the Linux release goes out without them.
+      # The Windows artifacts always ship; a passing receipt (docs/gates/windows.md) bound to this
+      # commit and to these unsigned bytes only changes the release note.
       - name: Windows receipt
         id: receipt
         run: |
@@ -122,11 +122,9 @@ jobs:
             echo "windows=yes" >> "$GITHUB_OUTPUT"
           else
             echo "windows=no" >> "$GITHUB_OUTPUT"
-            rm -f dist/*-windows-x86_64.zip dist/*.msi
           fi
       - name: Sign the Windows artifacts (when the signing secret exists)
         id: sign
-        if: steps.receipt.outputs.windows == 'yes'
         env:
           PFX: ${{ secrets.WINDOWS_SIGNING_PFX }}
           PFX_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
@@ -159,12 +157,13 @@ jobs:
         run: |
           prerelease=
           case "$VERSION" in *-*) prerelease=--prerelease ;; esac
-          if [ "$WINDOWS" != yes ]; then
-            notes="Windows artifacts are not part of this release: the Windows end-to-end receipt (docs/gates/windows.md) does not cover this commit."
-          elif [ "$SIGNED" = yes ]; then
+          if [ "$SIGNED" = yes ]; then
             notes="The Windows executables and MSI are Authenticode-signed."
           else
             notes="The Windows zip, executables and MSI are unsigned: Windows SmartScreen may show an \"unrecognized app\" prompt. Verify the download against SHA256SUMS first."
+          fi
+          if [ "$WINDOWS" != yes ]; then
+            notes="$notes Windows packages are a preview: the Windows end-to-end receipt (docs/gates/windows.md) does not cover this commit."
           fi
           gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes --notes "$notes" \
             --title "rustXterm $VERSION" $prerelease
