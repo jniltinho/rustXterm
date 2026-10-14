@@ -860,12 +860,28 @@ fn combo<T: PartialEq + Copy>(ui: &mut egui::Ui, text: &str, value: &mut T, item
     ui.end_row();
 }
 
+/// `TERM` values offered for SSH and Telnet sessions; `vt100` suits network gear.
+const TERMINAL_TYPES: [&str; 7] = ["xterm-256color", "xterm", "vt100", "vt220", "linux", "screen-256color", "ansi"];
+
+/// Terminal type picker; a value outside the list (older sessions) stays selectable.
+fn term_combo(ui: &mut egui::Ui, text: &str, value: &mut String) {
+    let l = ui.label(text);
+    let custom = (!TERMINAL_TYPES.contains(&value.as_str())).then(|| value.clone());
+    let r = egui::ComboBox::from_id_salt(("editor-term-type", text)).selected_text(value.as_str()).show_ui(ui, |ui| {
+        for t in custom.iter().map(String::as_str).chain(TERMINAL_TYPES) {
+            ui.selectable_value(value, t.to_owned(), t);
+        }
+    });
+    r.response.labelled_by(l.id);
+    ui.end_row();
+}
+
 fn telnet(ui: &mut egui::Ui, s: &mut Session, password: &mut String, has_password: bool, tokens: &Tokens) {
     let o = &mut s.telnet;
     ui.colored_label(color(tokens.warning), TELNET_WARNING);
     ui.add_space(M.space[2]);
     grid(ui, "editor-telnet", |ui| {
-        text_row(ui, "Terminal type", &mut o.terminal_type);
+        term_combo(ui, "Terminal type", &mut o.terminal_type);
         let newlines = [(Newline::CrLf, "CR LF"), (Newline::CrNul, "CR NUL"), (Newline::Cr, "CR")];
         combo(ui, "Enter sends", &mut o.newline, &newlines);
     });
@@ -1035,7 +1051,7 @@ fn terminal(ui: &mut egui::Ui, s: &mut Session) {
     });
     if s.protocol == Protocol::Ssh {
         ui.add_space(M.space[2]);
-        grid(ui, "editor-term-ssh", |ui| text_row(ui, "Terminal type (TERM)", &mut s.ssh.terminal_type));
+        grid(ui, "editor-term-ssh", |ui| term_combo(ui, "Terminal type (TERM)", &mut s.ssh.terminal_type));
     }
 }
 
