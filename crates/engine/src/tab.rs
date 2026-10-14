@@ -17,6 +17,8 @@ use crate::{InputMsg, OutBuf, Shared};
 
 /// Per-tab input queue length (messages, not bytes).
 const INPUT_QUEUE: usize = 1024;
+/// Longest wait for the SFTP channel opened at login for the banner.
+const SFTP_PROBE: Duration = Duration::from_secs(5);
 /// Auto-reconnect delay cap.
 const MAX_BACKOFF_SECS: u64 = 60;
 
@@ -145,13 +147,18 @@ async fn connect_and_run(
             Err(e) => return (End::Failed(e), false),
         },
     };
-    let link_info = link.ssh_info();
+    let mut link_info = link.ssh_info();
     let auth_banner = link.take_auth_banner();
     let conn = Arc::new(Conn::new(link.clone()));
     let (tx, rx) = mpsc::channel(INPUT_QUEUE);
     let Some(out) = sh.set_conn(tab, generation, conn.clone(), Some(tx)) else {
         return (End::Failed(Error::Cancelled), false);
     };
+    // Open the SFTP channel now (kept for the browser) so the banner can say whether the server
+    // offers it: network gear (Cisco) has no sftp subsystem.
+    if let Some(info) = link_info.as_mut().filter(|_| session.protocol == Protocol::Ssh) {
+        info.sftp = tokio::time::timeout(SFTP_PROBE, crate::files::file_ops(sh, tab)).await.ok().map(|r| r.is_ok());
+    }
     // Windows has no X server by default: say so in the tab instead of dropping X11 silently.
     if cfg!(windows)
         && session.protocol == Protocol::Ssh

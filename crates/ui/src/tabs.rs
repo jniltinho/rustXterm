@@ -36,6 +36,8 @@ pub(crate) struct Tab {
     pub lines: (bool, bool),
     /// Connection facts of the current SSH login, for the session banner.
     pub ssh_info: Option<Box<rxt_core::SshInfo>>,
+    /// The server refused the sftp subsystem at login: no SFTP browser for this tab.
+    pub no_sftp: bool,
     /// Remote monitoring bar state (SSH terminals).
     pub monitor: crate::monitor_bar::MonitorView,
 }
@@ -64,6 +66,7 @@ impl Tab {
             lines,
             notice: (session_is_telnet).then_some(TELNET_NOTICE),
             ssh_info: None,
+            no_sftp: false,
             monitor: crate::monitor_bar::MonitorView::default(),
         }
     }

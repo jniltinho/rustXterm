@@ -376,6 +376,9 @@ pub struct SshInfo {
     pub x11_unavailable: Option<String>,
     /// Agent forwarding requested on the shell channel.
     pub agent: bool,
+    /// The server offers the `sftp` subsystem (probed at login); `None` when not probed.
+    #[serde(default)]
+    pub sftp: Option<bool>,
 }
 
 /// Notifications from the engine.

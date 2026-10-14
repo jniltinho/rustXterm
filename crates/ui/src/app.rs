@@ -991,6 +991,7 @@ impl App {
             }
             Event::SshInfo { tab, info } => {
                 if let Some(t) = self.tab_mut(tab) {
+                    t.no_sftp = info.sftp == Some(false);
                     t.ssh_info = Some(info);
                 }
             }
@@ -1200,7 +1201,7 @@ impl App {
     fn sync_sftp(&mut self) {
         let target = self
             .active_tab()
-            .filter(|t| t.session.protocol == Protocol::Ssh && t.state == ConnState::Connected)
+            .filter(|t| t.session.protocol == Protocol::Ssh && t.state == ConnState::Connected && !t.no_sftp)
             .map(|t| (t.id, t.session.ssh.follow_terminal_folder, t.cwd.clone()));
         if target.as_ref().map(|t| t.0) == self.sftp.tab {
             return;

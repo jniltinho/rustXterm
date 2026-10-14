@@ -292,6 +292,7 @@ fn banner_facts() -> rxt_core::SshInfo {
         x11: false,
         x11_unavailable: Some("no usable $DISPLAY".into()),
         agent: false,
+        sftp: None,
     }
 }
 

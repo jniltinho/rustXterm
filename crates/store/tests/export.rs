@@ -48,6 +48,7 @@ fn sample() -> Export {
             auto_reconnect: true,
             follow_terminal_folder: false,
             remote_monitoring: Some(false),
+            terminal_type: "vt100".into(),
         },
         ftp: FtpOptions { tls: FtpTls::Explicit, passive: false, ascii: true, startup_folder: Some("/pub".into()) },
         rdp: RdpOptions {

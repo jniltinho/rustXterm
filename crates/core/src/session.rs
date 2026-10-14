@@ -157,6 +157,8 @@ pub struct SshOptions {
     pub follow_terminal_folder: bool,
     /// Remote monitoring bar: `None` follows the global setting.
     pub remote_monitoring: Option<bool>,
+    /// `TERM` requested with the PTY; empty means `xterm-256color`.
+    pub terminal_type: String,
 }
 
 impl Default for SshOptions {
@@ -178,6 +180,7 @@ impl Default for SshOptions {
             auto_reconnect: false,
             follow_terminal_folder: true,
             remote_monitoring: None,
+            terminal_type: "xterm-256color".into(),
         }
     }
 }

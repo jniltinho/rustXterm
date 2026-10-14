@@ -1033,6 +1033,10 @@ fn terminal(ui: &mut egui::Ui, s: &mut Session) {
             },
         );
     });
+    if s.protocol == Protocol::Ssh {
+        ui.add_space(M.space[2]);
+        grid(ui, "editor-term-ssh", |ui| text_row(ui, "Terminal type (TERM)", &mut s.ssh.terminal_type));
+    }
 }
 
 fn override_row<T>(

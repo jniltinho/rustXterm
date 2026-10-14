@@ -505,7 +505,8 @@ impl Client {
         for (k, v) in &o.env {
             ch.set_env(false, k.as_str(), v.as_str()).await.map_err(conn_err)?;
         }
-        ch.request_pty(false, "xterm-256color", u32::from(cols), u32::from(rows), 0, 0, &[]).await.map_err(conn_err)?;
+        let term = Some(o.terminal_type.trim()).filter(|t| !t.is_empty()).unwrap_or("xterm-256color");
+        ch.request_pty(false, term, u32::from(cols), u32::from(rows), 0, 0, &[]).await.map_err(conn_err)?;
         match startup_command(session) {
             Some(cmd) => ch.exec(false, cmd).await,
             None => ch.request_shell(false).await,

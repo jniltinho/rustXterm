@@ -92,7 +92,11 @@ pub(crate) fn render(info: &BannerInfo, cols: usize, scheme: &TerminalScheme) ->
                 "Compression",
                 if ssh.compression { "zlib".into() } else { String::new() },
             ));
-            lines.push(check(true, "SFTP browser", "opens on demand".into()));
+            lines.push(match ssh.sftp {
+                Some(true) => check(true, "SFTP browser", String::new()),
+                Some(false) => check(false, "SFTP browser", "not offered by the server".into()),
+                None => check(true, "SFTP browser", "opens on demand".into()),
+            });
             let x11_note = match &ssh.x11_unavailable {
                 Some(why) if s.ssh.x11_forwarding => clean(why),
                 _ => String::new(),
@@ -318,6 +322,15 @@ mod tests {
         assert!(text.contains("✗ X11 forwarding (no usable $DISPLAY)"), "{text}");
         let on = plain(&draw(&s, Some(&SshInfo { x11: true, ..facts() }), 120, true, false)).join("\n");
         assert!(on.contains("✓ X11 forwarding\u{20}"), "{on}");
+    }
+
+    #[test]
+    fn sftp_line_follows_the_login_probe() {
+        let s = ssh_session();
+        let line = |sftp| plain(&draw(&s, Some(&SshInfo { sftp, ..facts() }), 120, true, false)).join("\n");
+        assert!(line(Some(false)).contains("✗ SFTP browser (not offered by the server)"));
+        assert!(line(Some(true)).contains("✓ SFTP browser\u{20}"));
+        assert!(line(None).contains("✓ SFTP browser (opens on demand)"));
     }
 
     #[test]
