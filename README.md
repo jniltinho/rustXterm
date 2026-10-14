@@ -4,26 +4,46 @@
 
 # rustXterm
 
-**A native Rust terminal and remote session manager for Linux (Windows preview).**
+**Every remote session you use, in one fast native window.**
+
+SSH, SFTP, FTP/FTPS, RDP, VNC, Telnet and Serial in tabs, with a file panel that follows your shell,
+live server monitoring and an encrypted session store. One Rust binary for Linux, no Electron.
 
 [![Release](https://img.shields.io/github/v/release/jniltinho/rustXterm?include_prereleases&sort=semver&color=blue)](https://github.com/jniltinho/rustXterm/releases)
+[![Downloads](https://img.shields.io/github/downloads/jniltinho/rustXterm/total?color=blue)](https://github.com/jniltinho/rustXterm/releases)
 [![CI](https://github.com/jniltinho/rustXterm/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jniltinho/rustXterm/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+![Platforms](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20(preview)-lightgrey)
 
-[Install](#install) · [Quick start](#quick-start) · [Build](#build-from-source) · [CLI and MCP](#cli-and-mcp) · [Docs](#documentation)
+**[⬇ Download the latest release](https://github.com/jniltinho/rustXterm/releases/latest)**
+
+[Install](#install) · [Quick start](#quick-start) · [Features](#features) · [CLI and MCP](#cli-and-mcp) · [Build](#build-from-source) · [Docs](#documentation)
+
+<br>
+
+<a href="docs/screenshots/monitor_bar_dark@2x.png"><img src="docs/screenshots/monitor_bar_dark@2x.png" width="860" alt="SSH tab with the SFTP side panel and the live remote monitoring bar (dark theme)"></a>
+
+<sub>An SSH tab with the SFTP side panel and the live monitoring bar: CPU, memory, network, uptime and disks of the remote host.</sub>
 
 </div>
 
 ## Why rustXterm
 
-rustXterm brings the familiar "session tree + tabbed terminals + file panels + remote desktops" workflow
-to the desktop as one fast, themed binary: no Electron, no webview. Sessions and
-credentials live in an encrypted store, and AI agents can drive it through a CLI and an MCP server under
-explicit, audited permissions.
-
-It is written from scratch in Rust: native SSH, SFTP, FTP/FTPS, RDP, VNC, Telnet and Serial clients,
-an embedded terminal emulator, live remote monitoring and an audited agent-control API, all in one
-binary with light and dark themes.
+- **One app instead of five.** Terminals, file transfers and remote desktops live side by side in tabs,
+  organized in a session tree with colored folders.
+- **Fast and light.** Native Rust and a GPU-rendered UI: one self-contained binary. No
+  Electron, no webview, no runtime to install.
+- **Files without leaving the shell.** The SFTP panel opens next to every SSH tab and follows the
+  directory you `cd` into. Drag and drop to upload.
+- **See your server at a glance.** CPU, memory, disk, network and uptime under each SSH tab, read over
+  the existing connection: nothing to install on the server.
+- **Secure by default.** Sessions and passwords are encrypted at rest under a master password; host
+  keys are checked on every hop; tunnels bind to `127.0.0.1` unless you say otherwise.
+- **Bring your sessions.** Import from a MobaXterm.ini file in a few clicks (passwords are never
+  imported).
+- **Scriptable and AI-ready.** A CLI and an MCP server let you, your scripts or an AI agent open
+  sessions, run commands and move files, with per-session permissions, approval prompts and an
+  audit log. Off until you turn it on.
 
 ## Features
 
@@ -41,21 +61,28 @@ binary with light and dark themes.
 | **Agent control** | `rustxterm` CLI and local MCP server: off by default, same user only, per-session policies, approvals, audit log |
 | **Desktop** | Light, dark and follow-system themes on every screen; original flat icon set; notifications for background transfers and dropped sessions; session folders remember their state; window reopens on the monitor you left it on |
 
-Status: **v0.3.0** is the first public release (SSH, files, remote desktops, agent control, Telnet,
-Serial and remote monitoring) for Linux x86_64. Windows builds are in preview while the Windows
-end-to-end check is completed; a native Apple Silicon port, XDMCP and rsh are planned; see the
+Status: **v0.3.0** is the first public release, for Linux x86_64, with Windows x86_64 builds in
+preview. A native Apple Silicon port, XDMCP and rsh are planned; see the
 [roadmap](docs/README.md#roadmap-and-openspec-changes).
 
 ## Screenshots
 
 <table>
   <tr>
-    <th>Main window (light)</th>
-    <th>Dual-pane FTP tab (dark)</th>
+    <th>Tabs for SSH, SFTP and RDP (light)</th>
+    <th>Dual-pane FTP/FTPS (dark)</th>
   </tr>
   <tr>
     <td><a href="docs/screenshots/main_tabs_light@2x.png"><img src="docs/screenshots/main_tabs_light@2x.png" width="420" alt="Main window with SSH, SFTP and RDP tabs (light theme)"></a></td>
     <td><a href="docs/screenshots/file_tab_ftp_dark@2x.png"><img src="docs/screenshots/file_tab_ftp_dark@2x.png" width="420" alt="Dual-pane FTP tab (dark theme)"></a></td>
+  </tr>
+  <tr>
+    <th>Session editor (light)</th>
+    <th>Agent approval prompt (dark)</th>
+  </tr>
+  <tr>
+    <td><a href="docs/screenshots/editor_ssh_advanced_light@2x.png"><img src="docs/screenshots/editor_ssh_advanced_light@2x.png" width="420" alt="SSH session editor, advanced settings (light theme)"></a></td>
+    <td><a href="docs/screenshots/agent_approval_dark@2x.png"><img src="docs/screenshots/agent_approval_dark@2x.png" width="420" alt="Approval prompt for an agent action (dark theme)"></a></td>
   </tr>
 </table>
 
@@ -88,8 +115,8 @@ Xwayland) it also needs `libxkbcommon-x11`, which some Wayland-first installs om
 GNOME and KDE show the rustXterm icon on Wayland.
 
 **Windows (preview, x86_64):** `rustxterm-X.Y.Z-windows-x86_64.zip` (portable `rustxterm.exe` and
-`rustxterm-cli.exe`) and a per-user `rustxterm-X.Y.Z-x86_64.msi` are published once the Windows
-end-to-end check passes; they are unsigned, so SmartScreen may ask for confirmation. The MSI installs
+`rustxterm-cli.exe`) and a per-user `rustxterm-X.Y.Z-x86_64.msi` ship with every release; they are
+unsigned, so SmartScreen may ask for confirmation. The MSI installs
 without administrator rights, but Windows Server 2022 disables installs by standard users by default
 (`DisableMsi` policy, error 1625): install as an administrator there, or use the zip.
 
@@ -223,6 +250,13 @@ them as build cache, and the `Dockerfile` remains the source of truth.
   passwords or keys: credentials appear only as `saved` or `absent`.
 - Remote desktop clients cap framebuffer size and memory and time out stalled servers.
 - Releases are built in a pinned, offline Docker build and published with `SHA256SUMS`.
+
+## Contributing and feedback
+
+Bug reports, ideas and pull requests are welcome: open an
+[issue](https://github.com/jniltinho/rustXterm/issues). The [developer guide](docs/DEVELOPMENT.md)
+explains the Docker-only workflow and the test lab. If rustXterm is useful to you, a ⭐ helps other
+people find it.
 
 ## License
 
