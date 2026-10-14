@@ -22,19 +22,12 @@ jobs:
         with:
           fetch-depth: 0 # the guard scans the full history
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build toolchain image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          target: toolchain
-          load: true
-          tags: rustxterm-toolchain:dev
-          cache-from: |
-            type=gha,scope=toolchain
-            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
-          cache-to: type=gha,scope=toolchain,mode=max
+      # Published image pinned by digest: CI never downloads Ubuntu packages. When a tool stage
+      # of the Dockerfile changes, republish it (docs/DEVELOPMENT.md) and update the digest.
+      - name: Toolchain image
+        run: |
+          docker pull -q docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001@sha256:6872535a844a568c5fe8bf05c52c7a0adfa2370fce8990be511ff056ffdb9c70
+          docker tag docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001@sha256:6872535a844a568c5fe8bf05c52c7a0adfa2370fce8990be511ff056ffdb9c70 rustxterm-toolchain:dev
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: target/cargo-home
@@ -69,18 +62,12 @@ jobs:
           df -h /
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build toolchain image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          target: toolchain
-          load: true
-          tags: rustxterm-toolchain:dev
-          cache-from: |
-            type=gha,scope=toolchain
-            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
+      # Published image pinned by digest: CI never downloads Ubuntu packages. When a tool stage
+      # of the Dockerfile changes, republish it (docs/DEVELOPMENT.md) and update the digest.
+      - name: Toolchain image
+        run: |
+          docker pull -q docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001@sha256:6872535a844a568c5fe8bf05c52c7a0adfa2370fce8990be511ff056ffdb9c70
+          docker tag docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001@sha256:6872535a844a568c5fe8bf05c52c7a0adfa2370fce8990be511ff056ffdb9c70 rustxterm-toolchain:dev
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: target/cargo-home
@@ -105,20 +92,12 @@ jobs:
           df -h /
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build Windows toolchain image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          target: windows-toolchain
-          load: true
-          tags: rustxterm-windows-toolchain:dev
-          cache-from: |
-            type=gha,scope=toolchain
-            type=gha,scope=windows-toolchain
-            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
-            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
-          cache-to: type=gha,scope=windows-toolchain,mode=max
+      # Published image pinned by digest: CI never downloads Ubuntu packages. When a tool stage
+      # of the Dockerfile changes, republish it (docs/DEVELOPMENT.md) and update the digest.
+      - name: Windows toolchain image
+        run: |
+          docker pull -q docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001@sha256:7b9892dc2cc56819f4ee1002a2eb7381b31cebcff9166716b02e9cbd2ebbb5e0
+          docker tag docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001@sha256:7b9892dc2cc56819f4ee1002a2eb7381b31cebcff9166716b02e9cbd2ebbb5e0 rustxterm-windows-toolchain:dev
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: target/cargo-home
