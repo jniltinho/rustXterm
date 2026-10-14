@@ -21,6 +21,16 @@ pub struct Fake {
     pub dialog_parent: Mutex<Option<String>>,
     /// Directories passed to [`Paths::make_private`].
     pub private_dirs: Mutex<Vec<PathBuf>>,
+    /// Start folders of the file dialogs, in order.
+    pub dialog_starts: Mutex<Vec<PathBuf>>,
+    /// What the next file dialog returns (`None`: cancelled).
+    pub dialog_answer: Mutex<Option<PathBuf>>,
+    /// Paths given to [`Opener::open`], in order.
+    pub opened: Mutex<Vec<PathBuf>>,
+    /// When set, [`Opener::open`] fails with this message.
+    pub open_error: Mutex<Option<String>>,
+    /// When set, [`Notifier::notify`] fails (notification service unavailable).
+    pub notify_fails: std::sync::atomic::AtomicBool,
 }
 
 impl Fake {
@@ -70,6 +80,9 @@ impl Paths for Fake {
     fn home_dir(&self) -> PathBuf {
         self.root.join("home")
     }
+    fn download_dir(&self) -> Option<PathBuf> {
+        Some(self.root.join("home").join("Downloads"))
+    }
     fn make_private(&self, dir: &Path) -> Result<()> {
         self.private_dirs.lock().map_err(|_| poisoned())?.push(dir.to_owned());
         Ok(())
@@ -99,20 +112,30 @@ impl Clipboard for Fake {
 
 impl Notifier for Fake {
     fn notify(&self, title: &str, body: &str) -> Result<()> {
+        if self.notify_fails.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(Error::Unsupported("notifications".into()));
+        }
         self.notes.lock().map_err(|_| poisoned())?.push((title.into(), body.into()));
         Ok(())
     }
 }
 
+impl Fake {
+    fn dialog(&self, start: &Path) -> Option<PathBuf> {
+        self.dialog_starts.lock().ok()?.push(start.to_owned());
+        self.dialog_answer.lock().ok()?.take()
+    }
+}
+
 impl FileDialogs for Fake {
-    fn pick_files(&self, _: &str) -> Option<Vec<PathBuf>> {
-        None
+    fn pick_files(&self, _: &str, start: &Path) -> Option<Vec<PathBuf>> {
+        self.dialog(start).map(|p| vec![p])
     }
-    fn pick_folder(&self, _: &str) -> Option<PathBuf> {
-        None
+    fn pick_folder(&self, _: &str, start: &Path) -> Option<PathBuf> {
+        self.dialog(start)
     }
-    fn save_file(&self, _: &str, _: &str) -> Option<PathBuf> {
-        None
+    fn save_file(&self, _: &str, _: &str, start: &Path) -> Option<PathBuf> {
+        self.dialog(start)
     }
     fn set_parent(&self, parent: Option<String>) {
         if let Ok(mut p) = self.dialog_parent.lock() {
@@ -142,7 +165,11 @@ impl ControlTransport for Fake {
 }
 
 impl Opener for Fake {
-    fn open(&self, _: &Path) -> Result<()> {
+    fn open(&self, path: &Path) -> Result<()> {
+        if let Some(e) = self.open_error.lock().map_err(|_| poisoned())?.clone() {
+            return Err(Error::Io(e));
+        }
+        self.opened.lock().map_err(|_| poisoned())?.push(path.to_owned());
         Ok(())
     }
 }

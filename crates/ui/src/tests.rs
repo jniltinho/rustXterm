@@ -603,6 +603,7 @@ fn snapshot_sftp_panel_and_transfers() {
         tab,
         direction,
         remote: remote.into(),
+        local: format!("/home/user/Downloads/{}", remote.rsplit('/').next().unwrap_or_default()),
         total,
         done,
         speed: 2_621_440.0,
@@ -620,6 +621,7 @@ fn snapshot_sftp_panel_and_transfers() {
             0,
             Some(Err("permission denied: /home/alice/locked.txt".into())),
         ),
+        row(4, Direction::Download, "/home/alice/notes.txt", Some(2048), 2048, Some(Ok(2048))),
     ];
     e.app().sftp.selected = Some("report.pdf".into());
     e.snap("sftp_panel");
@@ -2507,4 +2509,163 @@ fn exit_with_connected_tabs_asks_first() {
     e.app().apply(Action::Exit);
     close(&mut e);
     assert_eq!(e.h.state().modal, None, "a confirmed exit is not asked again");
+}
+
+// ---- desktop integration: notifications, open, per-tab transfers, dialog folders ----
+
+/// Notifications sent so far, after giving the notifier threads a moment.
+fn notes(e: &Env, want: usize) -> Vec<(String, String)> {
+    for _ in 0..200 {
+        let n = e.platform.notes.lock().unwrap().clone();
+        if n.len() >= want {
+            return n;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    e.platform.notes.lock().unwrap().clone()
+}
+
+fn transfer(e: &mut Env, id: u64, tab: TabId, direction: Direction, remote: &str, local: &str, ok: bool) {
+    let (remote, local) = (remote.to_owned(), local.to_owned());
+    e.event(Event::TransferStarted { id: TransferId(id), tab, direction, remote, local, total: Some(4) });
+    let result = if ok { Ok(4) } else { Err(rxt_core::Error::PermissionDenied("secret-ish detail".into())) };
+    e.event(Event::TransferFinished { id: TransferId(id), result });
+}
+
+#[test]
+fn notifications_only_in_background_and_when_enabled() {
+    let mut e = env();
+    let tab = e.connect(ssh("web1"));
+    transfer(&mut e, 1, tab, Direction::Download, "/r/focused.txt", "/l/focused.txt", true);
+    assert!(notes(&e, 1).is_empty(), "focused window: no notification");
+
+    e.h.input_mut().focused = false;
+    e.settle();
+    transfer(&mut e, 2, tab, Direction::Download, "/r/report.pdf", "/l/report.pdf", true);
+    transfer(&mut e, 3, tab, Direction::Upload, "/r/up.bin", "/l/up.bin", false);
+    e.event(Event::State { tab, state: ConnState::Disconnected { reason: "eof".into(), reconnect_at: None } });
+    let got = notes(&e, 3);
+    assert_eq!(
+        got,
+        [
+            ("Download finished".to_owned(), "report.pdf in alice@web1".to_owned()),
+            ("Upload failed".to_owned(), "up.bin in alice@web1".to_owned()),
+            ("Session disconnected".to_owned(), "alice@web1 disconnected".to_owned()),
+        ]
+    );
+    assert!(got.iter().all(|(_, b)| !b.contains("secret-ish")), "no error details in notifications");
+
+    // Turned off in Settings, or the service failing: nothing shown, no error, tab still updates.
+    e.platform.notes.lock().unwrap().clear();
+    e.app().settings.notifications = false;
+    e.event(Event::State { tab, state: ConnState::Connected });
+    e.event(Event::State { tab, state: ConnState::Error("reset".into()) });
+    assert!(notes(&e, 1).is_empty());
+    e.app().settings.notifications = true;
+    e.platform.notify_fails.store(true, std::sync::atomic::Ordering::Relaxed);
+    e.app().status.clear();
+    e.event(Event::State { tab, state: ConnState::Connected });
+    e.event(Event::State { tab, state: ConnState::Error("reset".into()) });
+    assert!(notes(&e, 1).is_empty());
+    assert!(!e.h.state().status.contains("notification"), "{}", e.h.state().status);
+    assert!(matches!(e.h.state().tabs[0].state, ConnState::Error(_)));
+    // A tab that never connected (failed login) is not an unexpected drop.
+    e.platform.notify_fails.store(false, std::sync::atomic::Ordering::Relaxed);
+    let other = e.open(ssh("web2"));
+    e.event(Event::State { tab: other, state: ConnState::Error("auth failed".into()) });
+    assert!(notes(&e, 1).is_empty());
+}
+
+fn scratch(name: &str) -> std::path::PathBuf {
+    let d = std::env::temp_dir().join(format!("rxt-ui-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(&d).unwrap();
+    d
+}
+
+#[test]
+fn downloaded_and_local_files_open_through_the_opener() {
+    let dir = scratch("open");
+    let file = dir.join("notes.txt");
+    std::fs::write(&file, "hi").unwrap();
+    let mut e = env();
+    let tab = file_tab(&mut e, Protocol::Sftp);
+    transfer(&mut e, 1, tab, Direction::Download, "/home/alice/notes.txt", file.to_str().unwrap(), true);
+    e.h.get_by_label("Open").click();
+    e.settle();
+    e.h.get_by_label("Show in folder").click();
+    e.settle();
+    assert_eq!(*e.platform.opened.lock().unwrap(), [file.clone(), dir.clone()]);
+
+    // Opener failure and a deleted file are reported; nothing else happens.
+    *e.platform.open_error.lock().unwrap() = Some("no application is associated".into());
+    e.h.get_by_label("Open").click();
+    e.settle();
+    assert!(e.h.state().status.contains("no application is associated"), "{}", e.h.state().status);
+    *e.platform.open_error.lock().unwrap() = None;
+    std::fs::remove_file(&file).unwrap();
+    e.h.get_by_label("Open").click();
+    e.settle();
+    assert!(e.h.state().status.contains("notes.txt") && e.h.state().status.contains("no longer exists"));
+    assert_eq!(e.platform.opened.lock().unwrap().len(), 2);
+
+    // Local pane: "Open" on a file.
+    e.app().transfers.clear();
+    std::fs::write(dir.join("photo.jpg"), "x").unwrap();
+    let t = e.app().tabs.iter_mut().find(|t| t.id == tab).unwrap();
+    t.files.as_mut().unwrap().local.path = dir.to_string_lossy().into_owned();
+    e.app().apply(Action::Local(SftpAction::Refresh));
+    e.settle();
+    e.h.get_by_label("photo.jpg").click_secondary();
+    e.settle();
+    // The menu item's accessible label carries its shortcut ("Open Enter").
+    e.h.get_by(|n| n.role() == Role::Button && n.label().is_some_and(|l| l.starts_with("Open"))).click();
+    e.settle();
+    assert_eq!(e.platform.opened.lock().unwrap().last(), Some(&dir.join("photo.jpg")));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn transfer_lists_are_per_tab() {
+    let mut e = env();
+    let ssh_tab = e.connect(ssh("web1.lab.example"));
+    let ftp = file_tab(&mut e, Protocol::Ftp);
+    transfer(&mut e, 1, ftp, Direction::Upload, "/pub/upload.bin", "/home/user/upload.bin", true);
+    assert!(e.h.query_by_label("upload.bin").is_some(), "shown in the FTP tab");
+    e.app().apply(Action::SelectTab(Some(ssh_tab)));
+    e.app().sidebar_tab = crate::app::SidebarTab::Sftp;
+    e.settle();
+    assert_eq!(e.h.state().sftp.tab, Some(ssh_tab));
+    assert!(e.h.query_by_label("upload.bin").is_none(), "not in the SSH tab's SFTP panel");
+    assert!(e.h.query_by_label("Transfers").is_none());
+}
+
+#[test]
+fn dialogs_start_in_downloads_then_last_folder() {
+    let mut e = env();
+    let downloads = e.platform.root.join("home/Downloads");
+    std::fs::create_dir_all(&downloads).unwrap();
+    let out = scratch("dialog").join("out.txt");
+    *e.platform.dialog_answer.lock().unwrap() = Some(out.clone());
+    e.connect(ssh("web1"));
+    let wait = |e: &mut Env, n: usize| {
+        for _ in 0..500 {
+            e.settle();
+            if e.platform.dialog_starts.lock().unwrap().len() >= n && out.exists() {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    };
+    e.app().run(CommandId::SAVE_TEXT);
+    wait(&mut e, 1);
+    assert!(out.exists(), "terminal text saved");
+    e.app().run(CommandId::SAVE_TEXT);
+    wait(&mut e, 2);
+    let starts = e.platform.dialog_starts.lock().unwrap().clone();
+    assert_eq!(starts, [downloads, out.parent().unwrap().to_owned()]);
+    let _ = std::fs::remove_dir_all(out.parent().unwrap());
+    // Without a Downloads folder the home folder is used.
+    let home = std::path::PathBuf::from("/home/u");
+    assert_eq!(crate::app::start_dir(None, Some("/nonexistent/Downloads".into()), home.clone()), home);
 }

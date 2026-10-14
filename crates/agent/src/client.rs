@@ -25,11 +25,16 @@ pub async fn call(
     })?;
     let request = Request { id: 1, client: client.to_owned(), entry, op };
     let fail = |e: rxt_core::Error| ControlError::new(ErrorCode::Failed, format!("control channel: {e}"));
-    write_message(&mut stream, &request).await.map_err(fail)?;
-    match read_message(&mut stream).await.map_err(fail)? {
-        Some(Response::Ok { result, .. }) => Ok(result),
-        Some(Response::Err { code, message, .. }) => Err(ControlError::new(code, message)),
-        None => Err(ControlError::new(ErrorCode::Failed, "control channel closed without a response")),
+    // A refused client gets its `denied` reason even when the server closed before our write
+    // finished, so read the answer before reporting a write error.
+    let written = write_message(&mut stream, &request).await;
+    match read_message(&mut stream).await {
+        Ok(Some(Response::Ok { result, .. })) => Ok(result),
+        Ok(Some(Response::Err { code, message, .. })) => Err(ControlError::new(code, message)),
+        Ok(None) => Err(written
+            .err()
+            .map_or_else(|| ControlError::new(ErrorCode::Failed, "control channel closed without a response"), fail)),
+        Err(e) => Err(fail(written.err().unwrap_or(e))),
     }
 }
 
@@ -99,6 +104,30 @@ mod tests {
             call_blocking(&fake, "t", EntryPoint::CliLive, AgentOp::ListTabs).unwrap_err().code,
             ErrorCode::NotRunning
         );
+    }
+
+    /// A server that refuses at once (answers, then closes without reading) still reaches the
+    /// CLI as `denied` with its reason.
+    #[test]
+    fn refusal_reason_reaches_the_client() {
+        let dir = std::env::temp_dir().join(format!("rxt-agent-refuse-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        rt().block_on(async {
+            let control = rxt_platform_linux::UnixControl::new(Some(dir.clone()));
+            let listener = control.listen().unwrap();
+            tokio::spawn(async move {
+                let mut s = listener.accept().await.unwrap();
+                let reason = Response::Err { id: 0, code: ErrorCode::Denied, message: "different elevation".into() };
+                write_message(&mut s, &reason).await.unwrap();
+                drop(s);
+                std::future::pending::<()>().await;
+            });
+            let big = AgentOp::Send { tab: TabId(1), data: "x".repeat(1 << 20) };
+            let err = call(&control, "c", EntryPoint::CliLive, big).await.unwrap_err();
+            assert_eq!(err, ControlError::new(ErrorCode::Denied, "different elevation"));
+            assert_eq!(crate::exit_code(err.code), 4);
+        });
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

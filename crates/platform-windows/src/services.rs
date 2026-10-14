@@ -45,6 +45,9 @@ impl Paths for KnownFolders {
     fn home_dir(&self) -> PathBuf {
         dirs::home_dir().unwrap_or_else(std::env::temp_dir)
     }
+    fn download_dir(&self) -> Option<PathBuf> {
+        dirs::download_dir()
+    }
     fn make_private(&self, dir: &Path) -> Result<()> {
         make_private(dir)
     }
@@ -212,8 +215,8 @@ pub struct Win32Dialogs {
 }
 
 impl Win32Dialogs {
-    fn dialog(&self, title: &str) -> rfd::FileDialog {
-        let dialog = rfd::FileDialog::new().set_title(title);
+    fn dialog(&self, title: &str, start: &Path) -> rfd::FileDialog {
+        let dialog = rfd::FileDialog::new().set_title(title).set_directory(start);
         let parent = self.parent.lock().ok().and_then(|p| p.as_deref().and_then(crate::parse_parent));
         match parent {
             Some(hwnd) => dialog.set_parent(&sys::ParentWindow(hwnd)),
@@ -223,14 +226,14 @@ impl Win32Dialogs {
 }
 
 impl FileDialogs for Win32Dialogs {
-    fn pick_files(&self, title: &str) -> Option<Vec<PathBuf>> {
-        self.dialog(title).pick_files()
+    fn pick_files(&self, title: &str, start: &Path) -> Option<Vec<PathBuf>> {
+        self.dialog(title, start).pick_files()
     }
-    fn pick_folder(&self, title: &str) -> Option<PathBuf> {
-        self.dialog(title).pick_folder()
+    fn pick_folder(&self, title: &str, start: &Path) -> Option<PathBuf> {
+        self.dialog(title, start).pick_folder()
     }
-    fn save_file(&self, title: &str, suggested_name: &str) -> Option<PathBuf> {
-        self.dialog(title).set_file_name(suggested_name).save_file()
+    fn save_file(&self, title: &str, suggested_name: &str, start: &Path) -> Option<PathBuf> {
+        self.dialog(title, start).set_file_name(suggested_name).save_file()
     }
     fn set_parent(&self, parent: Option<String>) {
         if let Ok(mut p) = self.parent.lock() {

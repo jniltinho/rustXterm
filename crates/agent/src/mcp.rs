@@ -258,9 +258,10 @@ impl Server {
         Self { ctx: Arc::new(ctx) }
     }
 
-    /// An instance with agent control enabled is listening.
+    /// An instance with agent control enabled is listening (tool list only). Looks the endpoint
+    /// up without opening it: opening a Windows pipe would take the listening instance.
     fn live(&self) -> bool {
-        self.ctx.control.endpoint().is_some_and(|p| std::path::Path::new(&p).exists())
+        self.ctx.control.endpoint().is_some_and(|e| endpoint_present(&e))
     }
 
     async fn live_call(&self, client: String, op: AgentOp) -> Result<Value, ControlError> {
@@ -280,15 +281,26 @@ impl Server {
         task.await.map_err(|e| ControlError::new(ErrorCode::Failed, e.to_string()))?
     }
 
+    /// Always try the running instance first; only an absent endpoint (`not_running`, decided by
+    /// the transport, which waits out a busy channel) falls back to the offline store.
     async fn run(&self, client: String, op: AgentOp) -> Result<Value, ControlError> {
-        if !self.live() {
-            return self.offline_read(client, op).await;
-        }
         match self.live_call(client.clone(), op.clone()).await {
             Err(f) if f.code == ErrorCode::NotRunning => self.offline_read(client, op).await,
             other => other,
         }
     }
+}
+
+/// Whether the control endpoint exists, without connecting to it. Windows pipes are listed
+/// from the pipe namespace (`Path::exists` would open, and so take, the listening instance).
+fn endpoint_present(endpoint: &str) -> bool {
+    if cfg!(windows)
+        && let Some(name) = endpoint.strip_prefix(r"\\.\pipe\")
+    {
+        return std::fs::read_dir(r"\\.\pipe\")
+            .is_ok_and(|mut pipes| pipes.any(|p| p.is_ok_and(|p| p.file_name().eq_ignore_ascii_case(name))));
+    }
+    std::path::Path::new(endpoint).exists()
 }
 
 fn content(tool: &str, v: Value) -> Vec<ContentBlock> {
@@ -325,10 +337,8 @@ impl ServerHandler for Server {
             context.peer.peer_info().map(|i| i.client_info.name.clone()).unwrap_or_else(|| "mcp-client".into());
         let name = request.name.to_string();
         let Some(def) = TOOLS.iter().find(|t| t.name == name) else {
-            if self.live() {
-                // Let the engine reject and audit the raw request; the answer is irrelevant.
-                let _ = self.live_call(client, AgentOp::GuiOnly { name: name.clone() }).await;
-            }
+            // Let a running engine reject and audit the raw request; the answer is irrelevant.
+            let _ = self.live_call(client, AgentOp::GuiOnly { name: name.clone() }).await;
             return Err(bad(format!("unknown tool `{name}`")));
         };
         let op = build_op(def, &request.arguments.unwrap_or_default())?;
@@ -542,6 +552,71 @@ mod tests {
         let audit = store.audit(0, 10).unwrap();
         assert!(audit.iter().all(|a| a.client == "offline-agent" && a.entry_point == "mcp-offline"), "{audit:?}");
         assert_eq!(audit.len(), 2);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// The instance's transport with the endpoint hidden from presence checks: routing must not
+    /// depend on them (on Windows a probe takes the pipe instance a call needs).
+    struct NoProbe(Arc<dyn rxt_platform::ControlTransport>);
+
+    impl rxt_platform::ControlTransport for NoProbe {
+        fn endpoint(&self) -> Option<String> {
+            None
+        }
+        fn connect(&self) -> rxt_core::BoxFut<'_, rxt_platform::Result<Box<dyn rxt_platform::ControlStream>>> {
+            self.0.connect()
+        }
+    }
+
+    /// W19/F1: `send_input` and `wait_for_output` sent without waiting are both answered live.
+    #[test]
+    fn pipelined_live_calls_are_answered_live() {
+        use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+        let (dir, mut ctx) = ctx("pipelined");
+        let replies = vec![
+            Response::Ok { id: 1, result: json!({"done": 1}) },
+            Response::Ok { id: 1, result: json!({"done": 2}) },
+        ];
+        let mut msgs = handshake("pipelining-agent");
+        msgs.extend([
+            call(1, "send_input", json!({"tab": 1, "text": "uptime\n"})),
+            call(2, "wait_for_output", json!({"tab": 1, "pattern": "load average"})),
+        ]);
+        let (answers, mut rx) = rt().block_on(async {
+            let (control, rx) = fake::serve(&dir.join("run"), replies);
+            ctx.control = Arc::new(NoProbe(control));
+            let (ours, theirs) = tokio::io::duplex(1 << 20);
+            tokio::spawn(async move {
+                if let Ok(running) = Server::new(ctx).serve(theirs).await {
+                    let _ = running.waiting().await;
+                }
+            });
+            let (r, mut w) = tokio::io::split(ours);
+            for m in &msgs {
+                w.write_all(format!("{m}\n").as_bytes()).await.unwrap();
+            }
+            let mut lines = BufReader::new(r).lines();
+            let mut answers = Vec::new();
+            while answers.len() < 2 {
+                let line = tokio::time::timeout(std::time::Duration::from_secs(10), lines.next_line())
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .unwrap();
+                let v: Value = serde_json::from_str(&line).unwrap();
+                if v["id"] == 1 || v["id"] == 2 {
+                    answers.push(v);
+                }
+            }
+            (answers, rx)
+        });
+        for a in &answers {
+            assert_eq!(a["result"]["isError"], false, "{a}");
+            assert!(a["result"]["content"][0]["text"].as_str().unwrap().contains("done"), "{a}");
+        }
+        let ops = [rx.try_recv().unwrap().op, rx.try_recv().unwrap().op];
+        assert!(ops.iter().any(|o| matches!(o, AgentOp::Send { .. })), "{ops:?}");
+        assert!(ops.iter().any(|o| matches!(o, AgentOp::Wait { .. })), "{ops:?}");
         let _ = std::fs::remove_dir_all(dir);
     }
 

@@ -4,7 +4,8 @@
 
 use std::io::{BufRead, IsTerminal, Write};
 use std::path::PathBuf;
-use std::process::{Command as Proc, Stdio};
+use std::sync::Once;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use base64::Engine;
 use clap::Subcommand;
@@ -367,28 +368,54 @@ fn confirm(question: &str) -> Result<bool, ControlError> {
     Ok(matches!(stdin_line()?.trim().to_ascii_lowercase().as_str(), "y" | "yes"))
 }
 
-/// Turns terminal echo back on when dropped.
-struct EchoOff;
+/// True while the master-password prompt owns Ctrl+C (see [`ctrl_c_watcher`]).
+static PROMPTING: AtomicBool = AtomicBool::new(false);
 
-impl Drop for EchoOff {
-    fn drop(&mut self) {
-        let _ = Proc::new("stty").arg("echo").stdin(Stdio::inherit()).status();
-    }
+#[cfg(unix)]
+fn ctrl_c_signal() -> std::io::Result<tokio::signal::unix::Signal> {
+    tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
 }
 
-/// Read the master password from the terminal without echo (`stty -echo`).
+#[cfg(windows)]
+fn ctrl_c_signal() -> std::io::Result<tokio::signal::windows::CtrlC> {
+    tokio::signal::windows::ctrl_c()
+}
+
+/// Once per process: take over Ctrl+C. The no-echo reader sees Ctrl+C as a key and raises the
+/// interrupt itself while echo is still off; with the default action the process would die
+/// before echo is restored. During a prompt the interrupt is ignored here (the reader returns an
+/// error and restores echo on drop); otherwise the process exits with 130 as before.
+fn ctrl_c_watcher() {
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        let Ok(rt) = tokio::runtime::Builder::new_current_thread().enable_all().build() else { return };
+        let Ok(mut signal) = rt.block_on(async { ctrl_c_signal() }) else { return };
+        std::thread::spawn(move || {
+            rt.block_on(async {
+                while signal.recv().await.is_some() {
+                    if !PROMPTING.load(Ordering::SeqCst) {
+                        std::process::exit(130);
+                    }
+                }
+            });
+        });
+    });
+}
+
+/// Read the master password from the terminal without echo (console API on Windows, termios on
+/// Unix); echo is restored on success, error and Ctrl+C.
 fn prompt_password() -> Result<SecretString, ControlError> {
-    eprint!("Master password: ");
-    let _ = std::io::stderr().flush();
-    let off = Proc::new("stty").arg("-echo").stdin(Stdio::inherit()).status();
-    if !off.is_ok_and(|s| s.success()) {
-        return Err(ControlError::new(ErrorCode::Failed, "cannot turn off terminal echo (stty)"));
+    ctrl_c_watcher();
+    PROMPTING.store(true, Ordering::SeqCst);
+    let read = rpassword::prompt_password("Master password: ");
+    PROMPTING.store(false, Ordering::SeqCst);
+    match read {
+        Ok(line) => Ok(SecretString::from(line)),
+        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {
+            Err(ControlError::new(ErrorCode::Failed, "master password prompt interrupted"))
+        }
+        Err(e) => Err(ControlError::new(ErrorCode::Failed, format!("cannot read the master password: {e}"))),
     }
-    let guard = EchoOff;
-    let line = stdin_line();
-    drop(guard);
-    eprintln!();
-    Ok(SecretString::from(line?))
 }
 
 fn print_result(v: &Value, json: bool) {

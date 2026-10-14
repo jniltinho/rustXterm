@@ -50,6 +50,8 @@ pub(crate) struct Settings {
     pub remote_monitoring: bool,
     /// Remote monitoring refresh interval, seconds (1–30).
     pub remote_monitoring_interval_secs: u32,
+    /// Desktop notifications while the window is not focused (transfers, dropped sessions).
+    pub notifications: bool,
     /// First-run Light/Dark chooser answered. Missing in an existing file means an existing
     /// user (`true`); a fresh install starts from [`Default`] (`false`).
     #[serde(default = "first_run_done_in_old_files")]
@@ -86,6 +88,7 @@ impl Default for Settings {
             ui_scale: UiScale::Auto,
             remote_monitoring: true,
             remote_monitoring_interval_secs: 2,
+            notifications: true,
             first_run_theme_done: false,
         }
     }
@@ -195,6 +198,7 @@ impl Settings {
             ui_scale: s.ui_scale,
             remote_monitoring: s.remote_monitoring,
             remote_monitoring_interval_secs: s.remote_monitoring_interval_secs,
+            notifications: s.notifications,
             first_run_theme_done: s.first_run_theme_done,
         }
     }
@@ -228,6 +232,7 @@ impl Settings {
             ui_scale: self.ui_scale,
             remote_monitoring: self.remote_monitoring,
             remote_monitoring_interval_secs: self.remote_monitoring_interval_secs,
+            notifications: self.notifications,
             first_run_theme_done: self.first_run_theme_done,
             ..base.clone()
         }
@@ -505,6 +510,9 @@ fn page(
 fn general(ui: &mut egui::Ui, s: &mut Settings, icons: &Icons, tokens: &Tokens) {
     group(ui, icons, "Tabs", |ui| {
         ui.checkbox(&mut s.confirm_close, "Confirm before closing a connected tab");
+    });
+    group(ui, icons, "Notifications", |ui| {
+        ui.checkbox(&mut s.notifications, "Show desktop notifications while rustXterm is in the background");
     });
     group(ui, icons, "Remote desktop", |ui| {
         ui.horizontal(|ui| {

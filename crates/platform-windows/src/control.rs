@@ -2,9 +2,10 @@
 //! `\\.\pipe\rustxterm-<SID>-control`, exclusive first instance, remote clients rejected, a
 //! protected DACL granting access to the user's SID only. Each connection is authenticated by its
 //! own security context (impersonation for identification, after reading the 4-byte frame
-//! length): same user, unrestricted, not AppContainer, integrity not below ours; otherwise it is
-//! closed without a response. The client checks the server process's user. The pipe exists only
-//! while a [`ControlListener`] is alive.
+//! length): same user, unrestricted, not AppContainer, integrity not below ours; otherwise it gets
+//! one `denied` response with the reason and is closed. The client checks the server process's
+//! user and elevation. While a connection is handed out a spare instance keeps listening. The
+//! pipe exists only while a [`ControlListener`] is alive.
 
 use std::io;
 use std::os::windows::io::AsRawHandle;
@@ -13,18 +14,22 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use rxt_core::BoxFut;
+use rxt_core::control::{ErrorCode, Response};
+use rxt_platform::control::write_message;
 use rxt_platform::{ControlListener, ControlStream, ControlTransport, Error, Result};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, ReadBuf};
 use tokio::net::windows::named_pipe::{ClientOptions, NamedPipeServer, ServerOptions};
 use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
 
-use crate::{peer_allowed, pipe_name, pipe_sddl, sys};
+use crate::{peer_refusal, pipe_name, pipe_sddl, sys};
 
 const ERROR_FILE_NOT_FOUND: i32 = 2;
 const ERROR_ACCESS_DENIED: i32 = 5;
 const ERROR_PIPE_BUSY: i32 = 231;
-/// How long the client waits for a free pipe instance.
-const BUSY_WAIT: Duration = Duration::from_secs(5);
+/// How long the client waits for a free pipe instance (all instances busy is "running").
+const BUSY_WAIT: Duration = Duration::from_secs(2);
+/// How long a refused client gets to read its `denied` response.
+const REFUSAL_LINGER: Duration = Duration::from_secs(1);
 /// Bounded pre-authentication: the first 4 bytes must arrive within this time.
 const PRE_AUTH: Duration = Duration::from_secs(5);
 /// `SECURITY_IDENTIFICATION`: the server may identify the client but not act as it.
@@ -135,8 +140,25 @@ impl Pipe {
         }
         // Synchronous: impersonate, read the token, revert, with no await point in between.
         let client = sys::pipe_client_identity(conn.as_raw_handle()).ok();
-        peer_allowed(client.as_ref(), &self.me).then_some(Replay { head, used: 0, inner: conn })
+        let Some(reason) = peer_refusal(client.as_ref(), &self.me) else {
+            return Some(Replay { head, used: 0, inner: conn });
+        };
+        tracing::warn!("agent control: refused a client: {reason}");
+        tokio::spawn(async move { refuse(&mut conn, reason).await });
+        None
     }
+}
+
+/// Tell a refused client why, then close: one `denied` response, and the rest of its request is
+/// drained (bounded) so the client can still read the answer after its write.
+async fn refuse<S: AsyncRead + AsyncWrite + Unpin>(conn: &mut S, reason: &str) {
+    let response = Response::Err { id: 0, code: ErrorCode::Denied, message: reason.to_owned() };
+    let _ = tokio::time::timeout(REFUSAL_LINGER, async {
+        if write_message(conn, &response).await.is_ok() {
+            let _ = tokio::io::copy(conn, &mut tokio::io::sink()).await;
+        }
+    })
+    .await;
 }
 
 /// Accepted connection that first replays the 4 bytes read during authentication.
@@ -241,8 +263,10 @@ mod tests {
         });
     }
 
-    /// A client whose connection token is restricted or low integrity is never handed on.
-    fn refused_with(token: sys::test_tokens::Token) {
+    /// A client whose connection token is restricted or low integrity is never handed on; it
+    /// gets a `denied` response whose message contains `reason`. With `kernel_may_refuse` the
+    /// pipe's mandatory label may already deny the open (low integrity, no write-up).
+    fn refused_with(token: sys::test_tokens::Token, reason: &'static str, kernel_may_refuse: bool) {
         let _pipe = serial();
         let t = PipeControl::new();
         rt().block_on(async {
@@ -250,15 +274,21 @@ mod tests {
             let client = std::thread::spawn(move || {
                 let _imp = sys::test_tokens::impersonate(&token).unwrap();
                 rt().block_on(async {
-                    let Ok(mut c) = PipeControl::new().connect().await else { return true };
+                    let mut c = PipeControl::new().connect().await.map_err(|e| e.to_string())?;
                     let req = Request { id: 9, client: "t".into(), entry: EntryPoint::CliLive, op: AgentOp::ListTabs };
                     let _ = write_message(&mut c, &req).await;
-                    matches!(read_message::<Request, _>(&mut c).await, Err(_) | Ok(None))
+                    read_message::<Response, _>(&mut c).await.map_err(|e| e.to_string())
                 })
             });
             let accepted = tokio::time::timeout(Duration::from_secs(8), listener.accept()).await;
             assert!(accepted.is_err(), "a refused client must not be handed to the engine");
-            assert!(client.join().unwrap(), "the refused client got a response");
+            match client.join().unwrap() {
+                Ok(Some(Response::Err { code: ErrorCode::Denied, message, .. })) => {
+                    assert!(message.contains(reason), "{message}");
+                }
+                Err(_) if kernel_may_refuse => {}
+                other => panic!("the refused client got {other:?}"),
+            }
         });
     }
 
@@ -286,12 +316,12 @@ mod tests {
 
     #[test]
     fn restricted_token_client_is_refused() {
-        refused_with(sys::test_tokens::restricted().unwrap());
+        refused_with(sys::test_tokens::restricted().unwrap(), "AppContainer", false);
     }
 
     #[test]
     fn deny_only_group_client_is_refused() {
-        refused_with(sys::test_tokens::filtered(true).unwrap());
+        refused_with(sys::test_tokens::filtered(true).unwrap(), "filtered", false);
     }
 
     /// Removing privileges alone does not widen what a client can do: served.
@@ -320,7 +350,7 @@ mod tests {
 
     #[test]
     fn low_integrity_client_is_refused() {
-        refused_with(sys::test_tokens::low_integrity().unwrap());
+        refused_with(sys::test_tokens::low_integrity().unwrap(), "low-integrity", true);
     }
 
     #[test]
@@ -341,6 +371,33 @@ mod tests {
             let clients = futures_join(&t);
             let ((), ok) = tokio::join!(server, clients);
             assert_eq!(ok, 4);
+        });
+    }
+
+    /// While one accepted client is still being served, a spare instance listens: a second
+    /// client connects at once (well inside the busy wait) and is served first.
+    #[test]
+    fn spare_instance_while_serving() {
+        let _pipe = serial();
+        let t = PipeControl::new();
+        rt().block_on(async {
+            let listener = t.listen().unwrap();
+            let req = |id| Request { id, client: "t".into(), entry: EntryPoint::CliLive, op: AgentOp::ListTabs };
+            let mut held = t.connect().await.unwrap();
+            write_message(&mut held, &req(1)).await.unwrap();
+            let mut first = listener.accept().await.unwrap();
+            assert_eq!(read_message::<Request, _>(&mut first).await.unwrap(), Some(req(1)));
+            // `first` is held open, unanswered; nobody waits in `accept` now.
+            let start = tokio::time::Instant::now();
+            let mut second = t.connect().await.unwrap();
+            assert!(start.elapsed() < Duration::from_millis(500), "second client waited {:?}", start.elapsed());
+            write_message(&mut second, &req(2)).await.unwrap();
+            let mut s = listener.accept().await.unwrap();
+            assert_eq!(read_message::<Request, _>(&mut s).await.unwrap(), Some(req(2)));
+            write_message(&mut s, &req(2)).await.unwrap();
+            assert_eq!(read_message::<Request, _>(&mut second).await.unwrap(), Some(req(2)));
+            write_message(&mut first, &req(1)).await.unwrap();
+            assert_eq!(read_message::<Request, _>(&mut held).await.unwrap(), Some(req(1)));
         });
     }
 

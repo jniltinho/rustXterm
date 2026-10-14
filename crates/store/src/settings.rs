@@ -61,6 +61,8 @@ pub struct Settings {
     pub remote_monitoring: bool,
     /// Remote monitoring refresh interval, seconds (clamped to 1–30 on load).
     pub remote_monitoring_interval_secs: u32,
+    /// Desktop notifications for background transfers and dropped sessions; on by default.
+    pub notifications: bool,
     /// First-run Light/Dark chooser answered. Missing in an existing file means an existing
     /// user (`true`); a fresh install starts from [`Default`] (`false`).
     #[serde(default = "first_run_done_in_old_files")]
@@ -99,6 +101,7 @@ impl Default for Settings {
             ui_scale: UiScale::Auto,
             remote_monitoring: true,
             remote_monitoring_interval_secs: 2,
+            notifications: true,
             first_run_theme_done: false,
         }
     }

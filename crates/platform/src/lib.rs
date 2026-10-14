@@ -1,7 +1,7 @@
 //! Operating-system contracts. Protocol, engine and UI crates reach the OS only
 //! through these traits; `platform-linux` implements them (macOS/Windows later).
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub use rxt_core::{Error, Result};
@@ -14,6 +14,10 @@ pub trait Paths: Send + Sync {
     /// Per-session runtime dir (control socket); `None` when unavailable.
     fn runtime_dir(&self) -> Option<PathBuf>;
     fn home_dir(&self) -> PathBuf;
+    /// User Downloads folder, when the platform knows one (it may not exist).
+    fn download_dir(&self) -> Option<PathBuf> {
+        None
+    }
     /// User SSH directory (`~/.ssh`).
     fn ssh_dir(&self) -> PathBuf {
         self.home_dir().join(".ssh")
@@ -21,7 +25,7 @@ pub trait Paths: Send + Sync {
     /// Create `dir` if missing and restrict it to the current user, files inside included.
     /// Unix keeps its per-file 0600/0700 modes (default: nothing to do); Windows applies a
     /// protected owner-only ACL and fails when it cannot be applied or verified.
-    fn make_private(&self, dir: &std::path::Path) -> Result<()> {
+    fn make_private(&self, dir: &Path) -> Result<()> {
         let _ = dir;
         Ok(())
     }
@@ -54,11 +58,12 @@ pub trait Notifier: Send + Sync {
     fn notify(&self, title: &str, body: &str) -> Result<()>;
 }
 
-/// Native file dialogs; blocking calls must run off the UI thread.
+/// Native file dialogs; blocking calls must run off the UI thread. Each dialog opens in
+/// `start` (never the process working directory).
 pub trait FileDialogs: Send + Sync {
-    fn pick_files(&self, title: &str) -> Option<Vec<PathBuf>>;
-    fn pick_folder(&self, title: &str) -> Option<PathBuf>;
-    fn save_file(&self, title: &str, suggested_name: &str) -> Option<PathBuf>;
+    fn pick_files(&self, title: &str, start: &Path) -> Option<Vec<PathBuf>>;
+    fn pick_folder(&self, title: &str, start: &Path) -> Option<PathBuf>;
+    fn save_file(&self, title: &str, suggested_name: &str, start: &Path) -> Option<PathBuf>;
     /// Window the dialogs are transient for, as a platform-specific parent id (`x11:<hex xid>`
     /// for the XDG portal, `win32:<hex HWND>` on Windows); `None` opens them unparented.
     fn set_parent(&self, parent: Option<String>) {
@@ -100,7 +105,7 @@ pub trait ControlTransport: Send + Sync {
 
 /// Open a file or URL with the desktop's default application.
 pub trait Opener: Send + Sync {
-    fn open(&self, path: &std::path::Path) -> Result<()>;
+    fn open(&self, path: &Path) -> Result<()>;
 }
 
 /// All platform services, wired in by the app binary.

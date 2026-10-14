@@ -17,6 +17,10 @@ pub trait SerialPorts: Send + Sync {
     fn list(&self) -> Result<Vec<PortInfo>>;
     /// Open `path` for exclusive use with `cfg`; a second open reports `Error::Busy`.
     fn open(&self, path: &str, cfg: &LineConfig) -> Result<Box<dyn SerialStream>>;
+    /// Example port name for input hints (`/dev/ttyUSB0`, `COM3` on Windows).
+    fn example_port(&self) -> &'static str {
+        "/dev/ttyUSB0"
+    }
 }
 
 /// Blocking serial stream with a ~100 ms read timeout.

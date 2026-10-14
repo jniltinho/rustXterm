@@ -1,10 +1,16 @@
 //! Quick-connect parser: `[user@]host[:port]`, `scheme://[user@]host[:port]` or
-//! `serial://<device>[?baud=&data=&parity=&stop=&flow=]`.
+//! `serial://<device>[?baud=&data=&parity=&stop=&flow=]` (`COM<n>` or `\\.\COM<n>` on Windows).
 
 use crate::{DataBits, Error, FlowControl, LineConfig, Parity, Protocol, Result, Session, StopBits};
 
 /// Parse quick-connect input into an unsaved session.
 pub fn parse(input: &str) -> Result<Session> {
+    parse_for(input, cfg!(windows))
+}
+
+/// [`parse`] for a target OS: on Windows a serial device name is used as typed (`COM1`,
+/// `\\.\COM1`), elsewhere a bare name is taken under `/dev`.
+pub fn parse_for(input: &str, windows: bool) -> Result<Session> {
     let input = input.trim();
     let (protocol, rest) = match input.split_once("://") {
         Some((scheme, rest)) => {
@@ -15,7 +21,7 @@ pub fn parse(input: &str) -> Result<Session> {
         None => (Protocol::Ssh, input),
     };
     if protocol == Protocol::Serial {
-        return parse_serial(rest);
+        return parse_serial(rest, windows);
     }
     let rest = rest.trim_end_matches('/');
     let (user, hostport) = match rest.rsplit_once('@') {
@@ -33,14 +39,15 @@ pub fn parse(input: &str) -> Result<Session> {
     Ok(Session::new(protocol, host, user, port))
 }
 
-/// `serial:///dev/ttyUSB0?baud=9600` or `serial://ttyUSB0` (a name under `/dev`).
-fn parse_serial(rest: &str) -> Result<Session> {
+/// `serial:///dev/ttyUSB0?baud=9600` or `serial://ttyUSB0` (a name under `/dev`); on Windows
+/// `serial://COM1` or `serial://\\.\COM1`.
+fn parse_serial(rest: &str, windows: bool) -> Result<Session> {
     let (device, query) = rest.split_once('?').unwrap_or((rest, ""));
     let device = device.trim_end_matches('/');
     if device.is_empty() || device.chars().any(char::is_whitespace) {
         return Err(Error::Invalid("missing serial device".into()));
     }
-    let path = if device.starts_with('/') { device.to_string() } else { format!("/dev/{device}") };
+    let path = if windows || device.starts_with('/') { device.to_string() } else { format!("/dev/{device}") };
     let mut line = LineConfig::default();
     for pair in query.split('&').filter(|p| !p.is_empty()) {
         let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
@@ -164,6 +171,16 @@ mod tests {
         };
         assert_eq!((s.serial.port.as_str(), s.serial.line), ("/dev/ttyS1", want));
         assert_eq!(parse("serial:///dev/ttyUSB0?baud=9600").unwrap().serial.line.to_string(), "9600 8N1");
+    }
+
+    #[test]
+    fn serial_com_ports_on_windows() {
+        for (input, port) in [("serial://COM1?baud=9600", "COM1"), (r"serial://\\.\COM12", r"\\.\COM12")] {
+            let s = parse_for(input, true).unwrap();
+            assert_eq!((s.protocol, s.serial.port.as_str()), (Protocol::Serial, port), "{input}");
+        }
+        assert_eq!(parse_for("serial://COM1?baud=9600", true).unwrap().serial.line.baud, 9600);
+        assert_eq!(parse_for("serial://COM1", false).unwrap().serial.port, "/dev/COM1");
     }
 
     #[test]

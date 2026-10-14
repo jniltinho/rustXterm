@@ -1,18 +1,25 @@
 //! Agent control transport: a Unix domain socket `control.sock` (0600) in
 //! `$XDG_RUNTIME_DIR/rustxterm/` (0700, owned by this user). Only same-UID peers are served
-//! (SO_PEERCRED); others are closed without a response. The socket exists only while a
+//! (SO_PEERCRED); others get one `denied` response with the reason and are closed. The socket exists only while a
 //! [`ControlListener`] is alive; dropping it removes the file.
 
 use std::fs;
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use rxt_core::BoxFut;
+use rxt_core::control::{ErrorCode, Response};
+use rxt_platform::control::write_message;
 use rxt_platform::{ControlListener, ControlStream, ControlTransport, Error, Result};
 use tokio::net::{UnixListener, UnixStream};
 
 /// Socket file name inside the runtime directory.
 pub const SOCKET: &str = "control.sock";
+/// Reason sent to a peer of another user (or with unknown credentials).
+pub const OTHER_USER: &str = "agent control serves only the user running rustXterm";
+/// How long a refused client gets to read its `denied` response.
+const REFUSAL_LINGER: Duration = Duration::from_secs(1);
 
 /// Unix-socket control transport rooted at `dir` (normally `Paths::runtime_dir()`).
 pub struct UnixControl {
@@ -127,10 +134,23 @@ impl ControlListener for Socket {
                 if peer_allowed(stream.peer_cred().ok().map(|c| c.uid()), self.uid) {
                     return Ok(Box::new(stream) as Box<dyn ControlStream>);
                 }
-                tracing::warn!("agent control: closed a connection from another user");
+                tracing::warn!("agent control: refused a connection from another user");
+                tokio::spawn(refuse(stream, OTHER_USER));
             }
         })
     }
+}
+
+/// Tell a refused client why, then close: one `denied` response, and the rest of its request is
+/// drained (bounded) so the client can still read the answer after its write.
+async fn refuse(mut stream: UnixStream, reason: &'static str) {
+    let response = Response::Err { id: 0, code: ErrorCode::Denied, message: reason.into() };
+    let _ = tokio::time::timeout(REFUSAL_LINGER, async {
+        if write_message(&mut stream, &response).await.is_ok() {
+            let _ = tokio::io::copy(&mut stream, &mut tokio::io::sink()).await;
+        }
+    })
+    .await;
 }
 
 impl Drop for Socket {
@@ -161,6 +181,20 @@ mod tests {
         assert!(peer_allowed(Some(1000), 1000));
         assert!(!peer_allowed(Some(0), 1000));
         assert!(!peer_allowed(None, 1000));
+    }
+
+    /// A refused peer reads one `denied` response with the reason after sending its request.
+    #[test]
+    fn refused_peer_gets_the_reason() {
+        rt().block_on(async {
+            let (server, mut client) = UnixStream::pair().unwrap();
+            tokio::spawn(refuse(server, OTHER_USER));
+            let req = Request { id: 1, client: "t".into(), entry: EntryPoint::CliLive, op: AgentOp::ListTabs };
+            write_message(&mut client, &req).await.unwrap();
+            let got: Option<Response> = read_message(&mut client).await.unwrap();
+            assert_eq!(got, Some(Response::Err { id: 0, code: ErrorCode::Denied, message: OTHER_USER.into() }));
+            assert!(read_message::<Response, _>(&mut client).await.unwrap().is_none(), "closed after the reason");
+        });
     }
 
     #[test]

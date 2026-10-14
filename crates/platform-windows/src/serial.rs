@@ -92,6 +92,10 @@ impl SerialPorts for WindowsSerial {
             })?;
         Ok(Box::new(ComStream { port, path: name }))
     }
+
+    fn example_port(&self) -> &'static str {
+        "COM3"
+    }
 }
 
 struct ComStream {

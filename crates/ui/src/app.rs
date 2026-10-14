@@ -192,6 +192,11 @@ pub(crate) enum Action {
     /// Local pane request of the active file tab.
     Local(SftpAction),
     Status(String),
+    /// Open a local file with its default application (`folder`: show the folder containing it).
+    OpenLocal {
+        path: PathBuf,
+        folder: bool,
+    },
     BrowseKeyFile,
     StartTunnel(String),
     EditTunnel(String),
@@ -248,6 +253,18 @@ enum VaultMsg {
     KeyringSet(bool, rxt_core::Result<()>),
 }
 
+/// Kind of file dialog; each remembers its last folder for this run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum DialogKind {
+    Upload,
+    Download,
+    KeyFile,
+    SaveText,
+    Import,
+    Export,
+    Workspace,
+}
+
 /// Result of a native file dialog run off the UI thread.
 enum DialogResult {
     Upload { tab: TabId, dir: String, files: Vec<PathBuf> },
@@ -258,6 +275,47 @@ enum DialogResult {
     ImportToml(PathBuf),
     ExportToml(PathBuf),
     AgentWorkspace(PathBuf),
+}
+
+impl DialogResult {
+    /// Dialog kind and the folder it ended in.
+    fn folder(&self) -> Option<(DialogKind, PathBuf)> {
+        let (kind, path) = match self {
+            Self::Upload { files, .. } => (DialogKind::Upload, files.first()?),
+            Self::Download { local, .. } => (DialogKind::Download, local),
+            Self::KeyFile(p) => (DialogKind::KeyFile, p),
+            Self::SaveText(p, _) => (DialogKind::SaveText, p),
+            Self::ImportIni(p) | Self::ImportToml(p) => (DialogKind::Import, p),
+            Self::ExportToml(p) => (DialogKind::Export, p),
+            Self::AgentWorkspace(p) => return Some((DialogKind::Workspace, p.clone())),
+        };
+        Some((kind, path.parent()?.to_owned()))
+    }
+}
+
+/// Transfers started by `tab` (each tab lists only its own).
+fn tab_transfers(all: &[TransferRow], tab: Option<TabId>) -> Vec<TransferRow> {
+    all.iter().filter(|t| Some(t.tab) == tab).cloned().collect()
+}
+
+/// Notification title and file name of a finished transfer.
+fn transfer_note(t: &TransferRow) -> (&'static str, String) {
+    let name = t.remote.rsplit('/').next().unwrap_or(&t.remote).to_owned();
+    let title = match (t.direction, &t.result) {
+        (Direction::Download, Some(Ok(_))) => "Download finished",
+        (Direction::Download, _) => "Download failed",
+        (Direction::Upload, Some(Ok(_))) => "Upload finished",
+        (Direction::Upload, _) => "Upload failed",
+    };
+    (title, name)
+}
+
+/// Folder a dialog opens in: the last one used for its kind, else Downloads, else home.
+pub(crate) fn start_dir(last: Option<&Path>, downloads: Option<PathBuf>, home: PathBuf) -> PathBuf {
+    match last {
+        Some(dir) => dir.to_owned(),
+        None => downloads.filter(|d| d.is_dir()).unwrap_or(home),
+    }
 }
 
 /// Sidebar page (persisted as `Settings::sidebar_page`).
@@ -307,6 +365,10 @@ pub struct App {
     /// Browser state of the other connected SSH tabs, restored when they become active again.
     pub(crate) parked_sftp: HashMap<TabId, SftpState>,
     pub(crate) transfers: Vec<TransferRow>,
+    /// Last folder of each file dialog kind (this run only).
+    last_dirs: HashMap<DialogKind, PathBuf>,
+    /// Main window has the input focus (read each frame); notifications only while it has not.
+    pub(crate) window_focused: bool,
     pub(crate) find: Option<FindBar>,
     pub(crate) status: String,
     dialog_tx: mpsc::Sender<DialogResult>,
@@ -388,6 +450,8 @@ impl App {
             sftp: SftpState::default(),
             parked_sftp: HashMap::new(),
             transfers: Vec::new(),
+            last_dirs: HashMap::new(),
+            window_focused: true,
             find: None,
             status: String::new(),
             dialog_tx,
@@ -800,6 +864,7 @@ impl App {
     }
 
     fn pump(&mut self, ctx: &egui::Context) {
+        self.window_focused = ctx.input(|i| i.focused);
         for _ in 0..EVENT_BUDGET {
             let Some(ev) = self.backend.try_event() else { break };
             self.on_event(ev);
@@ -881,6 +946,13 @@ impl App {
             }
             Event::State { tab, state } => {
                 let connected = state == ConnState::Connected;
+                let was_connected = self.tabs.iter().any(|t| t.id == tab && t.state == ConnState::Connected);
+                if was_connected && matches!(state, ConnState::Disconnected { .. } | ConnState::Error(_)) {
+                    // User closes and reconnects cancel the session without a state event, so
+                    // a drop from Connected was not asked for.
+                    let body = format!("{} disconnected", self.tab_title(tab));
+                    self.notify("Session disconnected", &body);
+                }
                 let stopped = state.clone();
                 let mut resize = None;
                 let mut list = None;
@@ -931,12 +1003,13 @@ impl App {
                     st.listed(path, entries);
                 }
             }
-            Event::TransferStarted { id, tab, direction, remote, total, .. } => {
+            Event::TransferStarted { id, tab, direction, remote, local, total } => {
                 let row = TransferRow {
                     id,
                     tab,
                     direction,
                     remote,
+                    local,
                     total,
                     done: 0,
                     speed: 0.0,
@@ -946,6 +1019,7 @@ impl App {
                 match self.transfers.iter_mut().find(|t| t.id == id) {
                     Some(t) => {
                         t.remote = row.remote;
+                        t.local = row.local;
                         t.total = row.total.or(t.total);
                     }
                     None => self.transfers.push(row),
@@ -963,6 +1037,8 @@ impl App {
                     }
                     let (tab, upload) = (t.tab, t.direction == Direction::Upload);
                     t.result = Some(result.map_err(|e| e.to_string()));
+                    let (title, name) = transfer_note(t);
+                    self.notify(title, &format!("{name} in {}", self.tab_title(tab)));
                     if upload {
                         if let Some(path) = self.remote_for(tab).map(|st| st.path.clone()) {
                             self.list(tab, path);
@@ -1021,6 +1097,9 @@ impl App {
     }
 
     fn on_dialog(&mut self, r: DialogResult) {
+        if let Some((kind, dir)) = r.folder() {
+            self.last_dirs.insert(kind, dir);
+        }
         match r {
             DialogResult::Upload { tab, dir, files } => self.upload(tab, &dir, files),
             DialogResult::Download { tab, remote, local } => {
@@ -1050,12 +1129,19 @@ impl App {
     }
 
     /// Run a blocking file dialog on a worker thread; the result arrives in a later frame.
-    fn spawn_dialog(&self, f: impl FnOnce(&dyn FileDialogs) -> Option<DialogResult> + Send + 'static) {
+    /// `f` gets the folder to open in (see [`start_dir`]).
+    fn spawn_dialog(
+        &self,
+        kind: DialogKind,
+        f: impl FnOnce(&dyn FileDialogs, &Path) -> Option<DialogResult> + Send + 'static,
+    ) {
+        let paths = &self.platform.paths;
+        let start = start_dir(self.last_dirs.get(&kind).map(PathBuf::as_path), paths.download_dir(), paths.home_dir());
         let dialogs = self.platform.dialogs.clone();
         let tx = self.dialog_tx.clone();
         let ctx = self.ctx.clone();
         let spawned = std::thread::Builder::new().name("file-dialog".into()).spawn(move || {
-            if let Some(r) = f(dialogs.as_ref()) {
+            if let Some(r) = f(dialogs.as_ref(), &start) {
                 let _ = tx.send(r);
             }
             if let Some(c) = ctx {
@@ -1151,6 +1237,41 @@ impl App {
 
     fn tab_mut(&mut self, id: TabId) -> Option<&mut Tab> {
         self.tabs.iter_mut().find(|t| t.id == id)
+    }
+
+    /// Tab name for notifications.
+    fn tab_title(&self, id: TabId) -> String {
+        self.tabs.iter().find(|t| t.id == id).map(|t| t.title.clone()).unwrap_or_default()
+    }
+
+    /// Desktop notification while the window is in the background and notifications are on.
+    /// Sent off the UI thread; failures (service missing or turned off) are logged at debug only.
+    fn notify(&self, title: &'static str, body: &str) {
+        if self.window_focused || !self.settings.notifications {
+            return;
+        }
+        let (notifier, body) = (self.platform.notifier.clone(), body.to_owned());
+        let spawned = std::thread::Builder::new().name("notify".into()).spawn(move || {
+            if let Err(e) = notifier.notify(title, &body) {
+                tracing::debug!("notification not shown: {e}");
+            }
+        });
+        if let Err(e) = spawned {
+            tracing::debug!("notification thread: {e}");
+        }
+    }
+
+    /// Open a local file with its default application, or (`folder`) the folder containing it.
+    /// A missing file or an opener failure is reported in the status bar.
+    fn open_local(&mut self, path: &Path, folder: bool) {
+        let target = if folder { path.parent().unwrap_or(path) } else { path };
+        if !path.exists() {
+            self.status = format!("Cannot open {}: the file no longer exists", path.display());
+            return;
+        }
+        if let Err(e) = self.platform.opener.open(target) {
+            self.status = format!("Cannot open {}: {e}", target.display());
+        }
     }
 
     pub(crate) fn active_tab(&self) -> Option<&Tab> {
@@ -1352,8 +1473,9 @@ impl App {
             }
             CommandId::SAVE_TEXT => {
                 if let Some(text) = self.active_tab().and_then(|t| t.term.as_ref()).map(|t| t.visible_text()) {
-                    self.spawn_dialog(move |d| {
-                        d.save_file("Save terminal text", "terminal.txt").map(|p| DialogResult::SaveText(p, text))
+                    self.spawn_dialog(DialogKind::SaveText, move |d, start| {
+                        d.save_file("Save terminal text", "terminal.txt", start)
+                            .map(|p| DialogResult::SaveText(p, text))
                     });
                 }
             }
@@ -1596,9 +1718,12 @@ impl App {
                 }
             }
             Action::Status(text) => self.status = text,
+            Action::OpenLocal { path, folder } => self.open_local(&path, folder),
             Action::BrowseKeyFile => {
-                self.spawn_dialog(|d| {
-                    d.pick_files("Select private key").and_then(|f| f.into_iter().next()).map(DialogResult::KeyFile)
+                self.spawn_dialog(DialogKind::KeyFile, |d, start| {
+                    d.pick_files("Select private key", start)
+                        .and_then(|f| f.into_iter().next())
+                        .map(DialogResult::KeyFile)
                 });
             }
             Action::StartTunnel(name) => {
@@ -1653,8 +1778,8 @@ impl App {
             Action::SetKeyring(on) => self.spawn_vault(move |v| VaultMsg::KeyringSet(on, v.set_keyring(on))),
             Action::ImportIni => {
                 if self.require_unlocked() {
-                    self.spawn_dialog(|d| {
-                        d.pick_files("Import MobaXterm.ini")
+                    self.spawn_dialog(DialogKind::Import, |d, start| {
+                        d.pick_files("Import MobaXterm.ini", start)
                             .and_then(|f| f.into_iter().next())
                             .map(DialogResult::ImportIni)
                     });
@@ -1663,8 +1788,8 @@ impl App {
             Action::ConfirmImport => self.confirm_import(),
             Action::ImportToml => {
                 if self.require_unlocked() {
-                    self.spawn_dialog(|d| {
-                        d.pick_files("Import rustXterm sessions")
+                    self.spawn_dialog(DialogKind::Import, |d, start| {
+                        d.pick_files("Import rustXterm sessions", start)
                             .and_then(|f| f.into_iter().next())
                             .map(DialogResult::ImportToml)
                     });
@@ -1672,8 +1797,8 @@ impl App {
             }
             Action::ExportToml => {
                 if self.require_unlocked() {
-                    self.spawn_dialog(|d| {
-                        d.save_file("Export rustXterm sessions", "rustxterm-sessions.toml")
+                    self.spawn_dialog(DialogKind::Export, |d, start| {
+                        d.save_file("Export rustXterm sessions", "rustxterm-sessions.toml", start)
                             .map(DialogResult::ExportToml)
                     });
                 }
@@ -1689,7 +1814,9 @@ impl App {
                 }
             }
             Action::BrowseAgentWorkspace => {
-                self.spawn_dialog(|d| d.pick_folder("Agent workspace").map(DialogResult::AgentWorkspace));
+                self.spawn_dialog(DialogKind::Workspace, |d, start| {
+                    d.pick_folder("Agent workspace", start).map(DialogResult::AgentWorkspace)
+                });
             }
             Action::ShowAudit => {
                 self.audit = Some(AuditView::default());
@@ -1723,13 +1850,13 @@ impl App {
                 if let Some(dir) = local_dir {
                     return self.sftp_action(SftpAction::DownloadTo { remote, dir });
                 }
-                self.spawn_dialog(move |d| {
-                    d.save_file("Download", &name).map(|local| DialogResult::Download { tab, remote, local })
+                self.spawn_dialog(DialogKind::Download, move |d, start| {
+                    d.save_file("Download", &name, start).map(|local| DialogResult::Download { tab, remote, local })
                 });
             }
             SftpAction::Upload => {
-                self.spawn_dialog(move |d| {
-                    d.pick_files("Upload").map(|files| DialogResult::Upload { tab, dir, files })
+                self.spawn_dialog(DialogKind::Upload, move |d, start| {
+                    d.pick_files("Upload", start).map(|files| DialogResult::Upload { tab, dir, files })
                 });
             }
             SftpAction::UploadPaths(files) => self.upload(tab, &dir, files),
@@ -1755,7 +1882,7 @@ impl App {
             SftpAction::Delete(path) => self.mutate(Command::Delete { tab, path }),
             SftpAction::Chmod { path, mode } => self.mutate(Command::Chmod { tab, path, mode }),
             SftpAction::CancelTransfer(id) => self.send(Command::CancelTransfer { id }),
-            SftpAction::ClearFinished => self.transfers.retain(|t| t.result.is_none()),
+            SftpAction::ClearFinished => self.transfers.retain(|t| t.result.is_none() || t.tab != tab),
             SftpAction::SetMonitoring(on) => {
                 self.apply(Action::SetMonitoring(tab, on));
             }
@@ -2076,7 +2203,8 @@ impl App {
             }
             SidebarTab::Sftp => {
                 let monitor = self.sftp.tab.and_then(|id| self.tabs.iter().find(|t| t.id == id)).map(|t| &t.monitor);
-                sftp_panel::sftp_ui(ui, &mut self.sftp, monitor, &self.transfers, &self.icons, &self.tokens, out)
+                let transfers = tab_transfers(&self.transfers, self.sftp.tab);
+                sftp_panel::sftp_ui(ui, &mut self.sftp, monitor, &transfers, &self.icons, &self.tokens, out)
             }
         }
     }
@@ -2128,7 +2256,8 @@ impl App {
             });
         }
         if let Some(files) = tab.files.as_mut() {
-            file_tab::show(ui, files, &tab.session, &self.transfers, &self.icons, tokens, out);
+            let transfers = tab_transfers(&self.transfers, Some(tab.id));
+            file_tab::show(ui, files, &tab.session, &transfers, &self.icons, tokens, out);
             return;
         }
         if let Some(view) = tab.desktop.as_mut() {
@@ -2221,6 +2350,9 @@ impl App {
                 &self.tokens,
                 out,
             );
+        }
+        if let Some(ed) = &mut self.editor {
+            ed.port_hint = self.platform.serial.example_port();
         }
         if let Some(ed) = &mut self.editor
             && !session_editor::window(ctx, ed, &self.store.folders, &self.icons, &self.tokens, out)

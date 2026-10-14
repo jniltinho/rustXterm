@@ -65,6 +65,9 @@ impl Paths for XdgPaths {
     fn home_dir(&self) -> PathBuf {
         dirs::home_dir().unwrap_or_else(std::env::temp_dir)
     }
+    fn download_dir(&self) -> Option<PathBuf> {
+        dirs::download_dir()
+    }
 }
 
 /// arboard clipboard, connected on first use (no display → error, never a panic).
@@ -189,32 +192,32 @@ fn uri_path(uri: &str) -> Option<PathBuf> {
 }
 
 impl FileDialogs for PortalDialogs {
-    fn pick_files(&self, title: &str) -> Option<Vec<PathBuf>> {
+    fn pick_files(&self, title: &str, start: &Path) -> Option<Vec<PathBuf>> {
         let req = SelectedFiles::open_file().identifier(self.identifier()).title(title).modal(true).multiple(true);
         self.portal(
-            async move { req.send().await?.response() },
+            async move { req.current_folder(start)?.send().await?.response() },
             |files| (!files.is_empty()).then_some(files),
-            || rfd::FileDialog::new().set_title(title).pick_files(),
+            || rfd::FileDialog::new().set_title(title).set_directory(start).pick_files(),
         )
     }
-    fn pick_folder(&self, title: &str) -> Option<PathBuf> {
+    fn pick_folder(&self, title: &str, start: &Path) -> Option<PathBuf> {
         let req = SelectedFiles::open_file().identifier(self.identifier()).title(title).modal(true).directory(true);
         self.portal(
-            async move { req.send().await?.response() },
+            async move { req.current_folder(start)?.send().await?.response() },
             |files| files.into_iter().next(),
-            || rfd::FileDialog::new().set_title(title).pick_folder(),
+            || rfd::FileDialog::new().set_title(title).set_directory(start).pick_folder(),
         )
     }
-    fn save_file(&self, title: &str, suggested_name: &str) -> Option<PathBuf> {
+    fn save_file(&self, title: &str, suggested_name: &str, start: &Path) -> Option<PathBuf> {
         let req = SelectedFiles::save_file()
             .identifier(self.identifier())
             .title(title)
             .modal(true)
             .current_name(suggested_name);
         self.portal(
-            async move { req.send().await?.response() },
+            async move { req.current_folder(start)?.send().await?.response() },
             |files| files.into_iter().next(),
-            || rfd::FileDialog::new().set_title(title).set_file_name(suggested_name).save_file(),
+            || rfd::FileDialog::new().set_title(title).set_directory(start).set_file_name(suggested_name).save_file(),
         )
     }
     fn set_parent(&self, parent: Option<String>) {

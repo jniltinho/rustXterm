@@ -122,24 +122,59 @@ pub fn integrity_rid(label_sid: &str) -> Option<u32> {
     label_sid.strip_prefix("S-1-16-")?.parse().ok()
 }
 
-/// Whether the peer of a control pipe may be trusted (design W4), from `me`'s side: same user
-/// SID, no restricting SIDs or AppContainer, integrity not below mine, and not more filtered
-/// than me (no group enabled for me is deny-only for the peer). Unknown identity is refused.
+/// Refusal message when the two sides of the control pipe run at a different elevation
+/// (integrity level or UAC filtering).
+pub const DIFFERENT_ELEVATION: &str =
+    "agent control runs at a different elevation (run the CLI and rustXterm both elevated or both not)";
+
+/// Integrity RID of the medium level; below it a token is sandboxed, not just non-elevated.
+const MEDIUM_INTEGRITY: u32 = 0x2000;
+
+/// `BUILTIN\Administrators`: deny-only in a UAC-filtered (non-elevated) admin token.
+const ADMINISTRATORS: &str = "S-1-5-32-544";
+
+/// Groups enabled for `a` that are deny-only for `b` (`b` is more filtered than `a`).
+fn more_filtered<'a>(b: &'a Identity, a: &'a Identity) -> impl Iterator<Item = &'a String> {
+    b.deny_only.iter().filter(|g| a.enabled.contains(g))
+}
+
+/// Why the peer of a control pipe is refused from `me`'s side (design W4), `None` when it may be
+/// trusted: same user SID, no restricting SIDs or AppContainer, integrity not below mine, and not
+/// more filtered than me (no group enabled for me is deny-only for the peer). Unknown identity is
+/// refused. The message is sent to the refused client; a lower integrity (not sandboxed) or UAC
+/// filtering of Administrators is reported as a different elevation.
+pub fn peer_refusal(peer: Option<&Identity>, me: &Identity) -> Option<&'static str> {
+    let Some(p) = peer else { return Some("agent control could not identify the client") };
+    if p.sid != me.sid {
+        Some("agent control serves only the user running rustXterm")
+    } else if p.restricted || more_filtered(p, me).any(|g| g != ADMINISTRATORS) {
+        Some("agent control refuses restricted, filtered or AppContainer clients")
+    } else if p.integrity < me.integrity && p.integrity < MEDIUM_INTEGRITY {
+        Some("agent control refuses low-integrity clients")
+    } else if p.integrity < me.integrity || more_filtered(p, me).next().is_some() {
+        Some(DIFFERENT_ELEVATION)
+    } else {
+        None
+    }
+}
+
+/// Whether the peer of a control pipe may be trusted (see [`peer_refusal`]).
 pub fn peer_allowed(peer: Option<&Identity>, me: &Identity) -> bool {
-    peer.is_some_and(|p| {
-        p.sid == me.sid
-            && !p.restricted
-            && p.integrity >= me.integrity
-            && !p.deny_only.iter().any(|g| me.enabled.contains(g))
-    })
+    peer_refusal(peer, me).is_none()
 }
 
 /// Client-side check of the pipe server (design W4): the same policy as for clients, and the
-/// same integrity level (CLI and GUI must run at the same elevation). `Err` is the message.
+/// same elevation (integrity level and UAC filtering) on both sides. `Err` is the message.
 pub fn server_allowed(server: Option<&Identity>, me: &Identity) -> Result<(), &'static str> {
     match server {
-        Some(s) if s.sid == me.sid && s.integrity != me.integrity => {
-            Err("agent control runs at a different elevation (run the CLI and rustXterm both elevated or both not)")
+        Some(s)
+            if s.sid == me.sid
+                && !s.restricted
+                && (s.integrity != me.integrity
+                    || more_filtered(s, me).any(|g| g == ADMINISTRATORS)
+                    || more_filtered(me, s).any(|g| g == ADMINISTRATORS)) =>
+        {
+            Err(DIFFERENT_ELEVATION)
         }
         _ if peer_allowed(server, me) => Ok(()),
         _ => Err("control pipe is not served by rustXterm of this user"),
@@ -414,6 +449,31 @@ mod tests {
         let other = Identity { sid: "S-1-5-21-9".into(), ..me.clone() };
         assert!(server_allowed(Some(&other), &me).unwrap_err().contains("not served"));
         assert!(server_allowed(None, &me).is_err());
+        // UAC filtering without an integrity difference (W39): same message in both directions.
+        let filtered = Identity { enabled: vec![], deny_only: vec!["S-1-5-32-544".into()], ..me.clone() };
+        let admin = Identity { enabled: vec!["S-1-5-32-544".into()], ..me.clone() };
+        assert_eq!(server_allowed(Some(&filtered), &admin), Err(DIFFERENT_ELEVATION));
+        assert_eq!(server_allowed(Some(&admin), &filtered), Err(DIFFERENT_ELEVATION));
+        assert_eq!(peer_refusal(Some(&filtered), &admin), Some(DIFFERENT_ELEVATION));
+    }
+
+    #[test]
+    fn refusal_reasons() {
+        let me = Identity { sid: SID.into(), integrity: 0x3000, ..Identity::default() };
+        let with = |f: fn(&mut Identity)| {
+            let mut p = me.clone();
+            f(&mut p);
+            peer_refusal(Some(&p), &me)
+        };
+        assert_eq!(with(|_| {}), None);
+        assert!(peer_refusal(None, &me).is_some_and(|m| m.contains("identify")));
+        assert!(with(|p| p.sid = "S-1-5-18".into()).is_some_and(|m| m.contains("only the user")));
+        assert!(with(|p| p.restricted = true).is_some_and(|m| m.contains("AppContainer")));
+        let me_users = Identity { enabled: vec!["S-1-5-32-545".into()], ..me.clone() };
+        let sandbox = Identity { deny_only: vec!["S-1-5-32-545".into()], ..me_users.clone() };
+        assert!(peer_refusal(Some(&sandbox), &me_users).is_some_and(|m| m.contains("filtered")));
+        assert!(with(|p| p.integrity = 0x1000).is_some_and(|m| m.contains("low-integrity")));
+        assert_eq!(with(|p| p.integrity = 0x2000), Some(DIFFERENT_ELEVATION), "non-elevated client, elevated GUI");
     }
 
     #[test]

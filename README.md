@@ -41,7 +41,7 @@ binary with light and dark themes.
 | **Agent control** | `rustxterm` CLI and local MCP server: off by default, same user only, per-session policies, approvals, audit log |
 | **Themes** | Light, dark and follow-system on every screen |
 
-Status: **v0.2.2** is the latest release (SSH, files, remote desktops, agent control, Telnet, Serial and
+Status: **v0.3.0** is the latest release (SSH, files, remote desktops, agent control, Telnet, Serial and
 remote monitoring). XDMCP, rsh and the Windows and macOS ports are next; see the
 [roadmap](docs/README.md#roadmap-and-openspec-changes).
 
@@ -85,6 +85,12 @@ Xwayland) it also needs `libxkbcommon-x11`, which some Wayland-first installs om
 `rustxterm --self-test` runs headless checks. On first start it writes
 `~/.local/share/applications/rustxterm.desktop` and its icon (unless a system entry exists), so
 GNOME and KDE show the rustXterm icon on Wayland.
+
+**Windows (preview, x86_64):** `rustxterm-X.Y.Z-windows-x86_64.zip` (portable `rustxterm.exe` and
+`rustxterm-cli.exe`) and a per-user `rustxterm-X.Y.Z-x86_64.msi` are published once the Windows
+end-to-end check passes; they are unsigned, so SmartScreen may ask for confirmation. The MSI installs
+without administrator rights, but Windows Server 2022 disables installs by standard users by default
+(`DisableMsi` policy, error 1625): install as an administrator there, or use the zip.
 
 ## Quick start
 

@@ -161,6 +161,8 @@ pub(crate) struct TransferRow {
     pub tab: TabId,
     pub direction: Direction,
     pub remote: String,
+    /// Local file (download destination or upload source).
+    pub local: String,
     pub total: Option<u64>,
     pub done: u64,
     /// Bytes per second, updated on progress events.
@@ -550,8 +552,11 @@ fn listing(
 fn row_menu(r: &egui::Response, e: &FileEntry, path: &str, local: bool, icons: &Icons, out: &mut Vec<Action>) {
     let dir = matches!(e.kind, FileKind::Dir | FileKind::Symlink);
     sidebar::context_menu(r, |ui| {
-        if sidebar::menu_item(ui, icons, "open", "Open", Some("Enter"), dir) {
-            out.push(wrap(local, SftpAction::Navigate(path.to_owned())));
+        if sidebar::menu_item(ui, icons, "open", "Open", Some("Enter"), dir || local) {
+            out.push(match dir {
+                true => wrap(local, SftpAction::Navigate(path.to_owned())),
+                false => Action::OpenLocal { path: path.into(), folder: false },
+            });
         }
         if !local && sidebar::menu_item(ui, icons, "download", "Download", None, !dir) {
             out.push(Action::Sftp(SftpAction::Select(e.name.clone())));
@@ -797,6 +802,15 @@ fn transfer_row(ui: &mut egui::Ui, t: &TransferRow, icons: &Icons, tokens: &Toke
             }
             Some(Ok(_)) => {
                 ui.colored_label(color(tokens.success), "Done");
+                if t.direction == Direction::Download {
+                    let path = PathBuf::from(&t.local);
+                    if tool(ui, icons, "file", "Open", None, true).clicked() {
+                        out.push(Action::OpenLocal { path: path.clone(), folder: false });
+                    }
+                    if tool(ui, icons, "folder-search", "Show in folder", None, true).clicked() {
+                        out.push(Action::OpenLocal { path, folder: true });
+                    }
+                }
             }
             Some(Err(e)) => {
                 ui.add(egui::Label::new(RichText::new(e).color(color(tokens.danger))).truncate()).on_hover_text(e);
@@ -1144,6 +1158,7 @@ mod tests {
             tab: TabId(1),
             direction: Direction::Upload,
             remote: "/tmp/a".into(),
+            local: "/tmp/b".into(),
             total: Some(100),
             done: 0,
             speed: 0.0,

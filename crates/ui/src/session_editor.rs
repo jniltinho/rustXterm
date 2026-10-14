@@ -56,6 +56,8 @@ pub(crate) struct Editor {
     pub serial_ports: Vec<PortInfo>,
     /// Port list status ("No serial ports found.", errors).
     pub ports_note: Option<String>,
+    /// Example port for the empty field, from the platform (`/dev/ttyUSB0`, `COM3`).
+    pub port_hint: &'static str,
     /// The port list was requested for this editor.
     pub ports_requested: bool,
     /// The session has a saved password (Telnet auto-login).
@@ -79,6 +81,7 @@ impl Editor {
             known_users: Vec::new(),
             serial_ports: Vec::new(),
             ports_note: None,
+            port_hint: "/dev/ttyUSB0",
             ports_requested: false,
             has_password: false,
             password: String::new(),
@@ -811,8 +814,7 @@ fn serial_basic(ui: &mut egui::Ui, ed: &mut Editor, icons: &Icons, out: &mut Vec
         ui.add_space(M.space[5]);
         let l = ui.label("Serial port");
         let o = &mut ed.session.serial;
-        ui.add(egui::TextEdit::singleline(&mut o.port).hint_text("/dev/ttyUSB0").desired_width(200.0))
-            .labelled_by(l.id);
+        ui.add(egui::TextEdit::singleline(&mut o.port).hint_text(ed.port_hint).desired_width(200.0)).labelled_by(l.id);
         ui.add_space(-M.space[2]);
         let picker = icon_button(ui, icons, "plug", "Detected serial ports", None);
         egui::Popup::menu(&picker).show(|ui| {

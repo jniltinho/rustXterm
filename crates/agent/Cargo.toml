@@ -20,7 +20,8 @@ serde_json.workspace = true
 secrecy.workspace = true
 base64.workspace = true
 clap.workspace = true
-tokio.workspace = true
+rpassword.workspace = true
+tokio = { workspace = true, features = ["signal"] }
 
 [dev-dependencies]
 rxt-platform-linux.workspace = true
