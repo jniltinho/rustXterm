@@ -793,7 +793,10 @@ fn serial_line_commands_reach_the_port_and_fail_on_other_tabs() {
     h.send(Command::SerialBreak { tab: serial, ms: 250 }).unwrap();
     h.send(Command::SerialLines { tab: serial, dtr: Some(false), rts: None }).unwrap();
     wait_until(|| state.lines.lock().unwrap().len() == 2);
-    assert_eq!(*state.lines.lock().unwrap(), ["break 250", "dtr Some(false) rts None"]);
+    // Break and line changes run on separate tasks: their order is not guaranteed.
+    let mut lines = state.lines.lock().unwrap().clone();
+    lines.sort();
+    assert_eq!(lines, ["break 250", "dtr Some(false) rts None"]);
     let ssh = connect(&h, "a");
     h.send(Command::SerialBreak { tab: ssh, ms: 250 }).unwrap();
     let msg = wait_for(&h, |ev| match ev {

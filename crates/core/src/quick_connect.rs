@@ -153,15 +153,15 @@ mod tests {
 
     #[test]
     fn serial_defaults_and_parameters() {
-        let s = parse("serial:///dev/ttyUSB0").unwrap();
+        let s = parse_for("serial:///dev/ttyUSB0", false).unwrap();
         assert_eq!((s.protocol, s.serial.port.as_str()), (Protocol::Serial, "/dev/ttyUSB0"));
         assert_eq!(s.serial.line, LineConfig::default());
         assert_eq!(s.name, "ttyUSB0 @ 115200");
 
-        let s = parse("serial://ttyUSB0").unwrap();
+        let s = parse_for("serial://ttyUSB0", false).unwrap();
         assert_eq!(s.serial.port, "/dev/ttyUSB0");
 
-        let s = parse("serial:///dev/ttyS1?baud=9600&data=7&parity=e&stop=2&flow=rtscts").unwrap();
+        let s = parse_for("serial:///dev/ttyS1?baud=9600&data=7&parity=e&stop=2&flow=rtscts", false).unwrap();
         let want = LineConfig {
             baud: 9600,
             data_bits: DataBits::Seven,
@@ -170,7 +170,7 @@ mod tests {
             flow: FlowControl::Hardware,
         };
         assert_eq!((s.serial.port.as_str(), s.serial.line), ("/dev/ttyS1", want));
-        assert_eq!(parse("serial:///dev/ttyUSB0?baud=9600").unwrap().serial.line.to_string(), "9600 8N1");
+        assert_eq!(parse_for("serial:///dev/ttyUSB0?baud=9600", false).unwrap().serial.line.to_string(), "9600 8N1");
     }
 
     #[test]

@@ -264,9 +264,10 @@ mod tests {
     }
 
     /// A client whose connection token is restricted or low integrity is never handed on; it
-    /// gets a `denied` response whose message contains `reason`. With `kernel_may_refuse` the
-    /// pipe's mandatory label may already deny the open (low integrity, no write-up).
-    fn refused_with(token: sys::test_tokens::Token, reason: &'static str, kernel_may_refuse: bool) {
+    /// gets a `denied` response whose message contains `reason`. With `may_fail_early` the
+    /// pipe's mandatory label may already deny the open (low integrity, no write-up), or the
+    /// client may refuse a server it cannot identify (restricted token).
+    fn refused_with(token: sys::test_tokens::Token, reason: &'static str, may_fail_early: bool) {
         let _pipe = serial();
         let t = PipeControl::new();
         rt().block_on(async {
@@ -286,7 +287,7 @@ mod tests {
                 Ok(Some(Response::Err { code: ErrorCode::Denied, message, .. })) => {
                     assert!(message.contains(reason), "{message}");
                 }
-                Err(_) if kernel_may_refuse => {}
+                Err(_) if may_fail_early => {}
                 other => panic!("the refused client got {other:?}"),
             }
         });
@@ -316,7 +317,8 @@ mod tests {
 
     #[test]
     fn restricted_token_client_is_refused() {
-        refused_with(sys::test_tokens::restricted().unwrap(), "AppContainer", false);
+        // A restricted token cannot read the server identity, so the client may refuse first.
+        refused_with(sys::test_tokens::restricted().unwrap(), "AppContainer", true);
     }
 
     #[test]
