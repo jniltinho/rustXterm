@@ -245,6 +245,26 @@ fn snapshot_main_empty() {
 }
 
 #[test]
+fn snapshot_home_recent_sessions() {
+    let mut e = env();
+    e.app().settings.first_run_theme_done = true;
+    let recent = [
+        (Protocol::Ssh, "web1.lab.example"),
+        (Protocol::Vnc, "desktop"),
+        (Protocol::Rdp, "win.lab.example"),
+        (Protocol::Sftp, "files"),
+        (Protocol::Ftp, "ftp-mirror.example (anonymous)"),
+        (Protocol::Telnet, "router"),
+        (Protocol::Serial, "console"),
+    ];
+    for (proto, name) in recent.into_iter().rev() {
+        let s = Session::new(proto, name, None, None);
+        e.app().store.push_recent(&s);
+    }
+    e.snap("home_recent");
+}
+
+#[test]
 fn snapshot_first_run_home() {
     let mut e = env();
     e.app().settings.first_run_theme_done = false;

@@ -16,8 +16,11 @@ const LOGO: &[u8] = include_bytes!("../../../assets/icons/rustxterm.svg");
 const BUTTON: egui::Vec2 = vec2(200.0, 30.0);
 /// First-run chooser panel size.
 const CHOOSER: egui::Vec2 = vec2(540.0, 176.0);
-/// Recent sessions listed at most.
-const RECENT_MAX: usize = 8;
+/// Recent sessions listed at most (three rows of three).
+const RECENT_MAX: usize = 9;
+/// Recent sessions panel: width and columns.
+const RECENT_PANEL_W: f32 = 576.0;
+const RECENT_COLS: usize = 3;
 
 impl App {
     pub(crate) fn home(&self, ui: &mut Ui, out: &mut Vec<Action>) {
@@ -58,20 +61,68 @@ impl App {
             }
             if !self.store.recent.is_empty() {
                 ui.add_space(m.space[6]);
-                ui.label(RichText::new("Recent sessions").text_style(TextStyle::Name(crate::theme::STRONG.into())));
-                for s in self.store.recent.iter().take(RECENT_MAX) {
-                    ui.horizontal(|ui| {
-                        ui.add_space(((ui.available_width() - BUTTON.x) / 2.0).max(0.0));
-                        if let Some(img) = self.icons.image(icons::session_icon(s), m.icon_small) {
-                            ui.add(img);
-                        }
-                        if ui.link(&s.name).clicked() {
-                            out.push(Action::Open(Box::new(s.clone())));
-                        }
-                    });
-                }
+                recent_panel(ui, &self.icons, &self.store.recent, out);
             }
         });
+    }
+}
+
+/// "Recent sessions": a light panel centered under the buttons with the title and a grid of three
+/// columns; each entry is the session icon and its name (truncated to the column), a click opens it.
+fn recent_panel(ui: &mut Ui, icons: &Icons, recent: &[rxt_core::Session], out: &mut Vec<Action>) {
+    let m = Metrics::DEFAULT;
+    let shown = recent.iter().take(RECENT_MAX).collect::<Vec<_>>();
+    let rows = shown.len().div_ceil(RECENT_COLS);
+    let row_h = 24.0;
+    let height = 12.0 + 22.0 + rows as f32 * row_h + 10.0;
+    let width = RECENT_PANEL_W.min(ui.available_width());
+    let (rect, panel) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
+    panel.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, "Recent sessions"));
+    ui.painter().rect_filled(rect, 0.0, ui.visuals().faint_bg_color);
+    ui.painter().text(
+        pos2(rect.center().x, rect.min.y + 12.0 + 9.0),
+        Align2::CENTER_CENTER,
+        "Recent sessions",
+        TextStyle::Name(crate::theme::STRONG.into()).resolve(ui.style()),
+        ui.visuals().strong_text_color(),
+    );
+    let col_w = (width - 40.0) / RECENT_COLS as f32;
+    let font = TextStyle::Body.resolve(ui.style());
+    for (i, s) in shown.iter().enumerate() {
+        let (row, col) = (i / RECENT_COLS, i % RECENT_COLS);
+        let cell = Rect::from_min_size(
+            pos2(rect.min.x + 20.0 + col as f32 * col_w, rect.min.y + 12.0 + 22.0 + row as f32 * row_h),
+            vec2(col_w - 8.0, row_h),
+        );
+        let r = ui.interact(cell, ui.id().with(("recent", i)), Sense::click());
+        let icon = Rect::from_min_size(
+            pos2(cell.min.x, cell.center().y - m.icon_small / 2.0),
+            vec2(m.icon_small, m.icon_small),
+        );
+        if let Some(img) = icons.image(icons::session_icon(s), m.icon_small) {
+            img.paint_at(ui, icon);
+        }
+        let text_w = cell.width() - m.icon_small - 6.0;
+        let mut job = egui::text::LayoutJob::simple_singleline(s.name.clone(), font.clone(), ui.visuals().text_color());
+        job.wrap = egui::text::TextWrapping::truncate_at_width(text_w);
+        let galley = ui.painter().layout_job(job);
+        let text_pos = pos2(icon.max.x + 6.0, cell.center().y - galley.size().y / 2.0);
+        let text_rect = Rect::from_min_size(text_pos, galley.size());
+        ui.painter().galley(text_pos, galley, ui.visuals().text_color());
+        if r.hovered() {
+            let y = text_rect.max.y;
+            ui.painter().line_segment(
+                [pos2(text_rect.min.x, y), pos2(text_rect.max.x, y)],
+                Stroke::new(1.0, ui.visuals().text_color()),
+            );
+            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+        }
+        let host = if s.host.is_empty() { String::new() } else { format!(" ({})", s.host) };
+        let r = r.on_hover_text(format!("{}{host}", s.name));
+        r.widget_info(|| WidgetInfo::labeled(WidgetType::Link, true, &s.name));
+        if r.clicked() {
+            out.push(Action::Open(Box::new((*s).clone())));
+        }
     }
 }
 
