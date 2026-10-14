@@ -9,8 +9,8 @@ use egui::{
 };
 use rxt_core::{Metrics, Rgba, TerminalScheme, Tokens, TypeScale};
 
-/// Bundled fonts (SIL OFL 1.1, see ATTRIBUTION.md): (egui font name, bytes).
-const FONTS: [(&str, &[u8]); 7] = [
+/// Bundled fonts (licenses in ATTRIBUTION.md): (egui font name, bytes).
+const FONTS: [(&str, &[u8]); 15] = [
     ("Noto Sans", include_bytes!("../../../assets/fonts/noto-sans/NotoSans-Regular.ttf")),
     ("Noto Sans Bold", include_bytes!("../../../assets/fonts/noto-sans/NotoSans-Bold.ttf")),
     ("JetBrains Mono", include_bytes!("../../../assets/fonts/jetbrains-mono/JetBrainsMono-Regular.ttf")),
@@ -18,6 +18,14 @@ const FONTS: [(&str, &[u8]); 7] = [
     ("Cascadia Mono", include_bytes!("../../../assets/fonts/cascadia-mono/CascadiaMono-Regular.ttf")),
     ("Hack", include_bytes!("../../../assets/fonts/hack/Hack-Regular.ttf")),
     ("DejaVu Sans Mono", include_bytes!("../../../assets/fonts/dejavu-sans-mono/DejaVuSansMono.ttf")),
+    ("Inconsolata", include_bytes!("../../../assets/fonts/inconsolata/Inconsolata-Regular.ttf")),
+    ("IBM Plex Mono", include_bytes!("../../../assets/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf")),
+    ("IBM Plex Mono Text", include_bytes!("../../../assets/fonts/ibm-plex-mono/IBMPlexMono-Text.ttf")),
+    ("Iosevka Fixed", include_bytes!("../../../assets/fonts/iosevka/IosevkaFixed-Regular.ttf")),
+    ("Source Code Pro", include_bytes!("../../../assets/fonts/source-code-pro/SourceCodePro-Regular.ttf")),
+    ("Fira Mono", include_bytes!("../../../assets/fonts/fira-mono/FiraMono-Regular.ttf")),
+    ("Ubuntu Mono", include_bytes!("../../../assets/fonts/ubuntu-mono/UbuntuMono-Regular.ttf")),
+    ("Terminus", include_bytes!("../../../assets/fonts/terminus/TerminusTTF-4.49.3.ttf")),
 ];
 
 /// Bold UI family (strong role).
@@ -34,7 +42,20 @@ pub(crate) fn color(c: Rgba) -> Color32 {
 
 /// Bundled monospace faces offered for the terminal; the first is the default (crisp at 13 px with
 /// egui's rasterizer, like Windows Terminal's default).
-pub(crate) const MONO_FONTS: [&str; 4] = ["Cascadia Mono", "JetBrains Mono", "Hack", FULL_MONO];
+pub(crate) const MONO_FONTS: [&str; 12] = [
+    "Cascadia Mono",
+    "JetBrains Mono",
+    "Hack",
+    FULL_MONO,
+    "Inconsolata",
+    "IBM Plex Mono",
+    "IBM Plex Mono Text",
+    "Iosevka Fixed",
+    "Source Code Pro",
+    "Fira Mono",
+    "Ubuntu Mono",
+    "Terminus",
+];
 
 /// Bundled monospace face with every symbol the terminal UI draws; first fallback of the others.
 const FULL_MONO: &str = "DejaVu Sans Mono";
@@ -255,6 +276,10 @@ mod tests {
         );
         assert!(prop.len() > 1 && mono.len() > 1, "egui defaults stay as fallbacks");
         assert_eq!(defs.families[&FontFamily::Name(BOLD.into())][0], BOLD);
+        for m in MONO_FONTS.iter().filter(|m| **m != FULL_MONO) {
+            let chain = &defs.families[&FontFamily::Name((*m).into())];
+            assert_eq!((chain[0].as_str(), chain[1].as_str()), (*m, FULL_MONO), "{m} falls back to {FULL_MONO}");
+        }
     }
 
     #[test]

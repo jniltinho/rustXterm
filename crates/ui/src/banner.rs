@@ -119,17 +119,17 @@ pub(crate) fn render(info: &BannerInfo, cols: usize, scheme: &TerminalScheme) ->
     let width = |l: &[Seg]| l.iter().map(|(_, t)| t.chars().count()).sum::<usize>();
     let title = format!("rustXterm {}", env!("CARGO_PKG_VERSION"));
     let content = lines.iter().map(|l| width(l)).max().unwrap_or(0).max(title.chars().count() + 2);
-    // `│ ` + content + ` │` must fit in `cols`.
+    // `| ` + content + ` |` must fit in `cols`. The box is always drawn with ASCII dashes (owner
+    // choice); `unicode` only selects the marks and arrows inside it.
     let inner = content.min(cols - 4);
-    let (h, v, tl, tr, bl, br) =
-        if u { ('─', '│', '╭', '╮', '╰', '╯') } else { ('-', '|', '+', '+', '+', '+') };
+    let (h, v, tl, tr, bl, br) = ('-', '|', '+', '+', '+', '+');
     let sgr = |role: (u8, u8)| format!("\x1b[{}m", if dark { role.1 } else { role.0 });
     let border = sgr(BORDER);
     let reset = "\x1b[0m";
     let ell = if u { '…' } else { '~' };
 
     let mut out = String::new();
-    // Top/bottom border with an embedded label: `╭─ label ───╮`, total width inner + 4.
+    // Top/bottom border with an embedded label: `+- label ---+`, total width inner + 4.
     let rule = |out: &mut String, left: char, right: char, label: &str, role: (u8, u8)| {
         let label = fit(label, inner.saturating_sub(2), ell);
         out.push_str(&border);
@@ -262,8 +262,8 @@ mod tests {
             let w = boxed[0].chars().count();
             assert!(w <= cols, "{cols}: {w}");
             assert!(boxed.iter().all(|l| l.chars().count() == w), "{cols}: {boxed:#?}");
-            assert!(boxed[0].starts_with("╭─ rustXterm ") && boxed[0].ends_with('╮'));
-            assert!(boxed.last().unwrap().starts_with('╰'));
+            assert!(boxed[0].starts_with("+- rustXterm ") && boxed[0].ends_with('+'));
+            assert!(boxed.last().unwrap().starts_with('+'));
         }
         let wide = plain(&draw(&ssh_session(), Some(&facts()), 200, true, false)).join("\n");
         for want in [
@@ -298,8 +298,8 @@ mod tests {
     fn colors_follow_light_and_dark_schemes() {
         let light = draw(&ssh_session(), Some(&facts()), 80, true, false);
         let dark = draw(&ssh_session(), Some(&facts()), 80, true, true);
-        assert!(light.contains("\x1b[32m✓") && light.contains("\x1b[31m✗") && light.contains("\x1b[33m╭"));
-        assert!(dark.contains("\x1b[92m✓") && dark.contains("\x1b[91m✗") && dark.contains("\x1b[93m╭"));
+        assert!(light.contains("\x1b[32m✓") && light.contains("\x1b[31m✗") && light.contains("\x1b[33m+-"));
+        assert!(dark.contains("\x1b[92m✓") && dark.contains("\x1b[91m✗") && dark.contains("\x1b[93m+-"));
         assert!(!light.contains("\x1b[92m") && !dark.contains("\x1b[32m"));
     }
 

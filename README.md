@@ -30,7 +30,7 @@ binary with light and dark themes.
 | Area | What you get |
 |---|---|
 | **SSH** | Password, public key, agent and keyboard-interactive auth; host keys checked before auth on every hop; jump hosts; compression; remote command; X11 forwarding (off by default) |
-| **Terminal** | xterm-256color with truecolor, mouse reporting, scrollback, search, paste confirmation; MultiExec typing into selected tabs; bundled Cascadia Mono (default), JetBrains Mono, Hack and DejaVu Sans Mono; bar, block or underline cursor |
+| **Terminal** | xterm-256color with truecolor, mouse reporting, scrollback, search, paste confirmation; MultiExec typing into selected tabs; bundled Cascadia Mono (default), JetBrains Mono, Hack, DejaVu Sans Mono, Inconsolata, IBM Plex Mono, Iosevka Fixed, Source Code Pro, Fira Mono, Ubuntu Mono and Terminus; bar, block or underline cursor |
 | **Files** | SFTP side panel that follows the shell's directory, with Name, Size (KB), Last modified, Owner, Group and Access columns; dual-pane SFTP and FTP/FTPS tabs (explicit/implicit TLS, passive/active); per-tab transfer list with Open and Show in folder for downloads |
 | **Telnet and Serial** | Telnet sessions (raw TCP mode, optional auto-login, plaintext warning); serial consoles with port discovery and line settings |
 | **Monitoring** | Agentless bar under SSH tabs with live CPU, memory, disk usage, network throughput and uptime of the remote host |
@@ -246,7 +246,10 @@ rustXterm stands on great open-source work, including
 [cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild),
 [simple-icons](https://simpleicons.org/) for distribution logos, Tux by Larry Ewing, and the
 [Noto Sans](https://notofonts.github.io/), [Cascadia Mono](https://github.com/microsoft/cascadia-code),
-[JetBrains Mono](https://www.jetbrains.com/lp/mono/), [Hack](https://sourcefoundry.org/hack/) and
-[DejaVu Sans Mono](https://dejavu-fonts.github.io/) fonts.
+[JetBrains Mono](https://www.jetbrains.com/lp/mono/), [Hack](https://sourcefoundry.org/hack/),
+[DejaVu Sans Mono](https://dejavu-fonts.github.io/), [Inconsolata](https://github.com/googlefonts/Inconsolata),
+[IBM Plex Mono](https://github.com/IBM/plex), [Iosevka](https://github.com/be5invis/Iosevka),
+[Source Code Pro](https://github.com/adobe-fonts/source-code-pro), [Fira Mono](https://github.com/mozilla/Fira),
+[Ubuntu Mono](https://design.ubuntu.com/font) and [Terminus](https://files.ax86.net/terminus-ttf/) fonts.
 
 </details>
