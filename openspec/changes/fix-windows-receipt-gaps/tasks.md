@@ -16,6 +16,6 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Windows clippy (`--target x86_64-pc-windows-gnu`) and the CI `windows-test` job green
+- [x] 3.1 Windows clippy (`--target x86_64-pc-windows-gnu`) and the CI `windows-test` job green
 - [ ] 3.2 New Windows receipt on the Windows Server 2022 test VM for the release commit: W19 (pipelined), W25, W27, W28, W30, W39 PASS; W17 on a USB-serial adapter or waived by the owner in the receipt; `cargo xtask windows-receipt --check dist/<version>` passes
 - [x] 3.3 Document the Server 2022 `DisableMsi` policy note (standard-user MSI install) in the release notes / docs

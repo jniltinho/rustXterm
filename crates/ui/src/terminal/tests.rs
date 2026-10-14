@@ -280,6 +280,32 @@ fn unknown_font_family_falls_back_with_message() {
     assert_eq!(h.state().font_fallback, None);
 }
 
+/// Every bundled monospace family is selectable for the terminal: no fallback message, and the
+/// grid follows the chosen face's metrics (narrower faces fit more columns in the same width).
+#[test]
+fn every_bundled_terminal_font_is_used() {
+    let mut h = harness(Terminal::new(10, 2, 10), false);
+    h.ctx.set_fonts(crate::theme::fonts());
+    h.step();
+    let mut cols = Vec::new();
+    for name in crate::theme::MONO_FONTS {
+        h.state_mut().config.prefs.font_family = Some(name.to_owned());
+        h.step();
+        h.step();
+        assert_eq!(h.state().font_fallback, None, "{name} fell back");
+        let width =
+            h.ctx.fonts_mut(|f| f.glyph_width(&egui::FontId::new(13.0, egui::FontFamily::Name(name.into())), 'M'));
+        cols.push((name, h.state().term.cols(), width));
+    }
+    let widths: std::collections::BTreeSet<u32> = cols.iter().map(|c| (c.2 * 100.0) as u32).collect();
+    assert!(widths.len() > 3, "faces should differ in advance width: {cols:?}");
+    // Columns × advance width is the same usable width for every face (within one cell).
+    let used: Vec<f32> = cols.iter().map(|(_, c, w)| *c as f32 * w).collect();
+    let (lo, hi) = used.iter().fold((f32::MAX, 0.0f32), |(lo, hi), u| (lo.min(*u), hi.max(*u)));
+    let widest = cols.iter().map(|c| c.2).fold(0.0f32, f32::max);
+    assert!(hi - lo <= widest, "grid does not follow the face metrics: {cols:?}");
+}
+
 /// Pixel at logical position `p` of a rendered frame.
 fn pixel(img: &image::RgbaImage, ppp: f32, p: Pos2) -> [u8; 3] {
     let px = img.get_pixel((p.x * ppp) as u32, (p.y * ppp) as u32).0;
