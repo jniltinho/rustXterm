@@ -4,7 +4,7 @@
 
 # rustXterm
 
-**A native Rust terminal and remote session manager for Linux.**
+**A native Rust terminal and remote session manager for Linux (Windows preview).**
 
 [![Release](https://img.shields.io/github/v/release/jniltinho/rustXterm?include_prereleases&sort=semver&color=blue)](https://github.com/jniltinho/rustXterm/releases)
 [![CI](https://github.com/jniltinho/rustXterm/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jniltinho/rustXterm/actions/workflows/ci.yml)
@@ -17,7 +17,7 @@
 ## Why rustXterm
 
 rustXterm brings the familiar "session tree + tabbed terminals + file panels + remote desktops" workflow
-to the Linux desktop as one fast, themed binary: no Electron, no webview. Sessions and
+to the desktop as one fast, themed binary: no Electron, no webview. Sessions and
 credentials live in an encrypted store, and AI agents can drive it through a CLI and an MCP server under
 explicit, audited permissions.
 
@@ -30,8 +30,8 @@ binary with light and dark themes.
 | Area | What you get |
 |---|---|
 | **SSH** | Password, public key, agent and keyboard-interactive auth; host keys checked before auth on every hop; jump hosts; compression; remote command; X11 forwarding (off by default) |
-| **Terminal** | xterm-256color with truecolor, mouse reporting, scrollback, search, paste confirmation; MultiExec typing into selected tabs |
-| **Files** | SFTP side panel that follows the shell's directory; dual-pane SFTP and FTP/FTPS tabs (explicit/implicit TLS, passive/active) |
+| **Terminal** | xterm-256color with truecolor, mouse reporting, scrollback, search, paste confirmation; MultiExec typing into selected tabs; bundled Cascadia Mono (default), JetBrains Mono, Hack and DejaVu Sans Mono; bar, block or underline cursor |
+| **Files** | SFTP side panel that follows the shell's directory, with Name, Size (KB), Last modified, Owner, Group and Access columns; dual-pane SFTP and FTP/FTPS tabs (explicit/implicit TLS, passive/active); per-tab transfer list with Open and Show in folder for downloads |
 | **Telnet and Serial** | Telnet sessions (raw TCP mode, optional auto-login, plaintext warning); serial consoles with port discovery and line settings |
 | **Monitoring** | Agentless bar under SSH tabs with live CPU, memory, disk usage, network throughput and uptime of the remote host |
 | **Remote desktop** | Native RDP (IronRDP) and VNC (vnc-rs) embedded in tabs, VNC over SSH, view-only mode, limits against hostile servers |
@@ -39,10 +39,11 @@ binary with light and dark themes.
 | **Encrypted store** | Sessions, credentials, trust records, audit and history in SQLCipher, unlocked by a master password and optionally the desktop keyring |
 | **Import** | Import sessions from a MobaXterm.ini file (never passwords) with preview and skip report; TOML export without credentials |
 | **Agent control** | `rustxterm` CLI and local MCP server: off by default, same user only, per-session policies, approvals, audit log |
-| **Themes** | Light, dark and follow-system on every screen |
+| **Desktop** | Light, dark and follow-system themes on every screen; original flat icon set; notifications for background transfers and dropped sessions; session folders remember their state; window reopens on the monitor you left it on |
 
-Status: **v0.3.0** is the latest release (SSH, files, remote desktops, agent control, Telnet, Serial and
-remote monitoring). XDMCP, rsh and the Windows and macOS ports are next; see the
+Status: **v0.3.0** is the first public release (SSH, files, remote desktops, agent control, Telnet,
+Serial and remote monitoring) for Linux x86_64. Windows builds are in preview while the Windows
+end-to-end check is completed; a native Apple Silicon port, XDMCP and rsh are planned; see the
 [roadmap](docs/README.md#roadmap-and-openspec-changes).
 
 ## Screenshots
@@ -91,6 +92,10 @@ GNOME and KDE show the rustXterm icon on Wayland.
 end-to-end check passes; they are unsigned, so SmartScreen may ask for confirmation. The MSI installs
 without administrator rights, but Windows Server 2022 disables installs by standard users by default
 (`DisableMsi` policy, error 1625): install as an administrator there, or use the zip.
+
+The renderer picks a GPU backend automatically (OpenGL on Windows when a hardware adapter exists,
+since DX12 flickers on some Intel drivers). Set `WGPU_BACKEND=gl`, `vulkan` or `dx12` to force one if
+the window flickers or stays black.
 
 ## Quick start
 
@@ -193,6 +198,10 @@ make dist VERSION=0.0.0-test    # binary, AppImage, tarball and SHA256SUMS in di
 Without `make`, call the wrapper directly: `scripts/cargo-docker.sh cargo test --workspace`. The
 [developer guide](docs/DEVELOPMENT.md) covers the full workflow.
 
+The toolchain stages (pinned Rust, mingw-w64 for Windows, AppImage tools) are also published on Docker
+Hub as `jniltinho/rustxterm-{toolchain,windows-toolchain,appimage-tools}:snapshot-20261001`; CI uses
+them as build cache, and the `Dockerfile` remains the source of truth.
+
 ## Documentation
 
 | Document | Contents |
@@ -209,7 +218,8 @@ Without `make`, call the wrapper directly: `scripts/cargo-docker.sh cargo test -
   XChaCha20-Poly1305 by your master password and, optionally, the desktop keyring (Secret Service).
 - Host keys are checked before authentication on every hop; changed or revoked keys are refused, and an
   unreadable trust source fails closed. FTPS and RDP certificates are pinned on first use.
-- Agent control is off by default, reachable only by your user over a Unix socket, and never discloses
+- Agent control is off by default, reachable only by your user (a Unix socket on Linux, a named pipe
+  with an owner-only ACL and an elevation check on Windows), and never discloses
   passwords or keys: credentials appear only as `saved` or `absent`.
 - Remote desktop clients cap framebuffer size and memory and time out stalled servers.
 - Releases are built in a pinned, offline Docker build and published with `SHA256SUMS`.
@@ -232,7 +242,11 @@ rustXterm stands on great open-source work, including
 [rusqlite](https://github.com/rusqlite/rusqlite) with [SQLCipher](https://www.zetetic.net/sqlcipher/),
 [oo7](https://github.com/bilelmoussaoui/oo7), the [RustCrypto](https://github.com/RustCrypto) crates,
 [rmcp](https://github.com/modelcontextprotocol/rust-sdk), [clap](https://github.com/clap-rs/clap),
-[cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild) and the
-[Noto Sans](https://notofonts.github.io/) and [JetBrains Mono](https://www.jetbrains.com/lp/mono/) fonts.
+[rpassword](https://github.com/conradkleinespel/rpassword),
+[cargo-zigbuild](https://github.com/rust-cross/cargo-zigbuild),
+[simple-icons](https://simpleicons.org/) for distribution logos, Tux by Larry Ewing, and the
+[Noto Sans](https://notofonts.github.io/), [Cascadia Mono](https://github.com/microsoft/cascadia-code),
+[JetBrains Mono](https://www.jetbrains.com/lp/mono/), [Hack](https://sourcefoundry.org/hack/) and
+[DejaVu Sans Mono](https://dejavu-fonts.github.io/) fonts.
 
 </details>
