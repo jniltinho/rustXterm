@@ -10,7 +10,7 @@ use egui::{
 use rxt_core::{Metrics, Rgba, TerminalScheme, Tokens, TypeScale};
 
 /// Bundled fonts (licenses in ATTRIBUTION.md): (egui font name, bytes).
-const FONTS: [(&str, &[u8]); 15] = [
+const FONTS: [(&str, &[u8]); 14] = [
     ("Noto Sans", include_bytes!("../../../assets/fonts/noto-sans/NotoSans-Regular.ttf")),
     ("Noto Sans Bold", include_bytes!("../../../assets/fonts/noto-sans/NotoSans-Bold.ttf")),
     ("JetBrains Mono", include_bytes!("../../../assets/fonts/jetbrains-mono/JetBrainsMono-Regular.ttf")),
@@ -21,7 +21,6 @@ const FONTS: [(&str, &[u8]); 15] = [
     ("Inconsolata", include_bytes!("../../../assets/fonts/inconsolata/Inconsolata-Regular.ttf")),
     ("IBM Plex Mono", include_bytes!("../../../assets/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf")),
     ("IBM Plex Mono Text", include_bytes!("../../../assets/fonts/ibm-plex-mono/IBMPlexMono-Text.ttf")),
-    ("Iosevka Fixed", include_bytes!("../../../assets/fonts/iosevka/IosevkaFixed-Regular.ttf")),
     ("Source Code Pro", include_bytes!("../../../assets/fonts/source-code-pro/SourceCodePro-Regular.ttf")),
     ("Fira Mono", include_bytes!("../../../assets/fonts/fira-mono/FiraMono-Regular.ttf")),
     ("Ubuntu Mono", include_bytes!("../../../assets/fonts/ubuntu-mono/UbuntuMono-Regular.ttf")),
@@ -42,7 +41,7 @@ pub(crate) fn color(c: Rgba) -> Color32 {
 
 /// Bundled monospace faces offered for the terminal; the first is the default (crisp at 13 px with
 /// egui's rasterizer, like Windows Terminal's default).
-pub(crate) const MONO_FONTS: [&str; 12] = [
+pub(crate) const MONO_FONTS: [&str; 11] = [
     "Cascadia Mono",
     "JetBrains Mono",
     "Hack",
@@ -50,7 +49,6 @@ pub(crate) const MONO_FONTS: [&str; 12] = [
     "Inconsolata",
     "IBM Plex Mono",
     "IBM Plex Mono Text",
-    "Iosevka Fixed",
     "Source Code Pro",
     "Fira Mono",
     "Ubuntu Mono",
