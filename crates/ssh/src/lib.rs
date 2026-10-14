@@ -26,7 +26,9 @@ use std::time::Duration;
 use russh::client::{AuthResult, Handle, KeyboardInteractiveAuthResponse, Msg};
 use russh::keys::agent::client::{AgentClient, AgentStream};
 use russh::keys::{PrivateKey, PrivateKeyWithHashAlg, PublicKey};
-use russh::{ChannelMsg, ChannelReadHalf, ChannelWriteHalf, MethodKind, MethodSet, Preferred, compression};
+use russh::{
+    ChannelMsg, ChannelReadHalf, ChannelWriteHalf, MethodKind, MethodSet, Preferred, cipher, compression, kex, mac,
+};
 use rxt_core::{Error, PromptAnswer, PromptKind, Result, Session, SshInfo, Tunnel, TunnelState};
 use tokio_util::sync::CancellationToken;
 
@@ -142,14 +144,29 @@ pub const EXEC_OUTPUT_CAP: usize = 8 << 20;
 const COMPRESSION_ON: &[compression::Name] = &[compression::ZLIB_LEGACY, compression::ZLIB, compression::NONE];
 const COMPRESSION_OFF: &[compression::Name] = &[compression::NONE];
 
+/// russh's safe defaults followed by the legacy algorithms old network gear still needs
+/// (Cisco IOS: `diffie-hellman-group14-sha1`, `aes*-cbc`, `hmac-sha1`). Negotiation picks the
+/// first client entry the server offers, so modern servers never fall back to these.
+fn with_legacy<T: Clone>(safe: &[T], legacy: &[T]) -> Cow<'static, [T]> {
+    Cow::Owned([safe, legacy].concat())
+}
+
+fn preferred(compression: bool) -> Preferred {
+    let d = Preferred::DEFAULT;
+    Preferred {
+        kex: with_legacy(&d.kex, &[kex::DH_G14_SHA1, kex::DH_GEX_SHA1, kex::DH_G1_SHA1]),
+        cipher: with_legacy(&d.cipher, &[cipher::AES_256_CBC, cipher::AES_192_CBC, cipher::AES_128_CBC]),
+        mac: with_legacy(&d.mac, &[mac::HMAC_SHA1_ETM, mac::HMAC_SHA1]),
+        compression: Cow::Borrowed(if compression { COMPRESSION_ON } else { COMPRESSION_OFF }),
+        ..d
+    }
+}
+
 fn config(session: &Session) -> Arc<russh::client::Config> {
     let o = &session.ssh;
     Arc::new(russh::client::Config {
         keepalive_interval: (o.keepalive_secs > 0).then(|| Duration::from_secs(u64::from(o.keepalive_secs))),
-        preferred: Preferred {
-            compression: Cow::Borrowed(if o.compression { COMPRESSION_ON } else { COMPRESSION_OFF }),
-            ..Preferred::DEFAULT
-        },
+        preferred: preferred(o.compression),
         nodelay: true,
         ..Default::default()
     })
@@ -641,6 +658,19 @@ mod tests {
         std::fs::remove_dir_all(&dir).unwrap();
     }
     use super::*;
+
+    #[test]
+    fn legacy_algorithms_come_after_safe_defaults() {
+        let p = preferred(false);
+        let d = Preferred::DEFAULT;
+        assert_eq!(&p.kex[..d.kex.len()], &d.kex[..]);
+        assert!(p.kex[d.kex.len()..].contains(&kex::DH_G14_SHA1));
+        assert!(p.kex.contains(&kex::DH_G1_SHA1));
+        assert_eq!(&p.cipher[..d.cipher.len()], &d.cipher[..]);
+        assert!(p.cipher.contains(&cipher::AES_128_CBC));
+        assert_eq!(&p.mac[..d.mac.len()], &d.mac[..]);
+        assert!(p.mac.contains(&mac::HMAC_SHA1));
+    }
 
     #[test]
     fn startup_command_quotes_dir() {
