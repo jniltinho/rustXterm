@@ -85,6 +85,23 @@ scripts/cargo-docker.sh bash          # interactive shell
 `RUST_LOG`, `INSTA_UPDATE` and `UPDATE_SNAPSHOTS` are passed through. After changing the `Dockerfile`,
 rebuild the image with `make toolchain`.
 
+### Published build cache
+
+Building the `toolchain`, `windows-toolchain` and `appimage-tools` stages downloads about 150 Ubuntu
+packages from the dated `snapshot.ubuntu.com` mirror, which can take most of an hour from CI runners.
+The stages are therefore published, with inline build cache, as
+`docker.io/jniltinho/rustxterm-{toolchain,windows-toolchain,appimage-tools}:snapshot-20261001`
+(the tag names the apt snapshot date), and `ci.yml` / `release.yml` list them in `cache-from`. The
+Dockerfile stays the source of truth: when it changes, BuildKit simply rebuilds the changed stages.
+After changing a tool stage or the snapshot date, republish with a new tag and update the workflows:
+
+```sh
+for t in toolchain windows-toolchain appimage-tools; do
+  docker buildx build --builder default --target $t --cache-to type=inline \
+    --tag docker.io/jniltinho/rustxterm-$t:snapshot-YYYYMMDD --push .
+done
+```
+
 ## Common tasks
 
 The root `Makefile` wraps everything above; `make help` lists the targets. Each target calls

@@ -29,7 +29,11 @@ jobs:
           target: toolchain
           load: true
           tags: rustxterm-toolchain:dev
-          cache-from: type=gha,scope=toolchain
+          cache-from: |
+            type=gha,scope=toolchain
+            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
           cache-to: type=gha,scope=toolchain,mode=max
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -72,7 +76,11 @@ jobs:
           target: toolchain
           load: true
           tags: rustxterm-toolchain:dev
-          cache-from: type=gha,scope=toolchain
+          cache-from: |
+            type=gha,scope=toolchain
+            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: target/cargo-home
@@ -107,6 +115,9 @@ jobs:
           cache-from: |
             type=gha,scope=toolchain
             type=gha,scope=windows-toolchain
+            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
           cache-to: type=gha,scope=windows-toolchain,mode=max
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

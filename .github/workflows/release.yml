@@ -54,7 +54,11 @@ jobs:
           target: toolchain
           load: true
           tags: rustxterm-toolchain:dev
-          cache-from: type=gha,scope=toolchain
+          cache-from: |
+            type=gha,scope=toolchain
+            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
       - name: Build Windows toolchain image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -65,6 +69,9 @@ jobs:
           cache-from: |
             type=gha,scope=toolchain
             type=gha,scope=windows-toolchain
+            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
       - name: Source date (committer time; the receipt's source commit for a receipt-only commit)
         id: date
         run: |
@@ -86,6 +93,9 @@ jobs:
           cache-from: |
             type=gha,scope=toolchain
             type=gha,scope=windows-toolchain
+            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
       # The rebuild below ignores the cache, so drop it: two Linux+Windows builds overflow the runner disk.
       - name: Drop the build cache
         run: docker buildx prune -af >/dev/null && df -h /
@@ -94,7 +104,14 @@ jobs:
         with:
           context: .
           target: dist
-          no-cache: true
+          # Recompile everything from source; the tool stages (apt, Rust toolchain, mingw, AppImage
+          # tools) come from the published build cache so the rebuild does not depend on the Ubuntu
+          # snapshot mirror being fast.
+          no-cache-filters: source,fetch,build,metadata,appimage,dist-windows,checksums
+          cache-from: |
+            type=registry,ref=docker.io/jniltinho/rustxterm-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-windows-toolchain:snapshot-20261001
+            type=registry,ref=docker.io/jniltinho/rustxterm-appimage-tools:snapshot-20261001
           build-args: |
             RXT_VERSION=${{ steps.version.outputs.version }}
             SOURCE_DATE_EPOCH=${{ steps.date.outputs.epoch }}
