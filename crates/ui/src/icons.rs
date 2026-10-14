@@ -72,7 +72,7 @@ pub(crate) fn session_icon(s: &rxt_core::Session) -> &str {
 pub(crate) const FOLDER: &str = "folder";
 
 /// The colored folders offered by "Change color", default first.
-pub(crate) const FOLDER_COLORS: [&str; 8] = [
+pub(crate) const FOLDER_COLORS: [&str; 16] = [
     FOLDER,
     "folder-blue",
     "folder-green",
@@ -81,6 +81,14 @@ pub(crate) const FOLDER_COLORS: [&str; 8] = [
     "folder-purple",
     "folder-silver",
     "folder-steel",
+    "folder-orange",
+    "folder-pink",
+    "folder-teal",
+    "folder-cyan",
+    "folder-brown",
+    "folder-lime",
+    "folder-navy",
+    "folder-black",
 ];
 
 /// Folder icons of the catalog "folders" category (colors and folder types; not the
