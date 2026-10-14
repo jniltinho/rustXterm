@@ -21,6 +21,8 @@ const TARGET: (u8, u8) = (35, 95);
 const YES: (u8, u8) = (32, 92);
 const NO: (u8, u8) = (31, 91);
 const MUTED: (u8, u8) = (90, 90);
+/// Left margin of the box (MobaXterm-like), dropped on narrow terminals.
+const INDENT: usize = 4;
 
 /// One styled piece of a line: (role color, text).
 type Seg = (Option<(u8, u8)>, String);
@@ -125,7 +127,8 @@ pub(crate) fn render(info: &BannerInfo, cols: usize, scheme: &TerminalScheme) ->
     let content = lines.iter().map(|l| width(l)).max().unwrap_or(0).max(title.chars().count() + 2);
     // `| ` + content + ` |` must fit in `cols`. The box is always drawn with ASCII dashes (owner
     // choice); `unicode` only selects the marks and arrows inside it.
-    let inner = content.min(cols - 4);
+    let pad = if cols >= 40 { " ".repeat(INDENT) } else { String::new() };
+    let inner = content.min(cols - 4 - pad.len());
     let (h, v, tl, tr, bl, br) = ('-', '|', '+', '+', '+', '+');
     let sgr = |role: (u8, u8)| format!("\x1b[{}m", if dark { role.1 } else { role.0 });
     let border = sgr(BORDER);
@@ -136,6 +139,7 @@ pub(crate) fn render(info: &BannerInfo, cols: usize, scheme: &TerminalScheme) ->
     // Top/bottom border with an embedded label: `+- label ---+`, total width inner + 4.
     let rule = |out: &mut String, left: char, right: char, label: &str, role: (u8, u8)| {
         let label = fit(label, inner.saturating_sub(2), ell);
+        out.push_str(&pad);
         out.push_str(&border);
         out.push(left);
         out.push(h);
@@ -151,7 +155,7 @@ pub(crate) fn render(info: &BannerInfo, cols: usize, scheme: &TerminalScheme) ->
     };
     rule(&mut out, tl, tr, &title, TITLE);
     for line in &lines {
-        out.push_str(&format!("{border}{v}{reset} "));
+        out.push_str(&format!("{pad}{border}{v}{reset} "));
         let mut left = inner;
         let full = width(line) <= inner;
         for (role, text) in line {
@@ -266,8 +270,8 @@ mod tests {
             let w = boxed[0].chars().count();
             assert!(w <= cols, "{cols}: {w}");
             assert!(boxed.iter().all(|l| l.chars().count() == w), "{cols}: {boxed:#?}");
-            assert!(boxed[0].starts_with("+- rustXterm ") && boxed[0].ends_with('+'));
-            assert!(boxed.last().unwrap().starts_with('+'));
+            assert!(boxed[0].starts_with("    +- rustXterm ") && boxed[0].ends_with('+'));
+            assert!(boxed.last().unwrap().starts_with("    +"));
         }
         let wide = plain(&draw(&ssh_session(), Some(&facts()), 200, true, false)).join("\n");
         for want in [
@@ -293,7 +297,7 @@ mod tests {
     fn ascii_fallback_has_no_box_drawing_or_marks() {
         let text = draw(&ssh_session(), Some(&facts()), 80, false, false);
         assert!(plain(&text).iter().all(|l| l.is_ascii()), "{text}");
-        assert!(plain(&text)[0].starts_with("+- rustXterm "));
+        assert!(plain(&text)[0].starts_with("    +- rustXterm "));
         let lines = plain(&text).join("\n");
         assert!(lines.contains("+ Direct connection") && lines.contains("- X11 forwarding"), "{lines}");
     }

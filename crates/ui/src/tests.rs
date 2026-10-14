@@ -309,7 +309,7 @@ fn connected_ssh_tab_shows_session_box_before_remote_output() {
     let text = tab_text(&e, tab);
     let at = |what: &str| text.find(what).unwrap_or_else(|| panic!("no {what:?} in\n{text}"));
     assert!(at("+- rustXterm ") < at("SSH session"), "{text}");
-    assert!(text.lines().nth(1).is_some_and(|l| l.starts_with("| SSH session")), "{text}");
+    assert!(text.lines().nth(1).is_some_and(|l| l.starts_with("    | SSH session")), "{text}");
     assert!(at("SSH session to alice@web1.lab.example") < at("X11 forwarding (no usable $DISPLAY)"));
     assert!(at("Server: SSH-2.0-OpenSSH_9.6p1") < at("Welcome to the lab"), "{text}");
     // Nothing of the box was sent to the remote.
