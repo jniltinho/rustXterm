@@ -178,6 +178,7 @@ fn pair(level: EncryptionLevel) -> (Security, Security) {
         encrypt: Cipher::new(decrypt, Bits::B128),
         decrypt: Cipher::new(encrypt, Bits::B128),
         salted_seen: false,
+        license_encrypt: false,
     };
     (c, s)
 }
@@ -229,13 +230,57 @@ fn slow_path_round_trip_keeps_existing_headers() {
     let info = c.seal(&request(&[0x40, 0, 0, 0, 1, 2, 3]), true).unwrap();
     assert_eq!(server_open(&mut s, &info), (0x40 | SEC_ENCRYPT, vec![1, 2, 3]));
     let license = c.seal(&request(&[0x80, 0, 0, 0, 9]), true).unwrap();
-    assert_eq!(server_open(&mut s, &license), (0x80 | SEC_ENCRYPT | SEC_LICENSE_ENCRYPT, vec![9]));
+    assert_eq!(user_data(&license), [0x80, 0, 0, 0, 9], "licensing in clear until the server offers encryption");
 
     // Inbound: data stripped to the bare body, licensing to a plain basic header.
     let opened = c.open(&server_seal(&mut s, 0, b"demand-active")).unwrap();
     assert_eq!(user_data(&opened), b"demand-active");
     let opened = c.open(&server_seal(&mut s, SEC_LICENSE_PKT | SEC_LICENSE_ENCRYPT, b"lic")).unwrap();
     assert_eq!(user_data(&opened), [0x80, 0, 0, 0, b'l', b'i', b'c']);
+    let license = c.seal(&request(&[0x80, 0, 0, 0, 9]), true).unwrap();
+    assert_eq!(server_open(&mut s, &license), (0x80 | SEC_ENCRYPT | SEC_LICENSE_ENCRYPT, vec![9]));
+}
+
+#[test]
+fn fingerprint_binds_the_modulus_exponent_split() {
+    let key = test_key();
+    // Same bytes split differently (modulus || 01 00, exponent 01) must not collide; exponent 1 and
+    // even exponents are refused anyway.
+    let mut shifted = key.modulus.clone();
+    shifted.extend([1, 0]);
+    let other = ServerKey { modulus: shifted, exponent: vec![1] };
+    assert_ne!(key.fingerprint(), other.fingerprint());
+    let mut modulus_le: Vec<u8> = key.modulus.iter().rev().copied().collect();
+    modulus_le.extend([0; 8]);
+    for exponent in [1u32, 2, 65536] {
+        let cert = ServerCertificate {
+            issued_permanently: false,
+            certificate: CertificateType::Proprietary(ProprietaryCertificate {
+                public_key: RsaPublicKey { public_exponent: exponent, modulus: modulus_le.clone() },
+                signature: vec![0; 72],
+            }),
+        };
+        assert!(ServerKey::parse(&encode_vec(&cert).unwrap()).is_err(), "exponent {exponent}");
+    }
+}
+
+#[test]
+fn licensing_public_key_of_a_proprietary_certificate_is_big_endian() {
+    // IronRDP's licensing encrypts with this DER key (vendored fix in ironrdp-pdu).
+    let cert = decode::<ServerCertificate>(&proprietary(&test_key().modulus)).unwrap();
+    let der = cert.get_public_key().unwrap();
+    let rsa = pkcs1::RsaPublicKey::from_der(&der).unwrap();
+    assert_eq!(rsa.modulus.as_bytes(), &test_key().modulus[..]);
+    assert_eq!(rsa.public_exponent.as_bytes(), [1, 0, 1]);
+}
+
+#[test]
+fn empty_and_truncated_frames_are_errors() {
+    let (mut c, _) = pair(EncryptionLevel::ClientCompatible);
+    assert!(c.open(&[]).is_err());
+    assert!(c.open(&[FASTPATH_ENCRYPTED << 6]).is_err());
+    assert!(c.open(&[FASTPATH_ENCRYPTED << 6, 0x80]).is_err());
+    assert!(c.open(&[FASTPATH_ENCRYPTED << 6, 5, 1, 2, 3]).is_err());
 }
 
 #[test]

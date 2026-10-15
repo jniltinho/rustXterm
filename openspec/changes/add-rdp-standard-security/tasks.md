@@ -22,7 +22,8 @@
 ## 4. Wire transform and negotiation fallback
 
 - [x] 4.1 `Wire` runs the D2 transform per PDU kind (Client Info and licensing headers kept, data headers added/stripped, fast-path flags and signature, every inbound PDU decrypted even when dropped), clear inbound traffic only at level Low; `slow_path_round_trip_keeps_existing_headers`, `fast_path_round_trip_both_directions`, `clear_traffic_only_at_level_low`, `bad_signature_is_an_error`, `exchange_pdu_carries_the_encrypted_random`
-- [x] 4.2 Licensing per D2b: Security Exchange advertises `SEC_LICENSE_ENCRYPT_SC`, client license PDUs encrypted with `SEC_LICENSE_ENCRYPT_CS`, inbound license PDUs decrypted when flagged and accepted in clear; covered by the slow-path and Low-level unit tests (full handshake: 8.1)
+- [x] 4.2 Licensing per D2b: Security Exchange advertises `SEC_LICENSE_ENCRYPT_SC`; client license PDUs in clear until the server marks its licensing PDUs `SEC_LICENSE_ENCRYPT_CS`, then encrypted; inbound license PDUs decrypted when flagged and accepted in clear; proprietary licensing key fixed to big-endian (`licensing_public_key_of_a_proprietary_certificate_is_big_endian`); covered by `slow_path_round_trip_keeps_existing_headers` and the Low-level tests (full handshake: 8.1)
+- [x] 4.4 Review fixes: length-prefixed key fingerprint and RSA parameter checks (odd exponent ≥ 3, odd modulus; `fingerprint_binds_the_modulus_exponent_split`); zero-length and truncated frames are errors, never panics (`empty_and_truncated_frames_are_errors`, `Wire::take`)
 - [x] 4.3 `establish` retries with `PROTOCOL_RDP` only on `SSL_NOT_ALLOWED_BY_SERVER`, with the option on and no saved TLS certificate for host:port; `standard_security_refusal_reconnects_requesting_protocol_rdp`, `other_negotiation_failures_never_fall_back`, `forged_refusal_for_a_tls_trusted_host_is_a_downgrade_error`
 
 ## 5. Trust prompt for the server key

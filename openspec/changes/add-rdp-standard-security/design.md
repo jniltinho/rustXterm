@@ -87,10 +87,14 @@ Vendored patches (`[patch.crates-io]`, each listed in `vendor/README.md` with re
 **D2b. Licensing encryption.** Flags come from MS-RDPBCGR 2.2.8.1.1.2.1 (`SEC_LICENSE_ENCRYPT_CS`
 and `_SC` are both 0x0200; IronRDP's `LICENSE_ENCRYPT_CS = 0x0100` is wrong but never reaches the
 wire, because the transform rewrites inbound license headers to a plain `SEC_LICENSE_PKT` and builds
-outbound headers itself). The client follows FreeRDP's client: the Security Exchange PDU carries
-`SEC_LICENSE_ENCRYPT_SC` (the client can decrypt licensing PDUs) and client licensing PDUs are sent
-encrypted with `SEC_LICENSE_ENCRYPT_CS`. Inbound license PDUs are decrypted only when `SEC_ENCRYPT` is
-set and may arrive in clear at any level.
+outbound headers itself). The Security Exchange PDU carries `SEC_LICENSE_ENCRYPT_SC` (the client can
+decrypt licensing PDUs). Client licensing PDUs are encrypted (with `SEC_LICENSE_ENCRYPT_CS`) only after
+the server marked one of its licensing PDUs `SEC_LICENSE_ENCRYPT_CS` (it can process encrypted ones);
+otherwise they go in clear behind a plain `SEC_LICENSE_PKT` header without touching the RC4 counters.
+Inbound license PDUs are decrypted only when `SEC_ENCRYPT` is set and may arrive in clear at any level.
+IronRDP's licensing encrypts its premaster secret with the key from `ServerCertificate::get_public_key`,
+which upstream built from the little-endian, padded proprietary modulus as if it were big-endian; the
+vendored `ironrdp-pdu` fixes it.
 
 *Alternatives for normalization of the certificate:* extract and blank the GCC certificate in `Wire`
 before the connector decodes it (rewrites nested PER/GCC lengths; more fragile than a one-constant

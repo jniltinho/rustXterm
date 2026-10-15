@@ -220,10 +220,15 @@ impl ServerCertificate {
 
         match &self.certificate {
             CertificateType::Proprietary(certificate) => {
-                let public_exponent = certificate.public_key.public_exponent.to_le_bytes();
+                // rustXterm: the proprietary key is little-endian with 8 bytes of padding, while
+                // DER integers are big-endian (upstream encoded the raw bytes, a wrong key).
+                let len = certificate.public_key.modulus.len().saturating_sub(8);
+                let mut modulus = certificate.public_key.modulus[..len].to_vec();
+                modulus.reverse();
+                let public_exponent = certificate.public_key.public_exponent.to_be_bytes();
 
                 let rsa_public_key = pkcs1::RsaPublicKey {
-                    modulus: pkcs1::UintRef::new(&certificate.public_key.modulus)?,
+                    modulus: pkcs1::UintRef::new(&modulus)?,
                     public_exponent: pkcs1::UintRef::new(&public_exponent)?,
                 };
 

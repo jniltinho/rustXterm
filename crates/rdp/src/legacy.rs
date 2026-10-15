@@ -114,16 +114,27 @@ impl ServerKey {
                 Self { modulus: rsa.modulus.as_bytes().to_vec(), exponent: rsa.public_exponent.as_bytes().to_vec() }
             }
         };
-        let modulus = trim(&key.modulus);
-        if modulus.len() < 64 || modulus.len() * 8 > MAX_MODULUS_BITS {
-            return Err(proto(format!("unsupported server RSA key size ({} bits)", modulus.len() * 8)));
+        let (modulus, exponent) = (trim(&key.modulus), trim(&key.exponent));
+        let odd = |b: &[u8]| b.last().is_some_and(|x| x & 1 == 1);
+        if modulus.len() < 64 || modulus.len() * 8 > MAX_MODULUS_BITS || !odd(modulus) {
+            return Err(proto(format!("unsupported server RSA key ({} bits)", modulus.len() * 8)));
         }
-        Ok(Self { modulus: modulus.to_vec(), exponent: trim(&key.exponent).to_vec() })
+        // An odd exponent of at least 3 that fits in 32 bits (exponent 1 would expose the random).
+        if exponent.len() > 4 || !odd(exponent) || exponent == [1] {
+            return Err(proto("unsupported server RSA exponent"));
+        }
+        Ok(Self { modulus: modulus.to_vec(), exponent: exponent.to_vec() })
     }
 
-    /// `RSA AA:BB:...`: SHA-256 over the big-endian modulus and exponent.
+    /// `RSA AA:BB:...`: SHA-256 over the length-prefixed big-endian modulus and exponent.
     pub(crate) fn fingerprint(&self) -> String {
-        let digest = Sha256::new().chain_update(&self.modulus).chain_update(&self.exponent).finalize();
+        let len = |b: &[u8]| u32::try_from(b.len()).unwrap_or(u32::MAX).to_be_bytes();
+        let digest = Sha256::new()
+            .chain_update(len(&self.modulus))
+            .chain_update(&self.modulus)
+            .chain_update(len(&self.exponent))
+            .chain_update(&self.exponent)
+            .finalize();
         let hex: Vec<String> = digest.iter().map(|b| format!("{b:02X}")).collect();
         format!("{KEY_PREFIX}{}", hex.join(":"))
     }
@@ -306,6 +317,8 @@ pub(crate) struct Security {
     encrypt: Cipher,
     decrypt: Cipher,
     salted_seen: bool,
+    /// The server marked its licensing PDUs `SEC_LICENSE_ENCRYPT_CS`: it accepts encrypted ones.
+    license_encrypt: bool,
 }
 
 /// The Security Exchange PDU and the state to install once it is sent.
@@ -335,7 +348,7 @@ impl Security {
     fn new(bits: Bits, level: EncryptionLevel, client: &[u8; 32], server: &[u8; 32]) -> Self {
         let (mac_key, encrypt, decrypt) = session_keys(client, server, bits);
         let (encrypt, decrypt) = (Cipher::new(encrypt, bits), Cipher::new(decrypt, bits));
-        Self { bits, level, mac_key, encrypt, decrypt, salted_seen: false }
+        Self { bits, level, mac_key, encrypt, decrypt, salted_seen: false, license_encrypt: false }
     }
 
     fn mac_key(&self) -> &[u8] {
@@ -375,7 +388,7 @@ impl Security {
                 out.extend(self.seal_slow(frame, has_header)?);
             } else {
                 let (_, n) = fp_length(frame)?;
-                let mut body = frame[1 + n..].to_vec();
+                let mut body = frame.get(1 + n..).ok_or_else(|| proto("short fast-path header"))?.to_vec();
                 let sig = self.seal_body(&mut body);
                 let header = (frame[0] & 0x3f) | (FASTPATH_ENCRYPTED << 6);
                 out.extend(fp_frame(header, &[&sig[..], &body].concat())?);
@@ -395,24 +408,35 @@ impl Security {
         } else {
             (0, data)
         };
-        flags |= SEC_ENCRYPT;
-        if flags & SEC_LICENSE_PKT != 0 {
-            flags |= SEC_LICENSE_ENCRYPT;
-        }
-        let mut body = body.to_vec();
-        let sig = self.seal_body(&mut body);
         let mut user_data = Vec::with_capacity(body.len() + 12);
-        user_data.extend_from_slice(&flags.to_le_bytes());
-        user_data.extend_from_slice(&0u16.to_le_bytes());
-        user_data.extend_from_slice(&sig);
-        user_data.extend_from_slice(&body);
+        if flags & SEC_LICENSE_PKT != 0 && !self.license_encrypt {
+            // Licensing in clear: the server did not offer to process encrypted licensing PDUs.
+            user_data.extend_from_slice(&SEC_LICENSE_PKT.to_le_bytes());
+            user_data.extend_from_slice(&0u16.to_le_bytes());
+            user_data.extend_from_slice(body);
+        } else {
+            flags |= SEC_ENCRYPT;
+            if flags & SEC_LICENSE_PKT != 0 {
+                flags |= SEC_LICENSE_ENCRYPT;
+            }
+            let mut body = body.to_vec();
+            let sig = self.seal_body(&mut body);
+            user_data.extend_from_slice(&flags.to_le_bytes());
+            user_data.extend_from_slice(&0u16.to_le_bytes());
+            user_data.extend_from_slice(&sig);
+            user_data.extend_from_slice(&body);
+        }
         let req = SendDataRequest { user_data: Cow::Owned(user_data), ..req };
         encode_vec(&X224(req)).map_err(|e| proto(e.to_string()))
     }
 
     /// Verifies, decrypts and strips one inbound frame.
     pub(crate) fn open(&mut self, frame: &[u8]) -> Result<Vec<u8>> {
-        if frame.first() == Some(&3) { self.open_slow(frame) } else { self.open_fast(frame) }
+        match frame.first() {
+            None => Err(proto("empty PDU")),
+            Some(3) => self.open_slow(frame),
+            Some(_) => self.open_fast(frame),
+        }
     }
 
     /// Clear traffic is legal only at level Low (server-to-client unencrypted).
@@ -431,7 +455,7 @@ impl Security {
             return Ok(frame.to_vec());
         }
         let (_, n) = fp_length(frame)?;
-        let rest = &frame[1 + n..];
+        let rest = frame.get(1 + n..).ok_or_else(|| proto("short fast-path header"))?;
         let (sig, body) = rest.split_at_checked(8).ok_or_else(|| proto("short fast-path signature"))?;
         let mut body = body.to_vec();
         self.open_body(sig, &mut body, flags & FASTPATH_SECURE_CHECKSUM != 0)?;
@@ -447,6 +471,9 @@ impl Security {
             data.get(..2).map(|f| u16::from_le_bytes([f[0], f[1]])).ok_or_else(|| proto("short security header"))?;
         if flags & SEC_REDIRECTION_PKT != 0 {
             return Err(proto("server redirection is not supported with legacy RDP security"));
+        }
+        if flags & SEC_LICENSE_PKT != 0 && flags & SEC_LICENSE_ENCRYPT != 0 {
+            self.license_encrypt = true;
         }
         let rest = data.get(4..).ok_or_else(|| proto("short security header"))?;
         let body = if flags & SEC_ENCRYPT != 0 {

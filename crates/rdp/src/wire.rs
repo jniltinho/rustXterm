@@ -90,6 +90,9 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Wire<S> {
     }
 
     fn take(&mut self, len: usize) -> Result<Option<BytesMut>> {
+        if len == 0 {
+            return Err(Error::Protocol("PDU with zero length".into()));
+        }
         if len > self.limits.max_pdu {
             return Err(Error::Protocol(format!("PDU length {len} exceeds {}", self.limits.max_pdu)));
         }

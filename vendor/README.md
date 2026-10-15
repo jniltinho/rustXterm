@@ -69,6 +69,10 @@ marked with a `rustXterm:` comment.
   - TLS/NLA connections are byte-identical to upstream.
 - `ironrdp-pdu` (`src/gcc/security_data.rs`): `MAX_SERVER_CERT_LEN` 1024 → 16 KiB, so X.509 chains
   in Server Security Data decode (still bounded; the transport PDU cap applies too).
+- `ironrdp-pdu` (`src/rdp/server_license/server_license_request/mod.rs`): `get_public_key` of a
+  proprietary certificate strips the 8 padding bytes and encodes modulus and exponent big-endian;
+  upstream passed the little-endian bytes as a big-endian DER integer, so licensing encrypted its
+  premaster secret with the wrong key.
 
 Remove both patches once IronRDP supports Standard RDP Security upstream (or drops the 1024-byte
 certificate cap and accepts `PROTOCOL_RDP`); verify with `crates/rdp/tests/vm_rdp.rs`
