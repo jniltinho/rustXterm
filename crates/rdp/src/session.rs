@@ -147,6 +147,19 @@ fn adjust(w: u32, h: u32) -> (u32, u32) {
     (w.clamp(200, MAX_EDGE) & !1, h.clamp(200, MAX_EDGE))
 }
 
+/// User name and domain. `DOMAIN\user` in the user field fills an empty Domain field, as in `mstsc`;
+/// `.\user` means a local account of the server (no domain).
+fn account(session: &Session) -> (String, Option<String>) {
+    let user = session.user.clone().unwrap_or_default();
+    let domain = session.rdp.domain.clone().filter(|d| !d.is_empty());
+    match user.split_once('\\') {
+        Some((d, u)) if domain.is_none() && !u.is_empty() => {
+            (u.to_owned(), Some(d.to_owned()).filter(|d| !d.is_empty() && d != "."))
+        }
+        _ => (user, domain),
+    }
+}
+
 /// `standard`: request Standard RDP Security (no TLS, no CredSSP).
 fn config(session: &Session, tab: (u32, u32), standard: bool) -> Result<Config> {
     let codecs = client_codecs_capabilities(&[]).map_err(proto)?;
@@ -156,11 +169,8 @@ fn config(session: &Session, tab: (u32, u32), standard: bool) -> Result<Config> 
         enable_tls: !standard,
         enable_credssp: !standard,
         // The password is filled in only after the certificate is trusted.
-        credentials: Credentials::UsernamePassword {
-            username: session.user.clone().unwrap_or_default(),
-            password: String::new(),
-        },
-        domain: session.rdp.domain.clone().filter(|d| !d.is_empty()),
+        credentials: Credentials::UsernamePassword { username: account(session).0, password: String::new() },
+        domain: account(session).1,
         client_build: 0,
         client_name: "rustxterm".into(),
         keyboard_type: KeyboardType::IbmEnhanced,
@@ -235,7 +245,7 @@ async fn establish_with(
         write_written(&mut wire, &buf, written).await?;
     }
 
-    let user = session.user.clone().unwrap_or_default();
+    let user = account(session).0;
     let mut wire = if standard {
         // Standard RDP Security: no TLS; the trust decision on the server's RSA key and the
         // Security Exchange happen right before the Client Info PDU (below).
@@ -805,6 +815,28 @@ impl Driver {
     fn position(&self, x: u32, y: u32) -> MousePosition {
         let clamp = |v: u32, max: u16| u16::try_from(v).unwrap_or(u16::MAX).min(max.saturating_sub(1));
         MousePosition { x: clamp(x, self.image.width()), y: clamp(y, self.image.height()) }
+    }
+}
+
+#[cfg(test)]
+mod account_tests {
+    use rxt_core::{Protocol, Session};
+
+    use super::account;
+
+    #[test]
+    fn domain_backslash_user_fills_an_empty_domain() {
+        let s = |user: &str, domain: Option<&str>| {
+            let mut s = Session::new(Protocol::Rdp, "h", Some(user.into()), None);
+            s.rdp.domain = domain.map(Into::into);
+            account(&s)
+        };
+        assert_eq!(s("TRD-APP01\\administrator", None), ("administrator".into(), Some("TRD-APP01".into())));
+        assert_eq!(s(".\\administrator", None), ("administrator".into(), None));
+        assert_eq!(s("administrator", Some("LAB")), ("administrator".into(), Some("LAB".into())));
+        // An explicit Domain field wins; the user name is then sent as typed.
+        assert_eq!(s("A\\bob", Some("LAB")), ("A\\bob".into(), Some("LAB".into())));
+        assert_eq!(s("bob@lab.example", None), ("bob@lab.example".into(), None));
     }
 }
 

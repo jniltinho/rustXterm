@@ -23,6 +23,7 @@ and the Windows client. User guide: [`docs/rdp.md`](../rdp.md).
 | Option on: legacy key prompt (`RSA …` fingerprint, interception warning) before the password, login, first frame, mouse and keys, 4200 client packets (RC4 key update every 4096), display-control resize to 1280×720 (`rdp_windows_standard_security_login_input_and_resize`) | `SecurityLayer=0`, `UserAuthentication=0`, `MinEncryptionLevel=2` (Client Compatible) | PASS | PASS |
 | Same test | `MinEncryptionLevel=1` (Low: server-to-client in clear) | PASS | — |
 | Same test | `MinEncryptionLevel=3` (High) | PASS | — |
+| `MACHINE\user` and `.\user` in the user field, Domain empty (`rdp_windows_machine_backslash_user_logs_in`) | NLA, and `SecurityLayer=0` | PASS (both) | — |
 | Option off: actionable error naming the option and the server fix, no prompt (`rdp_windows_standard_security_off_is_actionable`) | `SecurityLayer=0` | PASS | PASS |
 | No regression: NLA login, input, resize; wrong password fails in CredSSP (`rdp_windows_nla_*`) | `SecurityLayer=1`, `UserAuthentication=1` | PASS | — |
 | TLS without NLA | `SecurityLayer=2`, `UserAuthentication=0` | PASS (before the change; TLS path unchanged) | PASS (before the change) |

@@ -6,8 +6,13 @@ prompts and the errors you can meet, with the fix for each.
 
 ## Quick start
 
-1. **New session → RDP**, enter the host, port (default 3389) and user name. Add the domain in the RDP
-   options if the account is a domain account.
+1. **New session → RDP**, enter the host, port (default 3389) and user name. The user name accepts the
+   same forms as `mstsc`:
+   - `administrator` (with the domain, if any, in the RDP options' **Domain** field);
+   - `TRD-APP01\administrator` or `CORP\alice`: the part before `\` is used as the domain when the
+     **Domain** field is empty (a local account of server `TRD-APP01`, or domain `CORP`);
+   - `.\administrator`: a local account of the server you connect to;
+   - `alice@corp.example` (UPN), sent as typed.
 2. Connect. The first time, rustXterm shows the server's certificate (or key) fingerprint: compare it
    with the one your administrator gives you, then **Accept** (this time) or **Accept and save**.
 3. Enter the password. It is asked only after the server identity is trusted.

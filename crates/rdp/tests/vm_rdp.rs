@@ -129,3 +129,21 @@ async fn rdp_windows_standard_security_off_is_actionable() {
     assert!(e.to_string().contains("Allow legacy RDP security"), "{e}");
     assert!(script.prompts().is_empty());
 }
+
+/// `MACHINE\user` and `.\user` in the user field (Domain field empty). `RXT_VM_COMPUTER` names the
+/// VM (`hostname` inside it); the legacy-security variant needs the layer recipe first.
+#[tokio::test]
+#[ignore = "windows-vm"]
+async fn rdp_windows_machine_backslash_user_logs_in() {
+    let computer = std::env::var("RXT_VM_COMPUTER").expect("set RXT_VM_COMPUTER to the VM's hostname");
+    let standard = std::env::var_os("RXT_VM_STANDARD").is_some();
+    for user in [format!("{computer}\\vagrant"), ".\\vagrant".to_owned()] {
+        let script = Script::new(HostKeyDecision::AcceptOnce, Some("vagrant"));
+        let mut s = session(&user, VM);
+        s.rdp.allow_standard_security = standard;
+        let mut d = rxt_rdp::connect(&s, ctx(script, Arc::new(Trust::default())), (1024, 768)).await.unwrap();
+        assert_eq!(next(&mut d, T).await, DesktopEvent::Resized { width: 1024, height: 768 });
+        next_update(&mut d, T).await;
+        println!("VM user {user:?} logged in (standard security: {standard})");
+    }
+}
