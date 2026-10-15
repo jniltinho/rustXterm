@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Fonts and appearance
-The user SHALL choose the terminal font family, size, cursor shape and blink, and color scheme per session or globally. The global color scheme SHALL be "Follow UI theme" (default), a built-in scheme or a user scheme; a session SHALL either inherit the global scheme or override it with "Follow UI theme", a built-in scheme or a user scheme. The built-in schemes SHALL be rustxterm-light, rustxterm-dark, Solarized Dark, Solarized Light, Dracula, Gruvbox Dark, Gruvbox Light, Nord, One Dark, Monokai, Tango Dark, Tango Light and xterm. User schemes SHALL be loaded at start from JSON files of at most 64 KiB in the `schemes` folder of the configuration directory; scheme names SHALL be unique, built-in names win over user files and, among user files, the first file in file-name order wins. Font zoom SHALL change the font size by exactly one point per step and the new size SHALL apply to every open tab using it and persist across restarts.
+The user SHALL choose the terminal font family, size, cursor shape and blink, and color scheme per session or globally. The color scheme SHALL be "Follow UI theme", a built-in scheme or a user scheme loaded at start from the configuration directory; a session SHALL inherit the global scheme unless it overrides it. Font zoom SHALL change the size by one point per step and the size SHALL persist across tabs and restarts.
 
 #### Scenario: Global defaults
 - **WHEN** the user changes the global cursor shape to underline
@@ -12,6 +12,10 @@ The user SHALL choose the terminal font family, size, cursor shape and blink, an
 - **THEN** only tabs of that session use size 14
 
 #### Scenario: Built-in scheme
+- **WHEN** the user opens the color scheme picker
+- **THEN** it lists rustxterm-light, rustxterm-dark, Solarized Dark, Solarized Light, Dracula, Gruvbox Dark, Gruvbox Light, Nord, One Dark, Monokai, Tango Dark, Tango Light and xterm
+
+#### Scenario: Global scheme
 - **WHEN** the user picks "Dracula" as the global color scheme
 - **THEN** every terminal tab without a per-session scheme uses the Dracula foreground, background, cursor, selection and 16 ANSI colors, in both light and dark UI themes
 
@@ -20,7 +24,7 @@ The user SHALL choose the terminal font family, size, cursor shape and blink, an
 - **THEN** each entry shows its name and a swatch of its background, foreground and ANSI colors
 
 #### Scenario: User scheme
-- **WHEN** a valid scheme JSON file is placed in the `schemes` folder of the configuration directory and the application starts
+- **WHEN** a valid scheme JSON file of at most 64 KiB is placed in the `schemes` folder of the configuration directory and the application starts
 - **THEN** the scheme appears in the picker under its name and can be selected
 
 #### Scenario: Invalid user scheme

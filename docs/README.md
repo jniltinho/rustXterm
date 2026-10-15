@@ -42,7 +42,7 @@ denied and audited, and MultiExec input from agents skips them.
 **Settings › Terminal › Color scheme** sets the global scheme; the session editor can override it per
 session (or force **Follow UI theme**). Built in: rustxterm-light, rustxterm-dark, Solarized Dark,
 Solarized Light, Dracula, Gruvbox Dark, Gruvbox Light, Nord, One Dark, Monokai, Tango Dark, Tango Light
-and xterm ([spec change](../openspec/changes/add-terminal-color-schemes/)).
+and xterm ([spec change](../openspec/changes/archive/2026-10-15-add-terminal-color-schemes/)).
 
 Custom schemes go in a `schemes/` folder next to `config.toml` (`~/.config/rustxterm/schemes/` on
 Linux, `%APPDATA%\rustxterm\schemes\` on Windows), one JSON file per scheme, loaded at start. Colors

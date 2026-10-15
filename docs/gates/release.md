@@ -197,6 +197,19 @@ minute), Hidden tab pauses (fake peer under paused time).
 | terminal-emulation | Select all from the menu | `crates/ui/src/tests.rs::terminal_context_menu`, `crates/ui/src/terminal/tests.rs::ctrl_right_click_or_paste_setting_off_opens_menu`, `crates/term/src/lib.rs::select_all_clear_history_and_reset` | auto |
 | terminal-emulation | Global defaults | `crates/core/src/session.rs::terminal_prefs_inherit_global` | auto (preference resolution; rendering of the cursor shape is not asserted) |
 | terminal-emulation | Per-session font | `crates/core/src/session.rs::terminal_prefs_inherit_global` | auto (resolution level) |
+| terminal-emulation | Built-in scheme | `crates/core/src/theme.rs::builtin_schemes_are_unique_and_round_trip`, `crates/ui/src/settings.rs::scheme_combo_lists_catalog_and_maps_follow_ui` | auto |
+| terminal-emulation | Global scheme | `crates/ui/src/tests.rs::snapshot_terminal_color_schemes`, `crates/ui/src/theme.rs::scheme_lookup_falls_back_to_ui_theme` | auto (snapshot of a Dracula terminal; light and dark UI) |
+| terminal-emulation | Scheme preview | `crates/ui/src/tests.rs::snapshot_terminal_color_schemes` | auto (snapshot of the open picker in Settings; the session editor uses the same picker) |
+| terminal-emulation | User scheme | `crates/store/tests/schemes.rs::load_skips_invalid_oversized_and_duplicate_names` | partial: loader tested; listing a loaded user scheme in the picker is not asserted |
+| terminal-emulation | Invalid user scheme | `crates/store/tests/schemes.rs::load_skips_invalid_oversized_and_duplicate_names` | auto (warning text not asserted) |
+| terminal-emulation | Duplicate scheme names | `crates/store/tests/schemes.rs::load_skips_invalid_oversized_and_duplicate_names` | auto |
+| terminal-emulation | Session follows the UI theme | `crates/ui/src/theme.rs::session_follow_ui_overrides_global_scheme`, `crates/ui/src/settings.rs::scheme_combo_lists_catalog_and_maps_follow_ui` | partial: resolution and picker mapping tested; editor save/reopen is not |
+| terminal-emulation | Missing scheme | `crates/ui/src/theme.rs::scheme_lookup_falls_back_to_ui_theme` | auto |
+| terminal-emulation | Follow UI theme | `crates/ui/src/theme.rs::scheme_lookup_falls_back_to_ui_theme`, `crates/ui/src/banner.rs::colors_follow_light_and_dark_schemes` | auto |
+| terminal-emulation | Zoom with mouse and keyboard | `crates/ui/src/terminal/tests.rs::ctrl_wheel_zooms_font_without_scrolling`, `crates/ui/src/terminal/tests.rs::ctrl_plus_minus_zero_zoom_font` | auto |
+| terminal-emulation | Zoom persists | `crates/ui/src/tests.rs::zoom_saves_global_size_or_session_override_for_all_its_tabs` | partial: saved to settings and the session store; a real restart is not exercised |
+| terminal-emulation | Zoom applies to sibling tabs | `crates/ui/src/tests.rs::zoom_saves_global_size_or_session_override_for_all_its_tabs` | auto |
+| terminal-emulation | Control bytes kept | `crates/ui/src/terminal/tests.rs::ctrl_plus_minus_zero_zoom_font` | auto |
 | terminal-emulation | Log to file | `crates/term/src/lib.rs::log_raw_and_plain`, `crates/term/src/lib.rs::log_open_error` | auto (fed bytes, not a live `ls`) |
 | terminal-emulation | Output flood | `crates/ssh/tests/lab_gates.rs::ssh_gate_flood_input_echo_resize_one_connection`, `crates/ui/src/lab_gates.rs::ui_gate_flood_tab_switch_echo_memory_resize`, `crates/ui/src/tests.rs::flooding_visible_tab_does_not_starve_background_tab` | lab + receipt (docs/gates/m1.md) |
 | remote-desktop | Connect to lab xrdp | `crates/rdp/tests/lab_rdp.rs::rdp_login_alice_updates_and_input`, `crates/ui/src/lab_e2e.rs::e2e_rdp_desktop_renders_and_accepts_input` | lab |
