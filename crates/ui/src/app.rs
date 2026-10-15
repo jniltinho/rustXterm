@@ -205,6 +205,8 @@ pub(crate) enum Action {
     /// Local pane request of the active file tab.
     Local(SftpAction),
     Status(String),
+    /// Ctrl+wheel zoom in a terminal tab: new font size in points, saved for next time.
+    TerminalFontSize(TabId, f32),
     /// Open a local file with its default application (`folder`: show the folder containing it).
     OpenLocal {
         path: PathBuf,
@@ -509,6 +511,9 @@ impl App {
         if !messages.is_empty() {
             self.status = messages.join("; ");
             self.modal = Some(Modal::Notice(messages.join("\n\n")));
+        }
+        if let Some(dir) = path.parent() {
+            theme::load_user_schemes(&dir.join("schemes"));
         }
         self.settings_file = Some((path, loaded.settings));
         self
@@ -1397,7 +1402,7 @@ impl App {
         // check glyphs (egui's `has_glyph` misreports glyphs of the primary face).
         let unicode = true;
         let sep = if unicode { " • " } else { " | " };
-        let mut hint = "Ctrl+wheel: zoom".to_owned();
+        let mut hint = "Ctrl+wheel, Ctrl+=/-/0: zoom".to_owned();
         if let Some(find) = self.settings.shortcut_text(CommandId::FIND) {
             hint = format!("{hint}{sep}{find}: find");
         }
@@ -1825,6 +1830,26 @@ impl App {
                 }
             }
             Action::Status(text) => self.status = text,
+            Action::TerminalFontSize(tab, size) => {
+                let Some(session) = self.tabs.iter().find(|t| t.id == tab).map(|t| t.session.id) else { return };
+                let own = self.tabs.iter().any(|t| t.id == tab && t.session.terminal.font_size.is_some());
+                // A session with its own font size keeps the zoom (all its tabs); others change the global default.
+                if own {
+                    for t in self
+                        .tabs
+                        .iter_mut()
+                        .filter(|t| t.id == tab || (session != SessionId(0) && t.session.id == session))
+                    {
+                        t.session.terminal.font_size = Some(size);
+                    }
+                    if let Some(mut s) = self.store.session(session).cloned() {
+                        s.terminal.font_size = Some(size);
+                        self.store.upsert(s);
+                    }
+                } else {
+                    self.settings.terminal.font_size = Some(size);
+                }
+            }
             Action::OpenLocal { path, folder } => self.open_local(&path, folder),
             Action::BrowseKeyFile => {
                 self.spawn_dialog(DialogKind::KeyFile, |d, start| {
@@ -2392,6 +2417,9 @@ impl App {
             self.find = None;
         }
         let mut resp = terminal::show(ui, term, &cfg);
+        if let Some(size) = resp.font_size {
+            out.push(Action::TerminalFontSize(id, size));
+        }
         if let Some(note) = resp.font_fallback.take()
             && self.status.is_empty()
         {

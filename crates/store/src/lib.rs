@@ -13,6 +13,7 @@ pub mod db;
 pub mod envelope;
 pub mod export;
 pub mod moba_ini;
+pub mod schemes;
 pub mod settings;
 
 pub use rxt_core::{Error, Result};

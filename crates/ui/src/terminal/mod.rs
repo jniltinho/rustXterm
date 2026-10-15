@@ -64,6 +64,8 @@ pub struct ViewResponse {
     pub area: Option<egui::Response>,
     /// Open (`Some(true)`) or close the context menu ([`crate::sidebar::popup_menu`]).
     pub menu: Option<bool>,
+    /// New font size in points from Ctrl+wheel zoom; the caller stores it in the prefs.
+    pub font_size: Option<f32>,
 }
 
 /// Paste `text`, holding it in [`ViewResponse::paste_request`] when the guard applies.
@@ -96,7 +98,7 @@ struct State {
 pub fn show(ui: &mut Ui, term: &mut Terminal, config: &ViewConfig) -> ViewResponse {
     let mut resp = ViewResponse::default();
     let (mut font, missing) = font_id(ui, config);
-    font.size = (font.size + term.font_zoom()).clamp(MIN_FONT_SIZE, MAX_FONT_SIZE);
+    font.size = font.size.clamp(MIN_FONT_SIZE, MAX_FONT_SIZE);
     resp.font_fallback =
         missing.map(|name| format!("Font \"{name}\" is not available; using {}.", crate::theme::MONO_FONTS[0]));
     let (advance, row_h) = ui.ctx().fonts_mut(|f| (f.glyph_width(&font, 'M'), f.row_height(&font)));
@@ -262,6 +264,13 @@ fn handle_keyboard(ui: &mut Ui, term: &mut Terminal, config: &ViewConfig, resp: 
             }
             Event::Key { key, pressed: true, modifiers, .. } => match key {
                 Key::Insert if modifiers.shift_only() => resp.paste_from_clipboard = true,
+                // Font zoom as in GNOME Terminal; Ctrl+_ and Ctrl+/ still send 0x1f.
+                Key::Plus | Key::Equals if modifiers.ctrl && !modifiers.alt => zoom(ui, config, resp, 1.0),
+                Key::Minus if ctrl_only(modifiers) => zoom(ui, config, resp, -1.0),
+                Key::Num0 if ctrl_only(modifiers) => {
+                    resp.font_size = Some(DEFAULT_FONT_SIZE);
+                    ui.ctx().request_repaint();
+                }
                 Key::PageUp | Key::PageDown if modifiers.shift_only() => {
                     let page = term.rows() as i32 - 1;
                     term.scroll_lines(if key == Key::PageUp { page } else { -page });
@@ -274,6 +283,17 @@ fn handle_keyboard(ui: &mut Ui, term: &mut Terminal, config: &ViewConfig, resp: 
     if resp.input.len() > before {
         term.scroll_to_bottom();
     }
+}
+
+/// Step the font size by `step` points into [`ViewResponse::font_size`].
+fn zoom(ui: &Ui, config: &ViewConfig, resp: &mut ViewResponse, step: f32) {
+    let current = resp.font_size.or(config.prefs.font_size).unwrap_or(DEFAULT_FONT_SIZE);
+    resp.font_size = Some((current + step).clamp(MIN_FONT_SIZE, MAX_FONT_SIZE));
+    ui.ctx().request_repaint();
+}
+
+fn ctrl_only(m: Modifiers) -> bool {
+    m.ctrl && !m.shift && !m.alt
 }
 
 fn alt_prefixed(mods: Modifiers, byte: u8) -> Vec<u8> {
@@ -298,13 +318,9 @@ fn handle_mouse(
 
     for event in &events {
         match *event {
-            // Ctrl+wheel zooms this tab's font instead of scrolling.
+            // Ctrl+wheel zooms the font instead of scrolling.
             Event::MouseWheel { delta, modifiers, .. } if hovered && modifiers.ctrl && delta.y != 0.0 => {
-                let base = config.prefs.font_size.unwrap_or(DEFAULT_FONT_SIZE);
-                let current = (base + term.font_zoom()).clamp(MIN_FONT_SIZE, MAX_FONT_SIZE);
-                let size = (current + delta.y.signum()).clamp(MIN_FONT_SIZE, MAX_FONT_SIZE);
-                term.set_font_zoom(size - base);
-                ui.ctx().request_repaint();
+                zoom(ui, config, resp, delta.y.signum());
             }
             Event::MouseWheel { unit, delta, .. } if hovered => {
                 let lines = match unit {

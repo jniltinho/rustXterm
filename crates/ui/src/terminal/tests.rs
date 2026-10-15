@@ -53,6 +53,9 @@ fn harness(term: Terminal, dark: bool) -> Harness<'static, State> {
             s.paste_request = s.paste_request.take().or(r.paste_request);
             s.paste_from_clipboard |= r.paste_from_clipboard;
             s.menu_opened |= r.menu == Some(true);
+            if let Some(size) = r.font_size {
+                s.config.prefs.font_size = Some(size);
+            }
             s.leaked_events |= ui.input(|i| i.events.iter().any(|e| matches!(e, Event::Copy | Event::Key { .. })));
         },
         state,
@@ -227,7 +230,7 @@ fn ctrl_wheel_zooms_font_without_scrolling() {
     h.event(ctrl_wheel(1.0));
     h.step();
     h.step();
-    assert_eq!(h.state().term.font_zoom(), 2.0);
+    assert_eq!(h.state().config.prefs.font_size, Some(super::DEFAULT_FONT_SIZE + 2.0));
     assert_eq!(h.state().term.display_offset(), 0, "Ctrl+wheel must not scroll");
     assert!(h.state().term.cols() < cols_before, "a bigger font fits fewer columns");
     for _ in 0..200 {
@@ -235,7 +238,7 @@ fn ctrl_wheel_zooms_font_without_scrolling() {
     }
     h.step();
     h.step();
-    assert_eq!(h.state().term.font_zoom(), 6.0 - super::DEFAULT_FONT_SIZE, "clamped at the minimum size");
+    assert_eq!(h.state().config.prefs.font_size, Some(6.0), "clamped at the minimum size");
 }
 
 #[test]
@@ -376,6 +379,36 @@ fn tab_arrows_and_function_keys_stay_in_the_terminal() {
     assert_eq!(h.state().input, b"\t\x1b[A\x1b[D\x1b[15~\x1b\x1b[Z");
     assert!(h.state().has_focus, "focus stays on the terminal");
     assert!(!h.state().leaked_events);
+}
+
+#[test]
+fn ctrl_plus_minus_zero_zoom_font() {
+    let mut h = harness(Terminal::new(20, 4, 10), false);
+    h.step();
+    click(&mut h, (1, 1), PointerButton::Primary);
+    h.step();
+    let size = |h: &Harness<'static, State>| h.state().config.prefs.font_size;
+    for key in [egui::Key::Equals, egui::Key::Plus] {
+        h.key_press_modifiers(Modifiers::CTRL, key);
+        h.step();
+    }
+    assert_eq!(size(&h), Some(super::DEFAULT_FONT_SIZE + 2.0));
+    h.key_press_modifiers(Modifiers::CTRL, egui::Key::Minus);
+    h.step();
+    assert_eq!(size(&h), Some(super::DEFAULT_FONT_SIZE + 1.0));
+    h.key_press_modifiers(Modifiers::CTRL, egui::Key::Num0);
+    h.step();
+    assert_eq!(size(&h), Some(super::DEFAULT_FONT_SIZE));
+    h.key_press_modifiers(Modifiers::CTRL | Modifiers::SHIFT, egui::Key::Minus);
+    h.step();
+    assert_eq!(size(&h), Some(super::DEFAULT_FONT_SIZE), "Ctrl+_ is not a zoom key");
+    h.key_press_modifiers(Modifiers::CTRL, egui::Key::Slash);
+    h.step();
+    assert_eq!(h.state().input, b"\x1f\x1f", "Ctrl+_ and Ctrl+/ send 0x1f");
+    h.state_mut().config.prefs.font_size = Some(13.5);
+    h.key_press_modifiers(Modifiers::CTRL, egui::Key::Equals);
+    h.step();
+    assert_eq!(size(&h), Some(14.5), "zoom steps by exactly one point");
 }
 
 #[test]

@@ -1,6 +1,6 @@
 //! Map `core` theme tokens to egui style and fonts (design D7, R1, R2, R9).
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use egui::epaint::Shadow;
 use egui::{
@@ -204,17 +204,55 @@ pub(crate) fn focus_ring(ctx: &Context, t: &Tokens) {
 }
 
 /// Terminal scheme by name; unknown or unset names follow the UI theme.
-pub(crate) fn scheme(name: Option<&str>, dark: bool) -> TerminalScheme {
-    match name {
-        Some(n) if n == TerminalScheme::light().name => TerminalScheme::light(),
-        Some(n) if n == TerminalScheme::dark().name => TerminalScheme::dark(),
-        _ => TerminalScheme::for_dark(dark),
+/// Per-session scheme override meaning "follow the UI theme" (a session's `None` inherits the
+/// global scheme). Never a catalog name, so [`scheme`] falls back to the UI-theme scheme.
+pub(crate) const FOLLOW_UI: &str = "follow-ui";
+
+static CATALOG: OnceLock<Vec<TerminalScheme>> = OnceLock::new();
+
+/// Built-in schemes plus the user schemes loaded at start.
+pub(crate) fn catalog() -> &'static [TerminalScheme] {
+    CATALOG.get_or_init(TerminalScheme::builtin)
+}
+
+/// Load user schemes from `dir` once; later calls (and calls after [`catalog`] ran) are ignored.
+pub(crate) fn load_user_schemes(dir: &std::path::Path) {
+    if CATALOG.get().is_some() {
+        return;
     }
+    let mut all = TerminalScheme::builtin();
+    let taken: Vec<&str> = all.iter().map(|s| s.name.as_str()).collect();
+    let user = rxt_store::schemes::load(dir, &taken);
+    all.extend(user);
+    let _ = CATALOG.set(all);
+}
+
+/// Scheme named `name`; unknown names, [`FOLLOW_UI`] and `None` follow the UI theme.
+pub(crate) fn scheme(name: Option<&str>, dark: bool) -> TerminalScheme {
+    name.and_then(|n| catalog().iter().find(|s| s.name == n)).cloned().unwrap_or_else(|| TerminalScheme::for_dark(dark))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn session_follow_ui_overrides_global_scheme() {
+        let global = rxt_core::TerminalPrefs { scheme: Some("Dracula".into()), ..Default::default() };
+        let inherit = rxt_core::TerminalPrefs::default().resolve(&global);
+        assert_eq!(scheme(inherit.scheme.as_deref(), true).name, "Dracula");
+        let follow = rxt_core::TerminalPrefs { scheme: Some(FOLLOW_UI.into()), ..Default::default() }.resolve(&global);
+        assert_eq!(scheme(follow.scheme.as_deref(), true), TerminalScheme::dark());
+    }
+
+    #[test]
+    fn scheme_lookup_falls_back_to_ui_theme() {
+        assert_eq!(scheme(Some("Dracula"), false).name, "Dracula");
+        for name in [None, Some(FOLLOW_UI), Some("No such scheme")] {
+            assert_eq!(scheme(name, true), TerminalScheme::dark());
+            assert_eq!(scheme(name, false), TerminalScheme::light());
+        }
+    }
 
     #[test]
     fn visuals_square_one_px_and_token_colors() {

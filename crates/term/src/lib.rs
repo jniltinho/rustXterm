@@ -108,8 +108,6 @@ pub struct Terminal {
     log: Option<log::Log>,
     log_error: Option<io::Error>,
     search: Option<Search>,
-    /// Font size offset in points for this tab (Ctrl+wheel zoom in the view).
-    font_zoom: f32,
 }
 
 impl Terminal {
@@ -126,7 +124,6 @@ impl Terminal {
             log: None,
             log_error: None,
             search: None,
-            font_zoom: 0.0,
         }
     }
 
@@ -160,15 +157,6 @@ impl Terminal {
             self.term.resize(size);
             self.search_clear_focus();
         }
-    }
-
-    /// Font size offset (points) set by the view's Ctrl+wheel zoom.
-    pub fn font_zoom(&self) -> f32 {
-        self.font_zoom
-    }
-
-    pub fn set_font_zoom(&mut self, zoom: f32) {
-        self.font_zoom = zoom;
     }
 
     pub fn cols(&self) -> usize {

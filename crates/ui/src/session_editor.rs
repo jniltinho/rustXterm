@@ -1034,13 +1034,11 @@ fn terminal(ui: &mut egui::Ui, s: &mut Session) {
             ui,
             "Color scheme",
             &mut t.scheme,
-            || "rustxterm-dark".into(),
+            || crate::theme::FOLLOW_UI.into(),
             |ui, v| {
                 let mut opt = Some(v.clone());
                 scheme_combo(ui, "editor-scheme", &mut opt);
-                if let Some(n) = opt {
-                    *v = n;
-                }
+                *v = opt.unwrap_or_else(|| crate::theme::FOLLOW_UI.into());
             },
         );
         override_row(

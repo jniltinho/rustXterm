@@ -743,6 +743,32 @@ fn tab_operations() {
 }
 
 #[test]
+fn zoom_saves_global_size_or_session_override_for_all_its_tabs() {
+    let mut e = env();
+    let plain = e.connect(ssh("a"));
+    e.app().apply(Action::TerminalFontSize(plain, 15.0));
+    assert_eq!(e.h.state().settings.terminal.font_size, Some(15.0));
+
+    let mut own = ssh("b");
+    own.terminal.font_size = Some(11.0);
+    let id = e.app().store.upsert(own);
+    let s = e.h.state().store.session(id).cloned().unwrap();
+    let first = e.connect(s.clone());
+    let second = e.connect(s);
+    e.app().apply(Action::TerminalFontSize(second, 12.0));
+    let sizes: Vec<_> =
+        e.h.state()
+            .tabs
+            .iter()
+            .filter(|t| t.id == first || t.id == second)
+            .map(|t| t.session.terminal.font_size)
+            .collect();
+    assert_eq!(sizes, [Some(12.0), Some(12.0)]);
+    assert_eq!(e.h.state().store.session(id).unwrap().terminal.font_size, Some(12.0));
+    assert_eq!(e.h.state().settings.terminal.font_size, Some(15.0), "global size untouched");
+}
+
+#[test]
 fn next_and_previous_tab_cycle_through_home() {
     let mut e = env();
     let a = e.connect(ssh("a"));

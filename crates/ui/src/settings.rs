@@ -749,13 +749,33 @@ fn cursor_label(c: CursorShape) -> &'static str {
 
 /// Terminal scheme picker; `None` follows the UI theme.
 pub(crate) fn scheme_combo(ui: &mut egui::Ui, id: &str, scheme: &mut Option<String>) {
+    if scheme.as_deref() == Some(crate::theme::FOLLOW_UI) {
+        *scheme = None;
+    }
     let label = scheme.clone().unwrap_or_else(|| "Follow UI theme".into());
-    egui::ComboBox::from_id_salt(id).selected_text(label).show_ui(ui, |ui| {
+    egui::ComboBox::from_id_salt(id).selected_text(label).height(420.0).show_ui(ui, |ui| {
         ui.selectable_value(scheme, None, "Follow UI theme");
-        for name in [TerminalScheme::light().name, TerminalScheme::dark().name] {
-            ui.selectable_value(scheme, Some(name.clone()), name);
+        for s in crate::theme::catalog() {
+            ui.horizontal(|ui| {
+                scheme_swatch(ui, s);
+                ui.selectable_value(scheme, Some(s.name.clone()), &s.name);
+            });
         }
     });
+}
+
+/// Small preview: background with the foreground and the 8 normal ANSI colors.
+fn scheme_swatch(ui: &mut egui::Ui, s: &TerminalScheme) {
+    let c = color;
+    let cell = 7.0;
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(cell * 9.0 + 4.0, cell + 4.0), egui::Sense::hover());
+    let painter = ui.painter();
+    painter.rect_filled(rect, 0.0, c(s.background));
+    painter.rect_stroke(rect, 0.0, ui.visuals().widgets.noninteractive.bg_stroke, egui::StrokeKind::Inside);
+    for (i, color) in std::iter::once(s.foreground).chain(s.ansi[..8].iter().copied()).enumerate() {
+        let min = rect.min + egui::vec2(2.0 + cell * i as f32, 2.0);
+        painter.rect_filled(egui::Rect::from_min_size(min, egui::vec2(cell - 1.0, cell)), 0.0, c(color));
+    }
 }
 
 #[cfg(test)]
@@ -763,6 +783,21 @@ pub(crate) mod tests {
     use egui_kittest::kittest::Queryable;
 
     use super::*;
+
+    #[test]
+    fn scheme_combo_lists_catalog_and_maps_follow_ui() {
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(400.0, 600.0)).build_ui_state(
+            |ui, s: &mut Option<String>| scheme_combo(ui, "t", s),
+            Some(crate::theme::FOLLOW_UI.to_owned()),
+        );
+        h.run();
+        assert_eq!(h.state(), &None, "follow-ui shows as Follow UI theme");
+        h.get_by_role(egui::accesskit::Role::ComboBox).click();
+        h.run();
+        h.get_by_label("Dracula").click();
+        h.run();
+        assert_eq!(h.state().as_deref(), Some("Dracula"));
+    }
 
     #[test]
     fn defaults_are_valid_and_never_plain_ctrl_letter() {

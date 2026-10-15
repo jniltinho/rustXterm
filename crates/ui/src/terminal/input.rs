@@ -65,6 +65,8 @@ pub fn key_bytes(key: Key, m: Modifiers, app_cursor: bool) -> Option<Vec<u8>> {
         Key::Backspace if m.ctrl => esc_prefix(vec![0x08]),
         Key::Backspace => esc_prefix(vec![0x7f]),
         Key::Escape => vec![0x1b],
+        // Ctrl+_ (Ctrl+Shift+-): the same byte as Ctrl+/; Ctrl+- itself zooms the font.
+        Key::Minus if m.ctrl && m.shift => esc_prefix(vec![0x1f]),
         // Ctrl+Shift+letter is left to application shortcuts (copy/paste).
         _ if m.ctrl && !m.shift => esc_prefix(vec![ctrl_byte(key)?]),
         _ => return None,

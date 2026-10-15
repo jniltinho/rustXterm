@@ -333,11 +333,143 @@ impl TerminalScheme {
     pub fn for_dark(dark: bool) -> Self {
         if dark { Self::dark() } else { Self::light() }
     }
+
+    /// Built-in schemes: the two rustXterm ones, then published palettes (see ATTRIBUTION.md).
+    pub fn builtin() -> Vec<Self> {
+        const SOLARIZED: [u32; 16] = [
+            0x073642, 0xdc322f, 0x859900, 0xb58900, 0x268bd2, 0xd33682, 0x2aa198, 0xeee8d5, 0x002b36, 0xcb4b16,
+            0x586e75, 0x657b83, 0x839496, 0x6c71c4, 0x93a1a1, 0xfdf6e3,
+        ];
+        const TANGO: [u32; 16] = [
+            0x2e3436, 0xcc0000, 0x4e9a06, 0xc4a000, 0x3465a4, 0x75507b, 0x06989a, 0xd3d7cf, 0x555753, 0xef2929,
+            0x8ae234, 0xfce94f, 0x729fcf, 0xad7fa8, 0x34e2e2, 0xeeeeec,
+        ];
+        let p = |name: &str, fg: u32, bg: u32, cursor: u32, selection: u32, ansi: [u32; 16]| Self {
+            name: name.into(),
+            foreground: Rgba::hex(fg),
+            background: Rgba::hex(bg),
+            cursor: Rgba::hex(cursor),
+            selection: Rgba::hex(selection),
+            ansi: ansi.map(Rgba::hex),
+        };
+        vec![
+            Self::light(),
+            Self::dark(),
+            p("Solarized Dark", 0x839496, 0x002b36, 0x93a1a1, 0x073642, SOLARIZED),
+            p("Solarized Light", 0x657b83, 0xfdf6e3, 0x586e75, 0xeee8d5, SOLARIZED),
+            p(
+                "Dracula",
+                0xf8f8f2,
+                0x282a36,
+                0xf8f8f2,
+                0x44475a,
+                [
+                    0x21222c, 0xff5555, 0x50fa7b, 0xf1fa8c, 0xbd93f9, 0xff79c6, 0x8be9fd, 0xf8f8f2, 0x6272a4, 0xff6e6e,
+                    0x69ff94, 0xffffa5, 0xd6acff, 0xff92df, 0xa4ffff, 0xffffff,
+                ],
+            ),
+            p(
+                "Gruvbox Dark",
+                0xebdbb2,
+                0x282828,
+                0xebdbb2,
+                0x504945,
+                [
+                    0x282828, 0xcc241d, 0x98971a, 0xd79921, 0x458588, 0xb16286, 0x689d6a, 0xa89984, 0x928374, 0xfb4934,
+                    0xb8bb26, 0xfabd2f, 0x83a598, 0xd3869b, 0x8ec07c, 0xebdbb2,
+                ],
+            ),
+            p(
+                "Gruvbox Light",
+                0x3c3836,
+                0xfbf1c7,
+                0x3c3836,
+                0xd5c4a1,
+                [
+                    0xfbf1c7, 0xcc241d, 0x98971a, 0xd79921, 0x458588, 0xb16286, 0x689d6a, 0x7c6f64, 0x928374, 0x9d0006,
+                    0x79740e, 0xb57614, 0x076678, 0x8f3f71, 0x427b58, 0x3c3836,
+                ],
+            ),
+            p(
+                "Nord",
+                0xd8dee9,
+                0x2e3440,
+                0xd8dee9,
+                0x434c5e,
+                [
+                    0x3b4252, 0xbf616a, 0xa3be8c, 0xebcb8b, 0x81a1c1, 0xb48ead, 0x88c0d0, 0xe5e9f0, 0x4c566a, 0xbf616a,
+                    0xa3be8c, 0xebcb8b, 0x81a1c1, 0xb48ead, 0x8fbcbb, 0xeceff4,
+                ],
+            ),
+            p(
+                "One Dark",
+                0xabb2bf,
+                0x282c34,
+                0x528bff,
+                0x3e4451,
+                [
+                    0x282c34, 0xe06c75, 0x98c379, 0xe5c07b, 0x61afef, 0xc678dd, 0x56b6c2, 0xabb2bf, 0x5c6370, 0xe06c75,
+                    0x98c379, 0xe5c07b, 0x61afef, 0xc678dd, 0x56b6c2, 0xffffff,
+                ],
+            ),
+            p(
+                "Monokai",
+                0xf8f8f2,
+                0x272822,
+                0xf8f8f0,
+                0x49483e,
+                [
+                    0x272822, 0xf92672, 0xa6e22e, 0xf4bf75, 0x66d9ef, 0xae81ff, 0xa1efe4, 0xf8f8f2, 0x75715e, 0xf92672,
+                    0xa6e22e, 0xf4bf75, 0x66d9ef, 0xae81ff, 0xa1efe4, 0xf9f8f5,
+                ],
+            ),
+            p("Tango Dark", 0xd3d7cf, 0x2e3436, 0xd3d7cf, 0x555753, TANGO),
+            p("Tango Light", 0x2e3436, 0xeeeeec, 0x2e3436, 0xbabdb6, TANGO),
+            p(
+                "xterm",
+                0xe5e5e5,
+                0x000000,
+                0xe5e5e5,
+                0x4d4d4d,
+                [
+                    0x000000, 0xcd0000, 0x00cd00, 0xcdcd00, 0x0000ee, 0xcd00cd, 0x00cdcd, 0xe5e5e5, 0x7f7f7f, 0xff0000,
+                    0x00ff00, 0xffff00, 0x5c5cff, 0xff00ff, 0x00ffff, 0xffffff,
+                ],
+            ),
+        ]
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn builtin_schemes_are_unique_and_round_trip() {
+        let all = TerminalScheme::builtin();
+        let names: Vec<&str> = all.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "rustxterm-light",
+                "rustxterm-dark",
+                "Solarized Dark",
+                "Solarized Light",
+                "Dracula",
+                "Gruvbox Dark",
+                "Gruvbox Light",
+                "Nord",
+                "One Dark",
+                "Monokai",
+                "Tango Dark",
+                "Tango Light",
+                "xterm",
+            ]
+        );
+        for s in all {
+            assert_eq!(serde_json::from_str::<TerminalScheme>(&serde_json::to_string(&s).unwrap()).unwrap(), s);
+        }
+    }
 
     #[test]
     fn system_falls_back_to_light() {
