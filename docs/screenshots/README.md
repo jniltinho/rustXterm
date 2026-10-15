@@ -104,6 +104,18 @@ full size. Regenerate them as described in [DEVELOPMENT.md](../DEVELOPMENT.md#sn
 |---|---|
 | <a href="terminal_session_banner_light@2x.png"><img src="terminal_session_banner_light@2x.png" width="420" alt="SSH session banner (light theme)"></a> | <a href="terminal_session_banner_dark@2x.png"><img src="terminal_session_banner_dark@2x.png" width="420" alt="SSH session banner (dark theme)"></a> |
 
+**Terminal with the Dracula color scheme**
+
+| Light | Dark |
+|---|---|
+| <a href="terminal_scheme_dracula_light@2x.png"><img src="terminal_scheme_dracula_light@2x.png" width="420" alt="Terminal with the Dracula color scheme (light theme)"></a> | <a href="terminal_scheme_dracula_dark@2x.png"><img src="terminal_scheme_dracula_dark@2x.png" width="420" alt="Terminal with the Dracula color scheme (dark theme)"></a> |
+
+**Color scheme picker with swatches**
+
+| Light | Dark |
+|---|---|
+| <a href="settings_terminal_schemes_light@2x.png"><img src="settings_terminal_schemes_light@2x.png" width="420" alt="Color scheme picker with swatches (light theme)"></a> | <a href="settings_terminal_schemes_dark@2x.png"><img src="settings_terminal_schemes_dark@2x.png" width="420" alt="Color scheme picker with swatches (dark theme)"></a> |
+
 **Remote monitoring bar and SFTP browser**
 
 | Light | Dark |

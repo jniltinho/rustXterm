@@ -347,6 +347,21 @@ fn snapshot_terminal_session_banner() {
 }
 
 #[test]
+fn snapshot_terminal_color_schemes() {
+    let mut e = env();
+    e.app().settings.terminal.scheme = Some("Dracula".into());
+    let motd = b"Welcome to the fictional lab server.\r\n\r\nalice@web1:~$ ls --color\r\n\x1b[1;34mbin\x1b[0m  \x1b[1;32mdeploy.sh\x1b[0m  \x1b[1;31mbackup.tar.gz\x1b[0m  notes.txt\r\nalice@web1:~$ ";
+    connect_with_banner(&mut e, ssh("web1.lab.example"), banner_facts(), motd);
+    e.snap("terminal_scheme_dracula");
+    e.app().run(CommandId::SETTINGS);
+    settings_tab(&mut e, "Terminal");
+    // The color scheme picker is the last combo box on the Terminal page.
+    e.h.query_all_by_role(Role::ComboBox).last().expect("color scheme picker").click();
+    e.settle();
+    e.snap("settings_terminal_schemes");
+}
+
+#[test]
 fn snapshot_menus_open() {
     let mut e = env();
     e.connect(ssh("web1.lab.example"));
