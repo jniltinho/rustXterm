@@ -39,7 +39,7 @@ Ctrl+right click on a terminal (or right click when right-click paste is off) SH
 - **THEN** the scrollback and the screen are selected and Copy copies them
 
 ### Requirement: Fonts and appearance
-The user SHALL choose the terminal font family, size, cursor shape and blink, and color scheme per session or globally. The color scheme SHALL be "Follow UI theme", a built-in scheme or a user scheme loaded at start from the configuration directory; a session SHALL inherit the global scheme unless it overrides it. Font zoom SHALL change the size by one point per step and the size SHALL persist across tabs and restarts.
+The user SHALL choose the terminal font family, size, cursor shape and blink per session or globally. Font zoom SHALL change the size by one point per step and the size SHALL persist across tabs and restarts.
 
 #### Scenario: Global defaults
 - **WHEN** the user changes the global cursor shape to underline
@@ -48,6 +48,25 @@ The user SHALL choose the terminal font family, size, cursor shape and blink, an
 #### Scenario: Per-session font
 - **WHEN** a session overrides font size to 14
 - **THEN** only tabs of that session use size 14
+
+#### Scenario: Zoom with mouse and keyboard
+- **WHEN** the pointer is over the terminal and the user presses Ctrl+wheel up, or the terminal has focus and the user presses Ctrl+= or Ctrl++
+- **THEN** the font grows by exactly one point (13.5 becomes 14.5), up to 48 points; Ctrl+wheel down or Ctrl+- shrinks it by one point, down to 6 points; Ctrl+0 resets it to the default size
+
+#### Scenario: Zoom persists
+- **WHEN** the user zooms a tab whose session has no font size override and restarts the application
+- **THEN** every terminal tab opens with the zoomed size, and a session with its own font size keeps its own zoomed size instead
+
+#### Scenario: Zoom applies to sibling tabs
+- **WHEN** two tabs of a session with its own font size are open and the user zooms one of them
+- **THEN** both tabs use the new size, and zooming the other tab steps from the new size
+
+#### Scenario: Control bytes kept
+- **WHEN** the user presses Ctrl+Shift+- (Ctrl+_) or Ctrl+/ in the terminal
+- **THEN** byte 0x1f is sent to the session and the font size does not change
+
+### Requirement: Color schemes
+The user SHALL choose the terminal color scheme per session or globally: "Follow UI theme", a built-in scheme or a user scheme loaded at start from the configuration directory. A session SHALL inherit the global scheme unless it overrides it.
 
 #### Scenario: Built-in scheme
 - **WHEN** the user opens the color scheme picker
@@ -84,22 +103,6 @@ The user SHALL choose the terminal font family, size, cursor shape and blink, an
 #### Scenario: Follow UI theme
 - **WHEN** the scheme is "Follow UI theme" and the user switches the UI between light and dark
 - **THEN** the terminal switches between the rustXterm light and dark schemes
-
-#### Scenario: Zoom with mouse and keyboard
-- **WHEN** the pointer is over the terminal and the user presses Ctrl+wheel up, or the terminal has focus and the user presses Ctrl+= or Ctrl++
-- **THEN** the font grows by exactly one point (13.5 becomes 14.5), up to 48 points; Ctrl+wheel down or Ctrl+- shrinks it by one point, down to 6 points; Ctrl+0 resets it to the default size
-
-#### Scenario: Zoom persists
-- **WHEN** the user zooms a tab whose session has no font size override and restarts the application
-- **THEN** every terminal tab opens with the zoomed size, and a session with its own font size keeps its own zoomed size instead
-
-#### Scenario: Zoom applies to sibling tabs
-- **WHEN** two tabs of a session with its own font size are open and the user zooms one of them
-- **THEN** both tabs use the new size, and zooming the other tab steps from the new size
-
-#### Scenario: Control bytes kept
-- **WHEN** the user presses Ctrl+Shift+- (Ctrl+_) or Ctrl+/ in the terminal
-- **THEN** byte 0x1f is sent to the session and the font size does not change
 
 ### Requirement: Session logging
 The user SHALL be able to log terminal output of a session to a file chosen in session settings, and save the visible terminal text to a file on demand.
