@@ -11,6 +11,7 @@ requirements live in OpenSpec under [`openspec/`](../openspec/).
 - [Settings and encrypted store](#settings-and-encrypted-store)
 - [Agent control (CLI and MCP)](#agent-control-cli-and-mcp)
 - [Local terminal](#local-terminal)
+- [Terminal color schemes and zoom](#terminal-color-schemes-and-zoom)
 - [Build, release and CI](#build-release-and-ci)
 - [Protocol test lab](#protocol-test-lab)
 - [Gate receipts](#gate-receipts)
@@ -35,6 +36,39 @@ On Linux, a process that leaves the shell's session on purpose (`setsid`, daemon
 with any terminal emulator. Without a pseudo-console (macOS for now, older Windows) "+" opens New
 session. Agents (CLI and MCP) see local tabs in `tabs list` but every other request on them is
 denied and audited, and MultiExec input from agents skips them.
+
+## Terminal color schemes and zoom
+
+**Settings › Terminal › Color scheme** sets the global scheme; the session editor can override it per
+session (or force **Follow UI theme**). Built in: rustxterm-light, rustxterm-dark, Solarized Dark,
+Solarized Light, Dracula, Gruvbox Dark, Gruvbox Light, Nord, One Dark, Monokai, Tango Dark, Tango Light
+and xterm ([spec change](../openspec/changes/add-terminal-color-schemes/)).
+
+Custom schemes go in a `schemes/` folder next to `config.toml` (`~/.config/rustxterm/schemes/` on
+Linux, `%APPDATA%\rustxterm\schemes\` on Windows), one JSON file per scheme, loaded at start. Colors
+are `[r, g, b, a]`; `ansi` holds the 8 normal then the 8 bright colors:
+
+```json
+{
+  "name": "My scheme",
+  "foreground": [220, 220, 220, 255],
+  "background": [30, 30, 30, 255],
+  "cursor": [220, 220, 220, 255],
+  "selection": [60, 80, 110, 255],
+  "ansi": [[0,0,0,255], [205,49,49,255], [13,188,121,255], [229,229,16,255],
+           [36,114,200,255], [188,63,188,255], [17,168,205,255], [229,229,229,255],
+           [102,102,102,255], [241,76,76,255], [35,209,139,255], [245,245,67,255],
+           [59,142,234,255], [214,112,214,255], [41,184,219,255], [255,255,255,255]]
+}
+```
+
+Files over 64 KiB, invalid files and names already in use (built-in names, or an earlier file in name
+order) are skipped with a warning in the log.
+
+Font zoom: Ctrl+wheel or Ctrl+= / Ctrl++ grow the font by one point, Ctrl+wheel down or Ctrl+- shrink
+it, Ctrl+0 resets it (6 to 48 points). The size is saved to the global settings, or to the session
+when it has its own font size, and applies to every open tab using it. Ctrl+_ and Ctrl+/ still send
+0x1f to the shell.
 
 ## Architecture
 
