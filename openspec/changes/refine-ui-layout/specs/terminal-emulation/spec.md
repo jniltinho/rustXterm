@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Fonts and appearance
-The user SHALL choose the terminal font family, size, cursor shape and blink per session or globally. The default terminal font SHALL be the bundled JetBrains Mono at 13 logical pixels, available on every host without installed fonts; a family that fails to load SHALL fall back to the bundled default with a status message. Font zoom SHALL change the size by one point per step and persist across tabs and restarts.
+The user SHALL choose the terminal font family, size, cursor shape and blink per session or globally. The default terminal font SHALL be the bundled Cascadia Mono at 13 logical pixels, available on every host without installed fonts; a family that fails to load SHALL fall back to the bundled default with a status message. Font zoom SHALL change the size by one point per step and persist across tabs and restarts.
 
 #### Scenario: Global defaults
 - **WHEN** the user changes the global cursor shape to underline
@@ -29,7 +29,7 @@ The user SHALL choose the terminal font family, size, cursor shape and blink per
 
 #### Scenario: Default font without system fonts
 - **WHEN** a terminal tab opens on a host with no font packages
-- **THEN** it renders with the bundled JetBrains Mono at 13 px and box-drawing characters join without gaps
+- **THEN** it renders with the bundled Cascadia Mono at 13 px and box-drawing characters join without gaps
 
 ## ADDED Requirements
 

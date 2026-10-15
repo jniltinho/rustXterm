@@ -5,7 +5,7 @@ rustXterm v0.1 (`create-native-rust-linux-terminal`) works, but a review of its 
 ## What Changes
 
 - **Visual system**: theme tokens grow from colors only to a full design system: neutral Light (`#f0f0f0`/white family, Windows-blue accent) and neutral Dark (`#1e1e1e`–`#2b2b2b`, no blue tint) palettes, a 2/4/6/8/12/16/24 px spacing scale, 1 px borders, square corners (radius 0 everywhere), a typography scale, focus ring, hover/pressed/disabled states and contrast minimums, checked by unit tests.
-- **Bundled fonts**: Noto Sans (UI) and JetBrains Mono (terminal default), both SIL OFL 1.1, under `assets/fonts/` with license files and `ATTRIBUTION.md` rows, so every Linux desktop renders the same metrics.
+- **Bundled fonts**: Noto Sans (UI) and Cascadia Mono (terminal default), both SIL OFL 1.1, under `assets/fonts/` with license files and `ATTRIBUTION.md` rows, so every Linux desktop renders the same metrics.
 - **HiDPI icons**: icons pick the 16/32/48/64/96 px bitmap from the catalog that fits `logical size × scale factor`, so 1.25×, 1.5× and 2× stay sharp.
 - **Shell chrome**: classic menu bar (Terminal, Sessions, View, Tools, Settings, Help) whose items are existing or new command ids; compact 24 px-icon toolbar with captions and Exit pinned right; quick connect at the top of the sidebar column; a vertical icon strip for sidebar tabs (Sessions, SFTP); "User sessions" root row with solid selection; add/filter moved to a bottom row and context menus; thin status bar.
 - **Tabs**: icon-only pinned Home tab, close button inside each tab, optional tab numbers, "+" new-tab button, edge-to-edge terminal and remote-desktop content.
@@ -39,6 +39,6 @@ Rounded/trapezoid tabs (square corners are a user decision), tab detach (papercl
 
 - Depends on `create-native-rust-linux-terminal` (all screens exist; this change only restyles and rearranges them). Should land before `add-telnet-sessions`, `add-serial-sessions`, `add-rsh-sessions` and `add-xdmcp-sessions` add editor pages, so they inherit the new editor layout.
 - Code: `crates/core` (`Tokens` gain spacing/typography/state fields, new `CommandId`s for menu items), `crates/ui` (`theme.rs`, `app.rs`, `tabs.rs`, `sidebar.rs`, `session_editor.rs`, `settings.rs`, `tunnels.rs`, `dialogs.rs`, `desktop.rs`, `file_tab.rs`, `sftp_panel.rs`, `icons.rs`, `build.rs`, `tests.rs`), `xtask` (`prints` sizes, 2× pass and review checklist, `guard` covers fonts).
-- Assets: `assets/fonts/` (Noto Sans Regular/Bold, JetBrains Mono Regular/Bold, OFL texts); `ATTRIBUTION.md` rows; icons now also embed the 48/64/96 px catalog sizes (larger binary, about +2–4 MiB).
+- Assets: `assets/fonts/` (Noto Sans Regular/Bold, Cascadia Mono Regular, JetBrains Mono Regular/Bold, OFL texts); `ATTRIBUTION.md` rows; icons now also embed the 48/64/96 px catalog sizes (larger binary, about +2–4 MiB).
 - Snapshots: every kittest snapshot is regenerated (new size 1280×800 and new look).
 - No new runtime crates beyond what egui/eframe already provide; no protocol, storage or engine behavior changes.

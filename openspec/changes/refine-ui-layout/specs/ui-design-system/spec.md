@@ -64,7 +64,7 @@ The UI SHALL use the bundled UI font (Noto Sans) in five roles: caption 11 px (t
 - **THEN** the set is a subset of {11, 12, 15, 32} logical pixels
 
 ### Requirement: Bundled fonts
-The application SHALL embed Noto Sans (Regular and Bold) as the UI font and JetBrains Mono (Regular and Bold) as the default terminal font, both under the SIL Open Font License 1.1, with their license texts in the repository and one `ATTRIBUTION.md` row each. The UI SHALL render identically on hosts with no fonts installed. Characters missing from a bundled font SHALL fall back to the toolkit's built-in fallback fonts, never to a blank box when the fallback covers them.
+The application SHALL embed Noto Sans (Regular and Bold) as the UI font and Cascadia Mono as the default terminal font, both under the SIL Open Font License 1.1, with their license texts in the repository and one `ATTRIBUTION.md` row each. The UI SHALL render identically on hosts with no fonts installed. Characters missing from a bundled font SHALL fall back to the toolkit's built-in fallback fonts, never to a blank box when the fallback covers them.
 
 #### Scenario: No system fonts
 - **WHEN** the application runs in a container with no font packages installed
