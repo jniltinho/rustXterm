@@ -131,6 +131,8 @@ notify-rust = "=4.18.2"
 dirs = "=7.0.0"
 # Serial ports (platform-linux only). No default features: no libudev C library (design S1). MPL-2.0.
 serialport = { version = "=4.10.1", default-features = false }
+portable-pty = "=0.9.0"
+nix = { version = "=0.28.0", default-features = false, features = ["signal"] }
 
 [patch.crates-io]
 picky = { path = "vendor/picky" }

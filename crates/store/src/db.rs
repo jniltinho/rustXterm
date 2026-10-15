@@ -339,6 +339,9 @@ impl Store {
     /// Insert or update; assigns an id when `session.id` is 0 and returns it.
     /// New sessions have no policy row, i.e. [`Policy::default`] (deny, content-read off).
     pub fn save_session(&self, session: &Session) -> Result<SessionId> {
+        if session.protocol == rxt_core::Protocol::Local {
+            return Err(Error::Invalid("local terminals are not saved sessions".into()));
+        }
         let folder = session.folder.map(|f| id_i64(f.0)).transpose()?;
         let tx = self.conn.unchecked_transaction().map_err(db)?;
         let id = if session.id.0 == 0 {

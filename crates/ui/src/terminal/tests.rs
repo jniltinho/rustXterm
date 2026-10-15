@@ -11,6 +11,7 @@ struct State {
     input: Vec<u8>,
     paste_request: Option<String>,
     paste_from_clipboard: bool,
+    menu_opened: bool,
     /// Whether a keyboard event was still visible to a handler running after the widget.
     leaked_events: bool,
     origin: Pos2,
@@ -25,6 +26,7 @@ fn harness(term: Terminal, dark: bool) -> Harness<'static, State> {
         prefs: TerminalPrefs { cursor_blink: Some(false), ..TerminalPrefs::default() },
         scheme: TerminalScheme::for_dark(dark),
         copy_on_select: true,
+        right_click_paste: true,
         paste_guard: true,
     };
     let state = State {
@@ -33,6 +35,7 @@ fn harness(term: Terminal, dark: bool) -> Harness<'static, State> {
         input: Vec::new(),
         paste_request: None,
         paste_from_clipboard: false,
+        menu_opened: false,
         leaked_events: false,
         origin: Pos2::ZERO,
         rect: egui::Rect::NOTHING,
@@ -49,6 +52,7 @@ fn harness(term: Terminal, dark: bool) -> Harness<'static, State> {
             s.input.extend(r.input);
             s.paste_request = s.paste_request.take().or(r.paste_request);
             s.paste_from_clipboard |= r.paste_from_clipboard;
+            s.menu_opened |= r.menu == Some(true);
             s.leaked_events |= ui.input(|i| i.events.iter().any(|e| matches!(e, Event::Copy | Event::Key { .. })));
         },
         state,
@@ -59,15 +63,20 @@ fn harness(term: Terminal, dark: bool) -> Harness<'static, State> {
 fn cell_center(h: &Harness<'_, State>, col: usize, row: usize) -> Pos2 {
     let font = FontId::monospace(super::DEFAULT_FONT_SIZE);
     let (w, hgt) = h.ctx.fonts_mut(|f| (f.glyph_width(&font, 'M'), f.row_height(&font)));
-    h.state().origin + vec2((col as f32 + 0.5) * w, (row as f32 + 0.5) * hgt)
+    let cell = super::snap_cell(w, hgt, h.ctx.pixels_per_point());
+    h.state().origin + vec2((col as f32 + 0.5) * cell.x, (row as f32 + 0.5) * cell.y)
 }
 
-fn click(h: &mut Harness<'_, State>, (col, row): (usize, usize), button: PointerButton) {
+fn click(h: &mut Harness<'_, State>, cell: (usize, usize), button: PointerButton) {
+    click_with(h, cell, button, Modifiers::NONE);
+}
+
+fn click_with(h: &mut Harness<'_, State>, (col, row): (usize, usize), button: PointerButton, modifiers: Modifiers) {
     let pos = cell_center(h, col, row);
     h.event(Event::PointerMoved(pos));
-    h.event(Event::PointerButton { pos, button, pressed: true, modifiers: Modifiers::NONE });
+    h.event_modifiers(Event::PointerButton { pos, button, pressed: true, modifiers }, modifiers);
     h.step();
-    h.event(Event::PointerButton { pos, button, pressed: false, modifiers: Modifiers::NONE });
+    h.event_modifiers(Event::PointerButton { pos, button, pressed: false, modifiers }, modifiers);
     h.step();
 }
 
@@ -299,10 +308,13 @@ fn every_bundled_terminal_font_is_used() {
     }
     let widths: std::collections::BTreeSet<u32> = cols.iter().map(|c| (c.2 * 100.0) as u32).collect();
     assert!(widths.len() > 3, "faces should differ in advance width: {cols:?}");
-    // Columns × advance width is the same usable width for every face (within one cell).
-    let used: Vec<f32> = cols.iter().map(|(_, c, w)| *c as f32 * w).collect();
+    // Columns × cell width (the advance snapped to whole pixels) is the same usable width for
+    // every face (within one cell).
+    let ppp = h.ctx.pixels_per_point();
+    let cell = |w: f32| super::snap_cell(w, 1.0, ppp).x;
+    let used: Vec<f32> = cols.iter().map(|(_, c, w)| *c as f32 * cell(*w)).collect();
     let (lo, hi) = used.iter().fold((f32::MAX, 0.0f32), |(lo, hi), u| (lo.min(*u), hi.max(*u)));
-    let widest = cols.iter().map(|c| c.2).fold(0.0f32, f32::max);
+    let widest = cols.iter().map(|c| cell(c.2)).fold(0.0f32, f32::max);
     assert!(hi - lo <= widest, "grid does not follow the face metrics: {cols:?}");
 }
 
@@ -364,4 +376,45 @@ fn tab_arrows_and_function_keys_stay_in_the_terminal() {
     assert_eq!(h.state().input, b"\t\x1b[A\x1b[D\x1b[15~\x1b\x1b[Z");
     assert!(h.state().has_focus, "focus stays on the terminal");
     assert!(!h.state().leaked_events);
+}
+
+#[test]
+fn ctrl_right_click_or_paste_setting_off_opens_menu() {
+    let mut h = harness(Terminal::new(20, 4, 10), false);
+    h.step();
+    click_with(&mut h, (2, 0), PointerButton::Secondary, Modifiers::CTRL);
+    assert!(h.state().menu_opened && !h.state().paste_from_clipboard);
+    h.state_mut().menu_opened = false;
+    h.state_mut().config.right_click_paste = false;
+    click(&mut h, (2, 0), PointerButton::Secondary);
+    assert!(h.state().menu_opened && !h.state().paste_from_clipboard);
+}
+
+#[test]
+fn cells_are_whole_physical_pixels() {
+    for ppp in [1.0, 1.25, 1.5, 2.0] {
+        for (advance, row_h) in [(7.83, 16.0), (8.4, 17.3), (6.0, 14.0001)] {
+            let c = super::snap_cell(advance, row_h, ppp);
+            let (wx, hy) = (c.x * ppp, c.y * ppp);
+            assert!((wx - wx.round()).abs() < 1e-4 && (hy - hy.round()).abs() < 1e-4, "{ppp} {advance} {row_h}: {c:?}");
+            assert!((wx - advance * ppp).abs() <= 0.5 + 1e-4, "width within half a pixel");
+            assert!(hy >= row_h * ppp - 0.01 && hy - row_h * ppp < 1.0, "height rounded up, not clipped");
+        }
+    }
+    assert_eq!(super::snap_cell(6.0, 14.0001, 1.0), vec2(6.0, 14.0), "float noise is not a whole pixel more");
+}
+
+#[test]
+fn glyphs_advance_exactly_one_cell() {
+    let mut h = harness(sample(), false);
+    h.run_steps(2);
+    let font = FontId::monospace(super::DEFAULT_FONT_SIZE);
+    let (advance, row_h) = h.ctx.fonts_mut(|f| (f.glyph_width(&font, 'M'), f.row_height(&font)));
+    let cell = super::snap_cell(advance, row_h, h.ctx.pixels_per_point());
+    let job = super::text_job("MiW.", &font, egui::Color32::WHITE, rxt_term::Flags::empty(), 1.0, cell.x - advance);
+    let galley = h.ctx.fonts_mut(|f| f.layout_job(job));
+    let xs: Vec<f32> = galley.rows[0].glyphs.iter().map(|g| g.pos.x).collect();
+    for (i, x) in xs.iter().enumerate() {
+        assert!((x - i as f32 * cell.x).abs() < 0.01, "glyph {i} at {x}, cell {}: {xs:?}", cell.x);
+    }
 }

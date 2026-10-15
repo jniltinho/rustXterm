@@ -14,9 +14,18 @@ use sha2::{Digest, Sha256};
 
 /// Newest glibc symbol version the portable binary may reference.
 const GLIBC_MAX: (u32, u32) = (2, 31);
-/// Shared libraries the binary may link directly; graphics and windowing libraries are dlopen'ed.
-const NEEDED_ALLOW: &[&str] =
-    &["libc.so.", "libm.so.", "libdl.so.", "libpthread.so.", "librt.so.", "libgcc_s.so.", "ld-linux-x86-64.so."];
+/// Shared libraries the binary may link directly (glibc parts and libgcc); graphics and
+/// windowing libraries are dlopen'ed. `libutil` provides `openpty` for the local terminal.
+const NEEDED_ALLOW: &[&str] = &[
+    "libc.so.",
+    "libm.so.",
+    "libdl.so.",
+    "libpthread.so.",
+    "librt.so.",
+    "libutil.so.",
+    "libgcc_s.so.",
+    "ld-linux-x86-64.so.",
+];
 
 /// Windows system DLLs the executables may import (lowercase; `api-ms-win-core-*` API sets too).
 const DLL_ALLOW: &[&str] = &[

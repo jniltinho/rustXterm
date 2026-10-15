@@ -16,7 +16,7 @@ See proposal.md - Why. Current state (base change D1, D8, D10, D12, D14):
 - Windows release artifacts produced by the same release workflow.
 
 **Non-Goals:**
-- aarch64 (the design keeps it reachable: same crates, a second target later), local shell (phase 2), MSIX/Store, a portable data-next-to-exe mode, Windows-specific snapshot images.
+- aarch64 (the design keeps it reachable: same crates, a second target later), local shell (delivered by `add-local-shell`), MSIX/Store, a portable data-next-to-exe mode, Windows-specific snapshot images.
 
 ## Decisions
 

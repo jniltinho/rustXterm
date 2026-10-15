@@ -194,6 +194,7 @@ minute), Hidden tab pauses (fake peer under paused time).
 | terminal-emulation | Resize propagation | `crates/ssh/tests/lab_gates.rs::ssh_gate_flood_input_echo_resize_one_connection` (window-change ≤ 50 ms, `stty size` ≤ 500 ms, docs/gates/m1.md), `crates/ui/src/terminal/tests.rs::reports_resize_in_cells` | lab + receipt |
 | terminal-emulation | Find text | `crates/term/src/lib.rs::search_next_prev_and_case` | partial: next/previous, case and visible-match highlighting tested on a short buffer, not 5000 lines |
 | terminal-emulation | Multi-line paste guard | `crates/ui/src/terminal/tests.rs::paste_guard_and_bracketed_paste` | auto |
+| terminal-emulation | Select all from the menu | `crates/ui/src/tests.rs::terminal_context_menu`, `crates/ui/src/terminal/tests.rs::ctrl_right_click_or_paste_setting_off_opens_menu`, `crates/term/src/lib.rs::select_all_clear_history_and_reset` | auto |
 | terminal-emulation | Global defaults | `crates/core/src/session.rs::terminal_prefs_inherit_global` | auto (preference resolution; rendering of the cursor shape is not asserted) |
 | terminal-emulation | Per-session font | `crates/core/src/session.rs::terminal_prefs_inherit_global` | auto (resolution level) |
 | terminal-emulation | Log to file | `crates/term/src/lib.rs::log_raw_and_plain`, `crates/term/src/lib.rs::log_open_error` | auto (fed bytes, not a live `ls`) |
@@ -221,6 +222,8 @@ minute), Hidden tab pauses (fake peer under paused time).
 | reproducible-distribution | Asset provenance | `xtask/src/guard.rs::missing_attribution_row_fails`, `xtask/src/guard.rs::unlisted_font_file_fails` | auto |
 | reproducible-distribution | Layer violation | `xtask/src/layers.rs::violations_are_reported`, `xtask/src/layers.rs::clean_graph_passes` | auto |
 | reproducible-distribution | Milestone push | `git log` M1–M4 commit subjects with task ids; guard run before each push (docs/gates/m1.md, m2.md, m4.md) | receipt (process) |
+| desktop-shell | Driver crash on OpenGL | `apps/rustxterm/src/gpu.rs::plan_and_what_is_saved`, `apps/rustxterm/src/gpu.rs::marker_held_is_not_a_crash_and_left_marker_is`, `crates/ui/src/tests.rs::gpu_start_saves_a_working_fallback_after_painting` | auto (a real driver crash is not reproduced) |
+| desktop-shell | Instance still starting | `apps/rustxterm/src/gpu.rs::marker_held_is_not_a_crash_and_left_marker_is` | auto |
 | desktop-shell | First launch | `crates/ui/src/tests.rs::snapshot_main_empty`, `crates/ui/src/tests.rs::first_run_creates_database_and_sessions_persist` | auto |
 | desktop-shell | Layout persists | `crates/ui/src/tests.rs::layout_and_sessions_persist` | auto |
 | desktop-shell | Switch theme | `crates/ui/src/tests.rs::theme_follows_system_live`, `crates/ui/src/theme.rs::scheme_defaults_follow_theme` | auto |

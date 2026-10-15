@@ -1,13 +1,18 @@
-//! Session info box written into a terminal when an SSH or Telnet tab connects. It is fed to
-//! the local terminal model only; nothing is sent to the server.
+//! Session info box written into a terminal when an SSH or Telnet tab connects, and the welcome
+//! box of a local terminal before its shell starts. It is fed to the local terminal model only;
+//! nothing is sent to the server or the shell.
 
-use rxt_core::{Protocol, Session, SshInfo, TerminalScheme};
+use rxt_core::{LaunchInfo, Protocol, Session, SshInfo, TerminalScheme};
 
 /// What the box describes.
 pub(crate) struct BannerInfo<'a> {
     pub session: &'a Session,
     /// Connection facts of SSH tabs; `None` for Telnet.
     pub ssh: Option<&'a SshInfo>,
+    /// What a local terminal starts (local terminals only).
+    pub local: Option<&'a LaunchInfo>,
+    /// Tips listed in a local terminal's box, e.g. `Ctrl+Shift+N: new session`.
+    pub tips: Vec<String>,
     /// One line of tips for the bottom border, e.g. `Ctrl+wheel: zoom`.
     pub hint: String,
     /// Box-drawing characters and check marks; ASCII when the font lacks them.
@@ -61,6 +66,15 @@ pub(crate) fn render(info: &BannerInfo, cols: usize, scheme: &TerminalScheme) ->
     let s = info.session;
     let mut lines: Vec<Vec<Seg>> = Vec::new();
     match s.protocol {
+        Protocol::Local => {
+            let l = info.local.cloned().unwrap_or_default();
+            let target = format!("{}@{}", clean(&l.user), clean(&l.host));
+            lines.push(vec![(None, "Local terminal on ".into()), (Some(TARGET), target)]);
+            lines.push(vec![(Some(MUTED), "Shell:  ".into()), (None, clean(&l.shell))]);
+            lines.push(vec![(Some(MUTED), "Folder: ".into()), (None, clean(&l.cwd))]);
+            let bullet = if u { "• " } else { "* " };
+            lines.extend(info.tips.iter().map(|t| vec![(Some(MUTED), format!("{bullet}{}", clean(t)))]));
+        }
         Protocol::Telnet => {
             let target = host_port(&s.host, s.port, Protocol::Telnet.default_port());
             lines.push(vec![(None, "Telnet session to ".into()), (Some(TARGET), target)]);
@@ -245,7 +259,7 @@ mod tests {
     }
 
     fn draw(session: &Session, ssh: Option<&SshInfo>, cols: usize, unicode: bool, dark: bool) -> String {
-        let info = BannerInfo { session, ssh, hint: "Ctrl+wheel: zoom".into(), unicode };
+        let info = BannerInfo { session, ssh, local: None, tips: Vec::new(), hint: "Ctrl+wheel: zoom".into(), unicode };
         String::from_utf8(render(&info, cols, &TerminalScheme::for_dark(dark))).unwrap()
     }
 
@@ -351,5 +365,42 @@ mod tests {
         assert!(lines.contains("Telnet session to router[2J"), "{lines}");
         assert!(lines.contains("✗ Encryption"));
         assert!(!text.contains("\x1b[2J"));
+    }
+
+    #[test]
+    fn local_welcome_box_narrow_and_wide() {
+        let session = Session::new(Protocol::Local, "workstation", Some("alice".into()), None);
+        let launch = LaunchInfo {
+            shell: "/bin/bash".into(),
+            cwd: "/home/alice".into(),
+            user: "alice".into(),
+            host: "workstation".into(),
+            ..LaunchInfo::default()
+        };
+        let tips = vec!["Ctrl+Shift+N: new session".to_owned(), "Ctrl+right click: terminal menu".to_owned()];
+        for cols in [40, 120] {
+            let info = BannerInfo {
+                session: &session,
+                ssh: None,
+                local: Some(&launch),
+                tips: tips.clone(),
+                hint: "Ctrl+wheel: zoom".into(),
+                unicode: true,
+            };
+            let lines = plain(&String::from_utf8(render(&info, cols, &TerminalScheme::for_dark(false))).unwrap());
+            let boxed: Vec<_> = lines.iter().filter(|l| !l.is_empty()).collect();
+            assert!(boxed.iter().all(|l| l.chars().count() <= cols), "{cols}: {boxed:#?}");
+            let text = lines.join("\n");
+            assert!(text.contains(&format!("rustXterm {}", env!("CARGO_PKG_VERSION"))), "{text}");
+            assert!(text.contains("Local terminal on alice@workstation") || cols < 60, "{text}");
+            if cols >= 60 {
+                for want in
+                    ["Shell:  /bin/bash", "Folder: /home/alice", "• Ctrl+Shift+N: new session", "• Ctrl+right click"]
+                {
+                    assert!(text.contains(want), "missing {want:?} in\n{text}");
+                }
+            }
+            assert!(!text.contains("SSH session"), "{text}");
+        }
     }
 }

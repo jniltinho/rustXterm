@@ -247,20 +247,27 @@ pub(crate) fn icon_strip(ui: &mut egui::Ui, settings: &mut Settings, icons: &Ico
 /// Context menu on `r`, opened by a secondary click or, while `r` has keyboard focus, by
 /// Shift+F10 (design R9). egui 0.36 has no key code for the Menu key, so it is not handled.
 pub(crate) fn context_menu(r: &Response, add: impl FnOnce(&mut egui::Ui)) {
-    let id = Popup::default_response_id(r);
     let by_key =
         r.has_focus() && r.ctx.input_mut(|i| i.consume_shortcut(&KeyboardShortcut::new(Modifiers::SHIFT, Key::F10)));
-    let set = if r.secondary_clicked() || by_key {
-        let pos = if by_key { None } else { r.interact_pointer_pos() };
-        r.ctx.data_mut(|d| d.insert_temp(id, pos.unwrap_or(r.rect.left_bottom())));
-        Some(SetOpenCommand::Bool(true))
+    let open = if r.secondary_clicked() || by_key {
+        Some(true)
     } else if r.clicked() {
-        Some(SetOpenCommand::Bool(false))
+        Some(false)
     } else {
         None
     };
+    popup_menu(r, open, !by_key, add);
+}
+
+/// Menu anchored on `r`: `open` opens (at the pointer when `at_pointer`) or closes it.
+pub(crate) fn popup_menu(r: &Response, open: Option<bool>, at_pointer: bool, add: impl FnOnce(&mut egui::Ui)) {
+    let id = Popup::default_response_id(r);
+    if open == Some(true) {
+        let pos = if at_pointer { r.interact_pointer_pos() } else { None };
+        r.ctx.data_mut(|d| d.insert_temp(id, pos.unwrap_or(r.rect.left_bottom())));
+    }
     let pos = r.ctx.data(|d| d.get_temp::<Pos2>(id)).unwrap_or(r.rect.left_bottom());
-    Popup::menu(r).open_memory(set).at_position(pos).show(add);
+    Popup::menu(r).open_memory(open.map(SetOpenCommand::Bool)).at_position(pos).show(add);
 }
 
 /// Context-menu item with a 16 px icon, a right-aligned shortcut and a disabled (not hidden)

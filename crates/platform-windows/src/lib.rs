@@ -1,15 +1,19 @@
 //! Windows adapter for the platform contracts (add-windows-port design W3–W6): Known Folder
 //! paths, registry theme with live updates, clipboard, toasts, Win32 file dialogs parented to
 //! the main window, Credential Manager keyring, a named-pipe control transport restricted to
-//! the current user, `ShellExecuteW` opener, owner-only directory ACLs and COM ports.
+//! the current user, `ShellExecuteW` opener, owner-only directory ACLs, COM ports and local shells
+//! through ConPTY ([`ConPty`]).
 //!
 //! Only this crate may use `unsafe` (user decision, design W2). Every Win32 call lives in
-//! [`sys`] behind a safe wrapper; each `unsafe` block holds one operation and a `// SAFETY:`
+//! [`sys`] (and the pseudo-console in `conpty.rs`) behind a safe wrapper; each `unsafe` block
+//! holds one operation and a `// SAFETY:`
 //! comment (clippy denies both rules here, `cargo xtask layers` checks the lint table).
 //!
 //! The pure helpers below build on every target so they are unit-tested on Linux too; the
 //! services themselves exist only on Windows.
 
+#[cfg(windows)]
+mod conpty;
 #[cfg(windows)]
 mod control;
 #[cfg(windows)]
@@ -23,6 +27,8 @@ mod sys;
 #[cfg(windows)]
 mod theme;
 
+#[cfg(windows)]
+pub use conpty::ConPty;
 #[cfg(windows)]
 pub use control::PipeControl;
 #[cfg(windows)]
@@ -339,6 +345,82 @@ pub fn serial_gone(code: Option<i32>) -> bool {
     )
 }
 
+/// Local shell (local-shell spec): `pwsh.exe` found on `path`, else Windows PowerShell under
+/// `system_root`, else `comspec`; PowerShell starts with `-NoLogo`. `None` when none exists.
+pub fn local_shell(
+    path: Option<&std::ffi::OsStr>,
+    system_root: &std::path::Path,
+    comspec: Option<&std::ffi::OsStr>,
+    is_file: impl Fn(&std::path::Path) -> bool,
+) -> Option<(std::path::PathBuf, Vec<String>)> {
+    let ps = || vec!["-NoLogo".to_owned()];
+    let pwsh = path.into_iter().flat_map(std::env::split_paths).map(|d| d.join("pwsh.exe")).find(|p| is_file(p));
+    if let Some(p) = pwsh {
+        return Some((p, ps()));
+    }
+    let windows_ps = system_root.join(r"System32\WindowsPowerShell\v1.0\powershell.exe");
+    if is_file(&windows_ps) {
+        return Some((windows_ps, ps()));
+    }
+    comspec.map(std::path::PathBuf::from).filter(|p| is_file(p)).map(|p| (p, Vec::new()))
+}
+
+/// `CreateProcessW` command line: the executable quoted (paths with spaces), then the arguments
+/// (simple flags, no quoting needed).
+pub fn command_line(exe: &str, args: &[String]) -> String {
+    std::iter::once(format!("\"{exe}\"")).chain(args.iter().cloned()).collect::<Vec<_>>().join(" ")
+}
+
+/// Environment block for `CREATE_UNICODE_ENVIRONMENT`: `vars` with `TERM=xterm-256color` and
+/// `COLORTERM=truecolor` (replacing any case variant), sorted case-insensitively as Windows
+/// expects, each `key=value` NUL-terminated, plus a final NUL.
+pub fn env_block(vars: impl Iterator<Item = (String, String)>) -> Vec<u16> {
+    let ours = [("TERM", "xterm-256color"), ("COLORTERM", "truecolor")];
+    let mut env: Vec<(String, String)> =
+        vars.filter(|(k, _)| !ours.iter().any(|(o, _)| k.eq_ignore_ascii_case(o))).collect();
+    env.extend(ours.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())));
+    env.sort_by_key(|(k, _)| k.to_uppercase());
+    let mut block: Vec<u16> =
+        env.iter().flat_map(|(k, v)| format!("{k}={v}\0").encode_utf16().collect::<Vec<_>>()).collect();
+    block.push(0);
+    block
+}
+
+/// Removes ConPTY's start-up cursor position request (`ESC[6n`, sent once with
+/// `PSEUDOCONSOLE_INHERIT_CURSOR`) from its output, across chunk boundaries; the adapter answers it.
+#[derive(Default)]
+pub struct DsrFilter {
+    pending: Vec<u8>,
+    done: bool,
+}
+
+impl DsrFilter {
+    const DSR: &[u8] = b"\x1b[6n";
+
+    /// Output to pass on, and whether the request was found in this chunk.
+    pub fn feed(&mut self, chunk: &[u8]) -> (Vec<u8>, bool) {
+        if self.done {
+            return (chunk.to_vec(), false);
+        }
+        let mut data = std::mem::take(&mut self.pending);
+        data.extend_from_slice(chunk);
+        if let Some(i) = data.windows(Self::DSR.len()).position(|w| w == Self::DSR) {
+            self.done = true;
+            data.drain(i..i + Self::DSR.len());
+            return (data, true);
+        }
+        // Keep a trailing partial request for the next chunk.
+        let keep = (1..Self::DSR.len()).rev().find(|&n| data.ends_with(&Self::DSR[..n])).unwrap_or(0);
+        self.pending = data.split_off(data.len() - keep);
+        (data, false)
+    }
+
+    /// Whether the request was seen (answered) already.
+    pub fn answered(&self) -> bool {
+        self.done
+    }
+}
+
 /// Parse a `win32:<hex HWND>` dialog parent id.
 pub fn parse_parent(parent: &str) -> Option<std::num::NonZeroIsize> {
     let hex = parent.strip_prefix("win32:")?;
@@ -351,6 +433,54 @@ mod tests {
     use rxt_core::Error;
 
     const SID: &str = "S-1-5-21-1-2-3-1001";
+
+    #[test]
+    fn local_shell_prefers_pwsh_then_powershell_then_comspec() {
+        use std::path::Path;
+        let root = Path::new(r"C:\Windows");
+        let path = std::ffi::OsString::from(if cfg!(windows) {
+            r"C:\Tools;C:\Program Files\PowerShell\7"
+        } else {
+            "/tools:/pwsh 7"
+        });
+        let pwsh_dir = if cfg!(windows) { r"C:\Program Files\PowerShell\7" } else { "/pwsh 7" };
+        let ps = root.join(r"System32\WindowsPowerShell\v1.0\powershell.exe");
+        let cmd = std::ffi::OsStr::new(r"C:\Windows\System32\cmd.exe");
+        let pick = |files: &[&Path]| local_shell(Some(&path), root, Some(cmd), |p| files.contains(&p));
+        let pwsh = Path::new(pwsh_dir).join("pwsh.exe");
+        assert_eq!(pick(&[&pwsh, &ps]), Some((pwsh.clone(), vec!["-NoLogo".into()])));
+        assert_eq!(pick(&[&ps]), Some((ps.clone(), vec!["-NoLogo".into()])));
+        assert_eq!(pick(&[Path::new(cmd)]), Some((cmd.into(), Vec::new())));
+        assert_eq!(pick(&[]), None);
+    }
+
+    #[test]
+    fn command_line_quotes_the_executable() {
+        assert_eq!(
+            command_line(r"C:\Program Files\PowerShell\7\pwsh.exe", &["-NoLogo".into()]),
+            r#""C:\Program Files\PowerShell\7\pwsh.exe" -NoLogo"#
+        );
+    }
+
+    #[test]
+    fn env_block_sets_term_and_sorts() {
+        let vars = [("Path", "C:\\x"), ("term", "dumb"), ("ALLUSERSPROFILE", "C:\\P")];
+        let block = env_block(vars.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())));
+        let text = String::from_utf16(&block).unwrap();
+        assert_eq!(text, "ALLUSERSPROFILE=C:\\P\0COLORTERM=truecolor\0Path=C:\\x\0TERM=xterm-256color\0\0");
+    }
+
+    #[test]
+    fn dsr_filter_strips_the_first_request_across_chunks() {
+        let mut f = DsrFilter::default();
+        assert_eq!(f.feed(b"a\x1b["), (b"a".to_vec(), false));
+        assert!(!f.answered());
+        assert_eq!(f.feed(b"6nb"), (b"b".to_vec(), true));
+        assert!(f.answered());
+        assert_eq!(f.feed(b"\x1b[6n"), (b"\x1b[6n".to_vec(), false), "only the first one");
+        let mut g = DsrFilter::default();
+        assert_eq!(g.feed(b"\x1b[0m"), (b"\x1b[0m".to_vec(), false));
+    }
 
     #[test]
     fn theme_value() {

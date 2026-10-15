@@ -22,6 +22,7 @@ pub fn platform() -> Platform {
         control: Arc::new(PipeControl::new()),
         opener: Arc::new(ShellOpen),
         serial: Arc::new(WindowsSerial),
+        local_pty: crate::ConPty::detect().map(|p| Arc::new(p) as Arc<dyn rxt_platform::LocalPty>),
     }
 }
 

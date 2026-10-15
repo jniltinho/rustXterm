@@ -55,19 +55,22 @@ struct Lab {
     state: Arc<State>,
     records: Arc<StoreRecords>,
     dir: PathBuf,
+    pty: rxt_platform::fake::FakePty,
 }
 
 impl Lab {
     fn new(name: &str) -> Self {
         let dir = temp_dir(name);
         let records = Arc::new(StoreRecords(StdMutex::new(open_store(&dir.join("db")))));
+        let pty = rxt_platform::fake::FakePty::default();
         let config = EngineConfig {
             records: Some(records.clone()),
             agent_files: dir.join("agent-files"),
+            local_pty: Some(Arc::new(pty.clone())),
             ..EngineConfig::default()
         };
         let (h, state, _) = start_config(config);
-        Self { h, state, records, dir }
+        Self { h, state, records, dir, pty }
     }
 
     fn store<R>(&self, f: impl FnOnce(&Store) -> R) -> R {
@@ -529,5 +532,65 @@ fn locked_store_reports_locked() {
     let rt = h.runtime.runtime.lock().as_ref().unwrap().handle().clone();
     let r = rt.block_on(async move { sh.agent_request("a", EntryPoint::CliLive, AgentOp::ListSessions).await });
     assert!(matches!(r, Err(ControlError { code: ErrorCode::Locked, .. })));
+    h.shutdown(WAIT);
+}
+
+#[test]
+fn local_terminals_are_listed_but_off_limits_to_agents() {
+    let lab = Lab::new("local");
+    let local = super::local::open_local(&lab.h, (0, 0));
+    let ops = [
+        AgentOp::Read { tab: local, lines: None },
+        AgentOp::Wait { tab: local, pattern: "x".into(), timeout_ms: 10 },
+        AgentOp::Send { tab: local, data: "id\n".into() },
+        AgentOp::Screenshot { tab: local },
+        AgentOp::FilesLs { tab: local, path: "/".into() },
+        AgentOp::Close { tab: local },
+        AgentOp::SerialSendBreak { tab: local, ms: Some(100) },
+    ];
+    for entry in [EntryPoint::McpLive, EntryPoint::CliLive] {
+        for op in ops.clone() {
+            let r = lab.req(entry, op.clone());
+            let msg = r.as_ref().err().map(|e| e.message.clone()).unwrap_or_default();
+            // A few ops are not offered on every entry point; those are denied by the matrix first.
+            assert!(denied(&r), "{op:?} from {entry:?}: {r:?}");
+            if allowed(op.group(), entry) {
+                assert_eq!(msg, "local terminals are not available to agents", "{op:?} from {entry:?}");
+            }
+        }
+    }
+    assert!(lab.audit().iter().any(|a| a.decision == "denied" && a.result.contains("local terminals")));
+    assert_eq!(lab.pty.with(0, |s| s.input.is_empty()), Some(true), "nothing reached the shell");
+    assert_eq!(lab.pty.with(0, |s| s.closed), Some(false), "close was refused");
+    let tabs = lab.req(EntryPoint::McpLive, AgentOp::ListTabs).unwrap();
+    assert!(tabs.as_array().unwrap().iter().any(|t| t["id"] == local.0 && t["protocol"] == "local"), "{tabs}");
+
+    // MultiExec: the local tab of the group gets nothing and is reported as skipped.
+    let alpha = lab.session("alpha", Protocol::Ssh, AgentPolicy::Allow, false);
+    let a = lab.connect_tab(&alpha);
+    lab.h.send(Command::SetMultiExec { enabled: true }).unwrap();
+    for t in [a, local] {
+        lab.h.send(Command::SelectMultiExec { tab: t, selected: true }).unwrap();
+    }
+    wait_until(|| lab.h.shared.multi.lock().selected.len() == 2);
+    let r = lab.req(EntryPoint::McpLive, AgentOp::Send { tab: a, data: "id\n".into() }).unwrap();
+    assert_eq!((r["sent_to"].clone(), r["skipped"].clone()), (serde_json::json!([a.0]), serde_json::json!([local.0])));
+    sleep(Duration::from_millis(50));
+    assert_eq!(lab.pty.with(0, |s| s.input.is_empty()), Some(true));
+    let last = lab.audit().into_iter().find(|x| x.command == "send").unwrap();
+    assert!(last.result.contains("skipped local terminal tabs"), "{last:?}");
+}
+
+#[test]
+fn locked_store_answers_locked_for_local_tabs() {
+    let pty = rxt_platform::fake::FakePty::default();
+    let (h, _, _) = start_config(EngineConfig { local_pty: Some(Arc::new(pty)), ..EngineConfig::default() });
+    let local = super::local::open_local(&h, (0, 0));
+    let sh = h.shared.clone();
+    let handle = h.runtime.runtime.lock().as_ref().unwrap().handle().clone();
+    let r = handle.block_on(async move {
+        sh.agent_request("t", EntryPoint::McpLive, AgentOp::Read { tab: local, lines: None }).await
+    });
+    assert!(matches!(r, Err(ControlError { code: ErrorCode::Locked, .. })), "{r:?}");
     h.shutdown(WAIT);
 }

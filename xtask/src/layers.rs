@@ -31,7 +31,7 @@ const UI_OWNERS: &[&str] = &["rxt-ui", "rustxterm"];
 const ADAPTERS: &[&str] = &["rxt-platform-linux", "rxt-platform-windows"];
 /// OS-specific crates and the crates allowed to depend on them (design W8).
 const OWNED: &[(&[&str], &[&str], &str)] = &[
-    (&["ashpd", "oo7", "zbus"], &["rxt-platform-linux", "rustxterm"], "Linux-only"),
+    (&["ashpd", "oo7", "zbus", "portable-pty", "nix"], &["rxt-platform-linux", "rustxterm"], "Linux-only"),
     (&["windows", "windows-sys", "raw-window-handle"], &["rxt-platform-windows"], "Windows-only"),
     (
         &["notify-rust", "rfd", "arboard", "serialport", "dirs"],
@@ -235,7 +235,7 @@ mod tests {
             ("rxt-telnet", &["rxt-ui"]),
             ("rxt-serial", &["rxt-ui", "rxt-platform-linux"]),
             ("rxt-ssh-extra", &[]),
-            ("rxt-engine", &["rxt-platform-linux", "arboard"]),
+            ("rxt-engine", &["rxt-platform-linux", "arboard", "portable-pty"]),
             ("rxt-ftp", &["rxt-sftp"]),
             ("rxt-term", &["wgpu"]),
             ("rxt-store", &["rxt-platform-windows", "windows-sys", "dirs"]),
@@ -252,13 +252,14 @@ mod tests {
         assert!(has("rxt-ssh-extra is not in the xtask layer table"));
         assert!(has("rxt-engine depends on rxt-platform-linux"));
         assert!(has("rxt-engine depends on adapter crate arboard"));
+        assert!(has("rxt-engine depends on Linux-only crate portable-pty"));
         assert!(has("rxt-ftp (L2) depends on rxt-sftp"));
         assert!(has("rxt-term depends on UI crate wgpu"));
         assert!(has("rxt-store depends on rxt-platform-windows (only the app may)"));
         assert!(has("rxt-store depends on Windows-only crate windows-sys"));
         assert!(has("rxt-store depends on adapter crate dirs"));
         assert!(has("rxt-platform-linux depends on Windows-only crate windows-sys"));
-        assert_eq!(p.len(), 16, "{p:#?}");
+        assert_eq!(p.len(), 17, "{p:#?}");
     }
 
     const ROOT: &str = r#"

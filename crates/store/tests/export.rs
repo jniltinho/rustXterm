@@ -119,3 +119,12 @@ fn credential_keys_in_imported_file_are_dropped() {
     assert!(!format!("{export:?}").contains("FICTIONAL"));
     assert!(!export.to_toml().unwrap().contains("FICTIONAL"));
 }
+
+#[test]
+fn local_terminal_entries_are_skipped() {
+    let text = "format = \"rustxterm-export\"\nversion = 1\n[[sessions]]\nname = \"me\"\nprotocol = \"local\"\n[[sessions]]\nname = \"a\"\nhost = \"a.example\"\n";
+    let export = Export::from_toml(text).unwrap();
+    assert_eq!(export.skipped_local, 1);
+    assert_eq!(export.sessions.len(), 1);
+    assert_eq!(export.sessions[0].name, "a");
+}

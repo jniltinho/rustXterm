@@ -15,7 +15,7 @@ Many people who manage remote servers work from Windows; rustXterm ships only fo
 
 ### Non-goals
 
-aarch64 Windows (later, same design), Windows 7/8.1, local shell/ConPTY (phase 2, see design), built-in X server, MSIX/Microsoft Store, portable "data next to the exe" mode, macOS.
+aarch64 Windows (later, same design), Windows 7/8.1, local shell/ConPTY (delivered by `add-local-shell`), built-in X server, MSIX/Microsoft Store, portable "data next to the exe" mode, macOS.
 
 ## Capabilities
 
@@ -29,7 +29,7 @@ aarch64 Windows (later, same design), Windows 7/8.1, local shell/ConPTY (phase 2
 - `agent-control`: named-pipe control channel restricted to the current user; console CLI executable on Windows (added requirements).
 - `session-management`: keyring wrap stored in Windows Credential Manager (added requirement); the encrypted-database requirement is modified (owner-only ACL instead of mode 0600 on Windows).
 - `ssh-sessions`: agent authentication/forwarding and X11 forwarding on Windows (added requirement).
-- `terminal-emulation`: local shell on Windows deferred to phase 2 with ConPTY (added requirement).
+- `terminal-emulation`: terminals on Windows; the local terminal runs through ConPTY as `add-local-shell` specifies (added requirement).
 - `serial-sessions`: COM port discovery, naming and errors on Windows (added requirement; from `add-serial-sessions`).
 - `desktop-shell`: Windows theme following, native dialogs and notifications (added requirement).
 

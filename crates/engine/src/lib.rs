@@ -32,6 +32,7 @@
 pub mod control;
 mod files;
 mod follow;
+mod local;
 mod monitor;
 pub mod offline;
 mod tab;
@@ -105,6 +106,8 @@ pub struct EngineConfig {
     pub agent_files: PathBuf,
     /// Serial port access; `None` makes serial sessions fail as unsupported.
     pub serial_ports: Option<Arc<dyn rxt_platform::SerialPorts>>,
+    /// Local shell backend; `None` makes local terminals fail as unsupported.
+    pub local_pty: Option<Arc<dyn rxt_platform::LocalPty>>,
 }
 
 impl Default for EngineConfig {
@@ -118,6 +121,7 @@ impl Default for EngineConfig {
             control: None,
             agent_files: PathBuf::new(),
             serial_ports: None,
+            local_pty: None,
         }
     }
 }
@@ -199,6 +203,16 @@ impl EngineHandle {
         match command {
             Command::Input { tab, bytes } => self.shared.input(tab, bytes),
             Command::Resize { tab, cols, rows } => self.shared.resize(tab, cols, rows),
+            Command::Reply { tab, bytes } => self.shared.reply(tab, bytes),
+            Command::LocalStart { tab, cols, rows, cursor } => {
+                let mut tabs = self.shared.tabs.lock();
+                if let Some(t) = tabs.get_mut(&tab) {
+                    t.size = (cols, rows);
+                    if let Some(tx) = t.local_start.take() {
+                        let _ = tx.send((cols, rows, cursor));
+                    }
+                }
+            }
             Command::DesktopInput { tab, input } => self.shared.desktop_input(tab, input),
             Command::SetVisible { tab, visible } => self.shared.desktop_input(tab, DesktopInput::Visible(visible)),
             Command::SetMultiExec { enabled } => {
@@ -410,7 +424,12 @@ struct Tab {
     /// Remote monitoring control and latest-sample slot ([`monitor`]); enabled state reset
     /// from the settings on each run.
     monitor: Arc<monitor::Monitor>,
+    /// Local terminal run waiting for `Command::LocalStart`.
+    local_start: Option<oneshot::Sender<LocalStart>>,
 }
+
+/// `Command::LocalStart` values: cols, rows and the 0-based start cursor (row, column).
+type LocalStart = (u16, u16, (u16, u16));
 
 enum InputMsg {
     Bytes(Vec<u8>),
@@ -577,6 +596,13 @@ impl Shared {
         }
     }
 
+    /// Terminal reply (DA, DSR) to `tab` only: never MultiExec, never a follow check.
+    fn reply(&self, tab: TabId, bytes: Vec<u8>) {
+        if let Some(tx) = self.tabs.lock().get(&tab).and_then(|t| t.input.clone()) {
+            let _ = tx.try_send(InputMsg::Bytes(bytes));
+        }
+    }
+
     fn resize(&self, tab: TabId, cols: u16, rows: u16) {
         if let Some(t) = self.tabs.lock().get_mut(&tab) {
             t.size = (cols, rows);
@@ -665,6 +691,7 @@ impl Shared {
             follow: session.ssh.follow_terminal_folder,
             follow_kick: None,
             monitor: Arc::new(monitor::Monitor::new(self.monitor_interval.clone())),
+            local_start: None,
         };
         self.tabs.lock().insert(tab, entry);
         self.emit(Event::TabOpened { tab, session: Box::new(session) }).await;
@@ -693,6 +720,7 @@ impl Shared {
         t.desktop = None;
         t.follow = t.session.ssh.follow_terminal_folder;
         t.follow_kick = None;
+        t.local_start = None;
         // Decided at connect: the session's choice overrides the global setting (design M5).
         let monitored = t.session.ssh.remote_monitoring.unwrap_or(self.monitor_default.load(Ordering::Relaxed));
         t.monitor = Arc::new(monitor::Monitor::new(self.monitor_interval.clone()));
@@ -883,6 +911,8 @@ impl Shared {
             // Applied directly by `EngineHandle::send`.
             Command::Input { .. }
             | Command::Resize { .. }
+            | Command::Reply { .. }
+            | Command::LocalStart { .. }
             | Command::SetMultiExec { .. }
             | Command::SelectMultiExec { .. }
             | Command::DesktopInput { .. }

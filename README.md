@@ -52,6 +52,7 @@ live server monitoring and an encrypted session store. One Rust binary for Linux
 | **SSH** | Password, public key, agent and keyboard-interactive auth; host keys checked before auth on every hop; jump hosts; compression; remote command; X11 forwarding (off by default) |
 | **Terminal** | xterm-256color with truecolor, mouse reporting, scrollback, search, paste confirmation; MultiExec typing into selected tabs; bundled Cascadia Mono (default), JetBrains Mono, Hack, DejaVu Sans Mono, Inconsolata, IBM Plex Mono, Source Code Pro, Fira Mono, Ubuntu Mono and Terminus; bar, block or underline cursor |
 | **Files** | SFTP side panel that follows the shell's directory, with Name, Size (KB), Last modified, Owner, Group and Access columns; dual-pane SFTP and FTP/FTPS tabs (explicit/implicit TLS, passive/active); per-tab transfer list with Open and Show in folder for downloads |
+| **Local terminal** | The "+" after the last tab (or Ctrl+Shift+T) opens your own shell in your home folder with a welcome box, like MobaXterm: your login shell on Linux, PowerShell (or cmd) on Windows 10 1809 and later. Closing the tab ends the shell and what it started; agents cannot use local terminals |
 | **Telnet and Serial** | Telnet sessions (raw TCP mode, optional auto-login, plaintext warning); serial consoles with port discovery and line settings |
 | **Monitoring** | Agentless bar under SSH tabs with live CPU, memory, disk usage, network throughput and uptime of the remote host |
 | **Remote desktop** | Native RDP (IronRDP) and VNC (vnc-rs) embedded in tabs, VNC over SSH, view-only mode, limits against hostile servers |
@@ -128,7 +129,8 @@ the window flickers or stays black.
 
 1. Start `rustxterm` and choose a master password. It encrypts all sessions and credentials and
    **cannot be recovered**. Optionally let the desktop keyring unlock it.
-2. Create a session with **New session**, or type `user@host` in quick connect.
+2. Create a session with **New session**, or type `user@host` in quick connect. The **+** after
+   the last tab opens a local terminal on your own computer.
 3. Check the host key fingerprint and accept it. The SFTP panel opens next to the terminal.
 4. To import sessions from a MobaXterm.ini file, use **Import sessions** or
    `rustxterm import mobaxterm-ini MobaXterm.ini`.
@@ -147,6 +149,11 @@ Settings can be overridden with `--env-file` or `RXT_*` variables:
 | `RXT_AGENT_CONTROL` | Agent control on or off (`true`/`false`) |
 
 Precedence: CLI > environment / `.env` > TOML > defaults. Secret-like keys are refused.
+
+If a graphics driver crashes while the window starts, the next launch picks a safer rendering
+backend by itself (Windows: OpenGL → DirectX 12 → Vulkan → software; Linux: Vulkan → OpenGL →
+software) and says so in the status bar; choose one in **Settings › Display › Graphics**, or start
+once with `rustxterm --safe-gpu` for software rendering.
 
 </details>
 

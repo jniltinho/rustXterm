@@ -148,6 +148,7 @@ pub(crate) fn tab_strip(
     tabs: &[Tab],
     active: Option<TabId>,
     multiexec: bool,
+    local: bool,
     settings: &Settings,
     icons: &Icons,
     tokens: &Tokens,
@@ -215,9 +216,15 @@ pub(crate) fn tab_strip(
                 }
             });
         }
-        let sc = settings.shortcut_text(CommandId::NEW_SESSION);
-        if describe(plus_button(ui, tokens), "New session", sc.as_deref()).clicked() {
-            out.push(Action::Run(CommandId::NEW_SESSION));
+        // "+" opens a local terminal (MobaXterm-like) where the platform has one.
+        let (cmd, label) = if local {
+            (CommandId::NEW_LOCAL_TERMINAL, "New local terminal")
+        } else {
+            (CommandId::NEW_SESSION, "New session")
+        };
+        let sc = settings.shortcut_text(cmd);
+        if describe(plus_button(ui, tokens), label, sc.as_deref()).clicked() {
+            out.push(Action::Run(cmd));
         }
         rects
     });
@@ -458,7 +465,7 @@ mod tests {
             |ui, st: &mut Strip| {
                 let (icons, tokens) = (Icons::default(), Tokens::light());
                 let mut new = Vec::new();
-                tab_strip(ui, &st.tabs, Some(TabId(1)), false, &st.settings, &icons, &tokens, &mut new);
+                tab_strip(ui, &st.tabs, Some(TabId(1)), false, false, &st.settings, &icons, &tokens, &mut new);
                 for a in new {
                     if let Action::MoveTab { from, to } = a {
                         move_tab(&mut st.tabs, from, to);

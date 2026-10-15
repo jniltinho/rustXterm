@@ -810,6 +810,39 @@ fn ctrl_d_closes_stopped_session_and_r_reconnects() {
 }
 
 #[test]
+fn terminal_context_menu() {
+    let mut e = env();
+    let tab = e.connect(ssh("web1"));
+    if let Some(t) = e.app().tabs[0].term.as_mut() {
+        t.feed(b"hello\r\nworld");
+    }
+    e.settle();
+    let right_click = |e: &mut Env, modifiers| {
+        let pos = terminal_view(e).rect().center();
+        e.h.event(egui::Event::PointerMoved(pos));
+        for pressed in [true, false] {
+            let button = egui::PointerButton::Secondary;
+            e.h.event_modifiers(egui::Event::PointerButton { pos, button, pressed, modifiers }, modifiers);
+            e.h.step();
+        }
+        e.settle();
+    };
+    // Plain right click pastes (default); Ctrl+right click opens the menu.
+    right_click(&mut e, Modifiers::NONE);
+    assert!(e.h.query_by_label("Select all").is_none());
+    right_click(&mut e, Modifiers::CTRL);
+    e.h.get_by_label("Select all").click();
+    e.settle();
+    let sel = e.h.state().tabs[0].term.as_ref().and_then(|t| t.selection_text());
+    assert!(sel.as_deref().is_some_and(|s| s.starts_with("hello\nworld\n")), "{sel:?}");
+    right_click(&mut e, Modifiers::CTRL);
+    e.h.get_by_label_contains("Duplicate tab").click();
+    e.settle();
+    assert!(e.engine.sent().contains(&Command::Duplicate { tab }));
+    assert!(e.h.query_by_label("Select all").is_none(), "the menu closes");
+}
+
+#[test]
 fn ctrl_c_reaches_terminal_and_fires_no_action() {
     let mut e = env();
     let tab = e.connect(ssh("web1"));
@@ -2689,4 +2722,144 @@ fn dialogs_start_in_downloads_then_last_folder() {
     // Without a Downloads folder the home folder is used.
     let home = std::path::PathBuf::from("/home/u");
     assert_eq!(crate::app::start_dir(None, Some("/nonexistent/Downloads".into()), home.clone()), home);
+}
+
+// ---- local terminal (local-shell spec) ----
+
+fn local_launch() -> rxt_core::LaunchInfo {
+    rxt_platform::fake::FakePty::info()
+}
+
+/// Click "+" and return the new local tab with its `Open` session.
+fn open_local_tab(e: &mut Env) -> (TabId, Session) {
+    e.h.get_by_label("New local terminal").click();
+    e.settle();
+    let session = e
+        .engine
+        .sent()
+        .into_iter()
+        .rev()
+        .find_map(|c| if let Command::Open { session } = c { Some(*session) } else { None })
+        .unwrap();
+    (e.h.state().active.unwrap(), session)
+}
+
+fn local_start(e: &Env, tab: TabId) -> Option<(u16, u16, (u16, u16))> {
+    e.engine.sent().into_iter().rev().find_map(|c| match c {
+        Command::LocalStart { tab: t, cols, rows, cursor } if t == tab => Some((cols, rows, cursor)),
+        _ => None,
+    })
+}
+
+#[test]
+fn plus_opens_a_local_terminal_with_banner_then_starts_below_it() {
+    let mut e = env();
+    e.app().settings.show_session_banner = true;
+    let (tab, session) = open_local_tab(&mut e);
+    assert_eq!((session.protocol, session.name.as_str()), (Protocol::Local, "alice@workstation"));
+    assert_eq!(e.h.state().tabs[0].title, "alice@workstation");
+    assert!(local_start(&e, tab).is_none(), "the shell waits for the banner");
+    e.event(Event::LocalReady { tab, info: Box::new(local_launch()) });
+    let text = e.h.state().tabs[0].term.as_ref().unwrap().visible_text();
+    assert!(text.contains("Local terminal on alice@workstation"), "{text}");
+    assert!(text.contains("Folder: /home/alice"), "{text}");
+    let (cols, rows, (row, col)) = local_start(&e, tab).unwrap();
+    let banner_rows = text.trim_end_matches('\n').lines().count();
+    assert_eq!((row as usize, col), (banner_rows + 1, 0), "{text}");
+    assert!(cols > 0 && rows > 0);
+    // Nothing persisted: no recent entry for the local terminal.
+    assert!(e.h.state().store.recent.iter().all(|s| s.protocol != Protocol::Local));
+
+    // Banner off: the shell starts at the top.
+    e.app().settings.show_session_banner = false;
+    let (tab2, _) = open_local_tab(&mut e);
+    e.event(Event::LocalReady { tab: tab2, info: Box::new(local_launch()) });
+    assert_eq!(local_start(&e, tab2).map(|s| s.2), Some((0, 0)));
+}
+
+#[test]
+fn ctrl_shift_t_opens_a_local_terminal_and_plus_falls_back_without_a_backend() {
+    let mut e = env();
+    e.h.key_press_modifiers(Modifiers::CTRL | Modifiers::SHIFT, Key::T);
+    e.settle();
+    assert_eq!(e.h.state().tabs.iter().filter(|t| t.session.protocol == Protocol::Local).count(), 1);
+
+    let mut e = env();
+    e.app().platform.local_pty = None;
+    e.settle();
+    assert!(e.h.query_by_label("New local terminal").is_none());
+    e.app().apply(Action::Run(CommandId::NEW_LOCAL_TERMINAL));
+    e.settle();
+    assert!(e.h.state().tabs.is_empty(), "no local terminal without a backend");
+    // "+" is "New session" again: it opens the editor.
+    let plus = e.h.query_all_by_label("New session").last().map(|n| n.rect().center()).unwrap();
+    e.h.event(egui::Event::PointerMoved(plus));
+    for pressed in [true, false] {
+        let button = egui::PointerButton::Primary;
+        e.h.event(egui::Event::PointerButton { pos: plus, button, pressed, modifiers: Modifiers::NONE });
+        e.h.step();
+    }
+    e.settle();
+    assert!(e.h.state().editor.is_some(), "New session editor opens");
+}
+
+#[test]
+fn stopped_notice_comes_after_the_last_output() {
+    let mut e = env();
+    let tab = e.connect(ssh("web1"));
+    let mut out = Vec::new();
+    for i in 0..120_000 {
+        out.extend(format!("line {i}\r\n").as_bytes());
+    }
+    assert!(out.len() > 1 << 20, "more than one frame's budget");
+    e.engine.output.borrow_mut().insert(tab, out);
+    e.engine.push(Event::State { tab, state: ConnState::Disconnected { reason: String::new(), reconnect_at: None } });
+    e.h.step();
+    let text = e.h.state().tabs[0].term.as_ref().unwrap().visible_text();
+    let last = text.find("line 119999").unwrap_or_else(|| panic!("{text}"));
+    assert!(text.find("Session stopped").is_some_and(|s| s > last), "{text}");
+}
+
+#[test]
+fn local_tabs_have_no_monitoring_bar_or_log_file() {
+    let mut e = env();
+    e.app().settings.terminal.log_file =
+        Some(std::env::temp_dir().join("rxt-local-should-not-exist.log").display().to_string());
+    let (tab, _) = open_local_tab(&mut e);
+    e.event(Event::State { tab, state: ConnState::Connected });
+    assert!(!e.h.state().tabs[0].term.as_ref().unwrap().is_logging());
+    assert!(e.h.query_by_label("Remote monitoring").is_none());
+    e.app().apply(Action::OnTab(tab, CommandId::DUPLICATE_TAB));
+    assert!(e.engine.sent().contains(&Command::Duplicate { tab }));
+}
+
+#[test]
+fn snapshot_local_terminal() {
+    let mut e = env();
+    e.app().settings.show_session_banner = true;
+    let (tab, _) = open_local_tab(&mut e);
+    e.event(Event::LocalReady { tab, info: Box::new(local_launch()) });
+    e.event(Event::State { tab, state: ConnState::Connected });
+    e.engine.output.borrow_mut().insert(tab, b"alice@workstation:~$ ".to_vec());
+    e.settle();
+    e.snap("local_terminal");
+}
+
+#[test]
+fn gpu_start_saves_a_working_fallback_after_painting() {
+    let mut e = env();
+    let cleared = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let flag = cleared.clone();
+    let start = crate::app::GpuStart {
+        save: Some("dx12".into()),
+        notice: Some("The graphics driver stopped the last start (gl); now using dx12.".into()),
+        on_started: Box::new(move || flag.store(true, std::sync::atomic::Ordering::SeqCst)),
+    };
+    let fresh = App::new(None, e.platform.platform(), e.engine.clone());
+    let app = std::mem::replace(e.app(), fresh);
+    *e.app() = app.with_gpu_start(start);
+    assert!(e.h.state().status.contains("now using dx12"));
+    e.settle();
+    assert!(cleared.load(std::sync::atomic::Ordering::SeqCst), "marker cleared once painted");
+    assert_eq!(e.h.state().settings.gpu_backend, "dx12");
 }

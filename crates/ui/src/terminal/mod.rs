@@ -5,6 +5,8 @@
 //!
 //! Clipboard: egui cannot read the clipboard on demand, so right click and Shift+Insert set
 //! [`ViewResponse::paste_from_clipboard`]; the caller reads the clipboard and calls [`paste`].
+//! Ctrl+right click (or right click with [`ViewConfig::right_click_paste`] off) sets
+//! [`ViewResponse::menu`]; the caller shows the context menu anchored on [`ViewResponse::area`].
 //! A confirmed guarded paste is sent with [`paste_confirmed`].
 
 pub mod input;
@@ -39,6 +41,8 @@ pub struct ViewConfig {
     pub prefs: rxt_core::TerminalPrefs,
     pub scheme: rxt_core::TerminalScheme,
     pub copy_on_select: bool,
+    /// Right click pastes; Ctrl+right click (or any right click when off) opens the menu.
+    pub right_click_paste: bool,
     pub paste_guard: bool,
 }
 
@@ -56,6 +60,10 @@ pub struct ViewResponse {
     pub paste_from_clipboard: bool,
     /// Status message when the configured font family is unavailable and the default is used.
     pub font_fallback: Option<String>,
+    /// Terminal area, to anchor the context menu.
+    pub area: Option<egui::Response>,
+    /// Open (`Some(true)`) or close the context menu ([`crate::sidebar::popup_menu`]).
+    pub menu: Option<bool>,
 }
 
 /// Paste `text`, holding it in [`ViewResponse::paste_request`] when the guard applies.
@@ -91,7 +99,10 @@ pub fn show(ui: &mut Ui, term: &mut Terminal, config: &ViewConfig) -> ViewRespon
     font.size = (font.size + term.font_zoom()).clamp(MIN_FONT_SIZE, MAX_FONT_SIZE);
     resp.font_fallback =
         missing.map(|name| format!("Font \"{name}\" is not available; using {}.", crate::theme::MONO_FONTS[0]));
-    let (cell_w, cell_h) = ui.ctx().fonts_mut(|f| (f.glyph_width(&font, 'M'), f.row_height(&font)));
+    let (advance, row_h) = ui.ctx().fonts_mut(|f| (f.glyph_width(&font, 'M'), f.row_height(&font)));
+    let ppp = ui.ctx().pixels_per_point();
+    let cell = snap_cell(advance, row_h, ppp);
+    let (cell_w, cell_h) = (cell.x, cell.y);
     let rect = ui.available_rect_before_wrap();
     // Stable id: banners shown above the terminal (disconnect, notices) must not steal its focus.
     ui.advance_cursor_after_rect(rect);
@@ -137,7 +148,9 @@ pub fn show(ui: &mut Ui, term: &mut Terminal, config: &ViewConfig) -> ViewRespon
         }
     }
 
-    let grid = Grid { origin: rect.min, cell: vec2(cell_w, cell_h), cols: term.cols(), rows: term.rows() };
+    // The grid starts on a physical pixel, so every cell edge and glyph lands on one (sharp text).
+    let origin = pos2(snap(rect.min.x, ppp), snap(rect.min.y, ppp));
+    let grid = Grid { origin, cell, cols: term.cols(), rows: term.rows(), spacing: cell_w - advance, px: 1.0 / ppp };
     let mut state: State = ui.data(|d| d.get_temp(id)).unwrap_or_default();
     if focused {
         handle_keyboard(ui, term, config, &mut resp);
@@ -146,6 +159,10 @@ pub fn show(ui: &mut Ui, term: &mut Terminal, config: &ViewConfig) -> ViewRespon
     ui.data_mut(|d| d.insert_temp(id, state));
 
     paint(ui, rect, term, config, &grid, &font, focused);
+    if response.clicked() {
+        resp.menu = Some(false);
+    }
+    resp.area = Some(response);
     resp
 }
 
@@ -168,9 +185,29 @@ fn font_id(ui: &Ui, config: &ViewConfig) -> (FontId, Option<String>) {
 /// Cell geometry of the widget.
 struct Grid {
     origin: Pos2,
+    /// Cell size in points, whole physical pixels ([`snap_cell`]).
     cell: Vec2,
     cols: usize,
     rows: usize,
+    /// Extra advance per glyph so a run of text moves exactly one cell per character.
+    spacing: f32,
+    /// One physical pixel, in points.
+    px: f32,
+}
+
+/// `v` points rounded to a physical pixel.
+fn snap(v: f32, ppp: f32) -> f32 {
+    (v * ppp).round() / ppp
+}
+
+/// Cell size from the font's advance and row height, in whole physical pixels: the width rounded
+/// (glyphs then sit evenly instead of drifting by fractions of a pixel), the height rounded up
+/// so glyphs are never clipped.
+pub(crate) fn snap_cell(advance: f32, row_h: f32, ppp: f32) -> Vec2 {
+    let w = (advance * ppp).round().max(1.0);
+    // Tolerance: a height of exactly N px may come out as N.0001 in floating point.
+    let h = (row_h * ppp - 0.01).ceil().max(1.0);
+    vec2(w / ppp, h / ppp)
 }
 
 impl Grid {
@@ -383,7 +420,11 @@ fn handle_mouse(
         ui.ctx().copy_text(text);
     }
     if response.secondary_clicked() {
-        resp.paste_from_clipboard = true;
+        if config.right_click_paste && !mods.ctrl {
+            resp.paste_from_clipboard = true;
+        } else {
+            resp.menu = Some(true);
+        }
     }
     if any_down && response.dragged() {
         ui.ctx().request_repaint();
@@ -544,7 +585,8 @@ fn paint(ui: &Ui, rect: Rect, term: &mut Terminal, config: &ViewConfig, grid: &G
         }
     }
 
-    let thin = 1.0;
+    // Lines one physical pixel thick (whole pixels at fractional scales).
+    let thin = grid.px * (1.0 / grid.px).round().max(1.0);
     // Backgrounds first so underlines at the row bottom are not covered by the next row.
     for (row, runs) in rows.iter().enumerate() {
         for run in runs.iter().filter(|r| r.bg != default_bg) {
@@ -559,14 +601,14 @@ fn paint(ui: &Ui, rect: Rect, term: &mut Terminal, config: &ViewConfig, grid: &G
             // egui caches galleys by job, so unchanged runs are not laid out again.
             let r = grid.cell_rect(run.col, row, run.width);
             let pos = r.min;
-            let galley = painter.layout_job(text_job(&run.text, font, run.fg, run.flags, thin));
+            let galley = painter.layout_job(text_job(&run.text, font, run.fg, run.flags, thin, grid.spacing));
             painter.galley(pos, galley.clone(), run.fg);
             if run.flags.intersects(Flags::ALL_UNDERLINES) {
                 // Drawn inside the cell: egui's underline sits on the row boundary.
                 painter.hline(r.x_range(), r.max.y - 1.5 * thin, Stroke::new(thin, run.fg));
             }
             if run.flags.contains(Flags::BOLD) {
-                // Synthetic bold: overstrike shifted by one point.
+                // Synthetic bold: overstrike shifted by one pixel.
                 painter.galley(pos + vec2(thin, 0.0), galley, run.fg);
             }
         }
@@ -587,15 +629,15 @@ fn paint(ui: &Ui, rect: Rect, term: &mut Terminal, config: &ViewConfig, grid: &G
         CursorShape::Block => {
             painter.rect_filled(r, 0.0, color);
             if !cursor_char.is_whitespace() {
-                let job = text_job(&cursor_char.to_string(), font, default_bg, Flags::empty(), thin);
+                let job = text_job(&cursor_char.to_string(), font, default_bg, Flags::empty(), thin, grid.spacing);
                 painter.galley(r.min, painter.layout_job(job), default_bg);
             }
         }
         CursorShape::Underline => {
-            painter.rect_filled(Rect::from_min_max(pos2(r.min.x, r.max.y - 2.0), r.max), 0.0, color);
+            painter.rect_filled(Rect::from_min_max(pos2(r.min.x, r.max.y - 2.0 * thin), r.max), 0.0, color);
         }
         CursorShape::Beam => {
-            painter.rect_filled(Rect::from_min_max(r.min, pos2(r.min.x + 1.0, r.max.y)), 0.0, color);
+            painter.rect_filled(Rect::from_min_max(r.min, pos2(r.min.x + thin, r.max.y)), 0.0, color);
         }
         CursorShape::HollowBlock => {
             painter.rect_stroke(r.shrink(thin / 2.0), 0.0, Stroke::new(thin, color), egui::StrokeKind::Inside);
@@ -603,13 +645,14 @@ fn paint(ui: &Ui, rect: Rect, term: &mut Terminal, config: &ViewConfig, grid: &G
     }
 }
 
-fn text_job(text: &str, font: &FontId, color: Color32, flags: Flags, thin: f32) -> LayoutJob {
+fn text_job(text: &str, font: &FontId, color: Color32, flags: Flags, thin: f32, spacing: f32) -> LayoutJob {
     let line = |on: bool| if on { Stroke::new(thin, color) } else { Stroke::NONE };
     let format = TextFormat {
         font_id: font.clone(),
         color,
         italics: flags.contains(Flags::ITALIC),
         strikethrough: line(flags.contains(Flags::STRIKEOUT)),
+        extra_letter_spacing: spacing,
         ..Default::default()
     };
     LayoutJob::single_section(text.to_owned(), format)

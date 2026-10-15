@@ -14,6 +14,7 @@ use rxt_platform::Paths;
 use rxt_store::settings::{self, CliOverrides, LoadOutcome};
 use tracing_subscriber::EnvFilter;
 
+mod gpu;
 mod os;
 
 /// Native terminal and remote session manager.
@@ -23,6 +24,9 @@ struct Cli {
     /// Run headless checks, print a report and exit (non-zero on failure).
     #[arg(long)]
     self_test: bool,
+    /// Draw with software rendering for this launch (a graphics driver keeps crashing).
+    #[arg(long)]
+    safe_gpu: bool,
     /// Read `RXT_*` settings from this .env file (overrides config.toml, below the environment).
     #[arg(long, value_name = "PATH")]
     env_file: Option<PathBuf>,
@@ -53,7 +57,7 @@ pub fn main() -> ExitCode {
             EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&loaded.settings.log_level)),
         )
         .init();
-    match run(loaded, config) {
+    match run(loaded, config, cli.safe_gpu) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("rustxterm: {e:#}");
@@ -69,7 +73,7 @@ fn app_icon() -> egui::IconData {
     eframe::icon_data::from_png_bytes(APP_ICON_PNG).unwrap_or_default()
 }
 
-fn run(loaded: LoadOutcome, config: PathBuf) -> anyhow::Result<()> {
+fn run(loaded: LoadOutcome, config: PathBuf, safe_gpu: bool) -> anyhow::Result<()> {
     let platform = os::platform();
     let known_hosts = platform.paths.ssh_dir().join("known_hosts");
     let data_dir = loaded.settings.data_dir.clone().unwrap_or_else(|| platform.paths.data_dir());
@@ -81,6 +85,26 @@ fn run(loaded: LoadOutcome, config: PathBuf) -> anyhow::Result<()> {
     if let Err(e) = rxt_platform_linux::install_desktop_entry(APP_ICON_PNG) {
         tracing::warn!("desktop entry: {e}");
     }
+    // Crash-safe graphics start (see `gpu`): a marker left by a start that died picks a safer backend.
+    let windows = cfg!(windows);
+    let config_dir = config.parent().map(PathBuf::from).unwrap_or_default();
+    let preference = gpu::Backend::parse(&loaded.settings.gpu_backend);
+    let plan = gpu::plan(preference, gpu::Marker::died(&config_dir), safe_gpu, windows);
+    if let Some(notice) = plan.notice() {
+        tracing::warn!("{notice}");
+    }
+    let marker = gpu::Marker::start(&config_dir, plan.backend)
+        .inspect_err(|e| tracing::warn!("graphics start marker: {e}"))
+        .ok();
+    let gpu_start = rxt_ui::GpuStart {
+        save: plan.to_save().map(|b| b.name().to_owned()),
+        notice: plan.notice(),
+        on_started: Box::new(move || {
+            if let Some(mut m) = marker {
+                m.clear();
+            }
+        }),
+    };
     let options = eframe::NativeOptions {
         renderer: eframe::Renderer::Wgpu,
         viewport: egui::ViewportBuilder::default()
@@ -92,60 +116,19 @@ fn run(loaded: LoadOutcome, config: PathBuf) -> anyhow::Result<()> {
         // Size, maximized, fullscreen and (on X11) position are restored by eframe; the app
         // refits a window restored onto a disconnected monitor.
         persist_window: true,
-        #[cfg(windows)]
-        wgpu_options: windows_wgpu(),
+        wgpu_options: gpu::configuration(plan.backend, windows).unwrap_or_default(),
         ..Default::default()
     };
     let config_path = config;
     // winit dlopens libxkbcommon(-x11) and panics when it is missing (e.g. a minimal Arch/Xfce
     // install): report that as a startup error; any other panic propagates unchanged.
     let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_window(options, config_path, loaded, platform, vault, known_hosts)
+        run_window(options, config_path, loaded, platform, vault, known_hosts, gpu_start)
     }));
     run.unwrap_or_else(|panic| match missing_library(panic.as_ref()) {
         Some(lib) => Err(anyhow::anyhow!("cannot open the window: {lib} is not installed")),
         None => std::panic::resume_unwind(panic),
     })
-}
-
-/// Windows renders through OpenGL when a hardware OpenGL adapter exists: DX12 presentation
-/// flickers in bursts on Intel graphics while the window repaints. Without one (GPU-less VMs,
-/// WARP) the usual choice applies. `WGPU_BACKEND` still overrides everything.
-#[cfg(windows)]
-fn windows_wgpu() -> eframe::egui_wgpu::WgpuConfiguration {
-    use eframe::egui_wgpu::{WgpuConfiguration, WgpuSetup};
-    let mut config = WgpuConfiguration::default();
-    if std::env::var_os("WGPU_BACKEND").is_some() {
-        return config;
-    }
-    if let WgpuSetup::CreateNew(setup) = &mut config.wgpu_setup {
-        setup.native_adapter_selector = Some(Arc::new(|adapters, surface| {
-            let usable: Vec<&eframe::wgpu::Adapter> =
-                adapters.iter().filter(|a| surface.is_none_or(|s| a.is_surface_supported(s))).collect();
-            let infos: Vec<_> = usable.iter().map(|a| a.get_info()).collect();
-            let pick = pick_adapter(&infos.iter().map(|i| (i.backend, i.device_type)).collect::<Vec<_>>());
-            pick.and_then(|i| usable.get(i)).map(|a| (*a).clone()).ok_or_else(|| "no usable wgpu adapter".to_owned())
-        }));
-    }
-    config
-}
-
-/// Index of the adapter to render on: a hardware OpenGL one first, then by device type as wgpu
-/// ranks them for high performance (discrete, integrated, virtual, other, CPU).
-#[cfg_attr(not(windows), allow(dead_code))]
-fn pick_adapter(adapters: &[(eframe::wgpu::Backend, eframe::wgpu::DeviceType)]) -> Option<usize> {
-    use eframe::wgpu::{Backend, DeviceType};
-    let rank = |&(backend, kind): &(Backend, DeviceType)| {
-        let device = match kind {
-            DeviceType::DiscreteGpu => 0,
-            DeviceType::IntegratedGpu => 1,
-            DeviceType::VirtualGpu => 2,
-            DeviceType::Other => 3,
-            DeviceType::Cpu => 4,
-        };
-        (!(backend == Backend::Gl && kind != DeviceType::Cpu), device)
-    };
-    (0..adapters.len()).min_by_key(|&i| rank(&adapters[i]))
 }
 
 /// The library named by xkbcommon-dl's "Library <name> could not be loaded." panic.
@@ -161,6 +144,7 @@ fn run_window(
     platform: rxt_platform::Platform,
     vault: Arc<rxt_ui::Vault>,
     known_hosts: PathBuf,
+    gpu_start: rxt_ui::GpuStart,
 ) -> anyhow::Result<()> {
     eframe::run_native(
         "rustxterm",
@@ -175,15 +159,18 @@ fn run_window(
                 records: Some(records),
                 control,
                 serial_ports: Some(platform.serial.clone()),
+                local_pty: platform.local_pty.clone(),
                 ..EngineConfig::default()
             };
             let engine = Engine::start(config, waker)?;
             let app =
                 rxt_ui::App::new(cc.storage, platform, engine).with_settings(loaded, config_path).with_vault(vault);
+            let app = app.with_gpu_start(gpu_start);
             Ok(Box::new(app))
         }),
     )
-    .map_err(|e| anyhow::anyhow!("cannot open the window: {e}"))
+    // The marker stays: the next start tries a safer backend.
+    .map_err(|e| anyhow::anyhow!("cannot open the window: {e} (the next start tries a safer graphics backend)"))
 }
 
 /// CLI subcommands and `mcp`; never opens a window.
@@ -315,16 +302,5 @@ mod tests {
         assert_eq!(super::missing_library(p.as_ref()), Some("libxkbcommon-x11.so"));
         let other: Box<dyn std::any::Any + Send> = Box::new(String::from("index out of bounds"));
         assert_eq!(super::missing_library(other.as_ref()), None);
-    }
-
-    #[test]
-    fn hardware_opengl_wins_then_device_type() {
-        use eframe::wgpu::{Backend, DeviceType};
-        let intel = [(Backend::Dx12, DeviceType::IntegratedGpu), (Backend::Gl, DeviceType::IntegratedGpu)];
-        assert_eq!(super::pick_adapter(&intel), Some(1));
-        // GPU-less VM: WARP on DX12 (CPU and output-owning), no hardware OpenGL.
-        let vm = [(Backend::Dx12, DeviceType::Cpu), (Backend::Dx12, DeviceType::Other), (Backend::Gl, DeviceType::Cpu)];
-        assert_eq!(super::pick_adapter(&vm), Some(1));
-        assert_eq!(super::pick_adapter(&[]), None);
     }
 }

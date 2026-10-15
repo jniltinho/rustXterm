@@ -10,7 +10,7 @@ pub struct SessionId(pub u64);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, Default)]
 pub struct FolderId(pub u64);
 
-/// Session protocol. Phase 2 adds local shell and Mosh.
+/// Session protocol. Phase 2 adds Mosh.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Protocol {
@@ -23,10 +23,13 @@ pub enum Protocol {
     Rdp,
     Vnc,
     Serial,
+    /// Local shell in a pseudo-terminal ("+" in the tab strip). Never saved: outside [`Self::ALL`],
+    /// refused by the store and import.
+    Local,
 }
 
 impl Protocol {
-    /// All protocols, in UI order.
+    /// Protocols of saved sessions, in UI order ([`Self::Local`] is not one).
     pub const ALL: [Protocol; 8] =
         [Self::Ssh, Self::Telnet, Self::Sftp, Self::Ftp, Self::Ftps, Self::Rdp, Self::Vnc, Self::Serial];
 
@@ -35,7 +38,7 @@ impl Protocol {
         match self {
             Self::Ssh | Self::Sftp => 22,
             Self::Telnet => 23,
-            Self::Serial => 0,
+            Self::Serial | Self::Local => 0,
             Self::Ftp => 21,
             Self::Ftps => 990,
             Self::Rdp => 3389,
@@ -54,6 +57,7 @@ impl Protocol {
             Self::Ftps => "ftps",
             Self::Rdp => "rdp",
             Self::Vnc => "vnc",
+            Self::Local => "local",
         }
     }
 
@@ -67,13 +71,14 @@ impl Protocol {
         match self {
             Self::Telnet => "terminal",
             Self::Serial => "plug",
+            Self::Local => "terminal-shell",
             _ => self.scheme(),
         }
     }
 
     /// Whether tabs of this protocol host a terminal.
     pub fn is_terminal(self) -> bool {
-        matches!(self, Self::Ssh | Self::Telnet | Self::Serial)
+        matches!(self, Self::Ssh | Self::Telnet | Self::Serial | Self::Local)
     }
 
     /// Whether the protocol sends everything, credentials included, in clear text.
@@ -584,6 +589,10 @@ impl Session {
         if self.protocol == Protocol::Serial {
             return format!("serial://{} {}", self.serial.port, self.serial.line);
         }
+        if self.protocol == Protocol::Local {
+            let user = self.user.as_deref().map(|u| format!("{u}@")).unwrap_or_default();
+            return format!("Local terminal {user}{}", self.host);
+        }
         let user = self.user.as_deref().map(|u| format!("{u}@")).unwrap_or_default();
         format!("{}://{user}{}:{}", self.protocol.scheme(), self.host, self.port)
     }
@@ -696,6 +705,16 @@ mod tests {
         let r = per.resolve(&global);
         assert_eq!(r.cursor_shape, Some(CursorShape::Underline));
         assert_eq!(r.font_size, Some(14.0));
+    }
+
+    #[test]
+    fn local_is_a_terminal_outside_saved_protocols() {
+        assert!(Protocol::Local.is_terminal());
+        assert!(!Protocol::ALL.contains(&Protocol::Local));
+        assert_eq!(Protocol::from_scheme("local"), None);
+        assert_eq!(Protocol::Local.icon(), "terminal-shell");
+        let local = Session::new(Protocol::Local, "workstation", Some("alice".into()), None);
+        assert_eq!(local.target(), "Local terminal alice@workstation");
     }
 
     #[test]

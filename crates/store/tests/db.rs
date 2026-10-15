@@ -80,6 +80,15 @@ fn create_open_wrong_key_and_mode() {
 }
 
 #[test]
+fn local_terminal_is_never_saved() {
+    let t = TempDir::new("local");
+    let s = Store::open(&t.0, &key()).unwrap();
+    let err = s.save_session(&Session::new(Protocol::Local, "workstation", None, None)).unwrap_err();
+    assert!(matches!(err, Error::Invalid(_)), "{err:?}");
+    assert!(s.sessions().unwrap().is_empty());
+}
+
+#[test]
 fn crud_round_trips() {
     let t = TempDir::new("crud");
     let s = Store::open(&t.0, &key()).unwrap();

@@ -1,5 +1,6 @@
 //! Safe wrappers over the Win32 calls the adapter needs. All `unsafe` of the crate is here
-//! (plus the named-pipe creation in `control.rs`); one operation per block.
+//! (plus the named-pipe creation in `control.rs` and the pseudo-console in `conpty.rs`); one
+//! operation per block.
 
 use std::ffi::{OsStr, c_void};
 use std::io;

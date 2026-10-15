@@ -20,7 +20,7 @@ use alacritty_terminal::index::{Boundary, Direction};
 use alacritty_terminal::selection::Selection;
 use alacritty_terminal::term::search::{RegexIter, RegexSearch};
 use alacritty_terminal::term::{Config, Term};
-use alacritty_terminal::vte::ansi::{CursorStyle, Processor, StdSyncHandler};
+use alacritty_terminal::vte::ansi::{CursorStyle, Handler, Processor, StdSyncHandler};
 
 pub use alacritty_terminal::index::{Column, Line, Point, Side};
 pub use alacritty_terminal::selection::SelectionType;
@@ -226,6 +226,19 @@ impl Terminal {
         self.term.scroll_display(Scroll::Bottom);
     }
 
+    /// Drop the scrollback; the screen stays.
+    pub fn clear_history(&mut self) {
+        self.term.selection = None;
+        self.search_clear_focus();
+        self.term.grid_mut().clear_history();
+    }
+
+    /// Full reset (RIS): screen, scrollback, modes, colors and cursor style.
+    pub fn reset(&mut self) {
+        self.search_clear_focus();
+        self.term.reset_state();
+    }
+
     // ---- selection ----
 
     pub fn start_selection(&mut self, ty: SelectionType, point: Point, side: Side) {
@@ -240,6 +253,14 @@ impl Terminal {
 
     pub fn clear_selection(&mut self) {
         self.term.selection = None;
+    }
+
+    /// Select the scrollback and the screen.
+    pub fn select_all(&mut self) {
+        let start = Point::new(self.term.topmost_line(), Column(0));
+        let mut sel = Selection::new(SelectionType::Lines, start, Side::Left);
+        sel.update(Point::new(self.term.bottommost_line(), self.term.last_column()), Side::Right);
+        self.term.selection = Some(sel);
     }
 
     /// Selected text, `None` without a (non-empty) selection.
@@ -406,6 +427,20 @@ mod tests {
         assert_eq!(t.display_offset(), 50);
         t.scroll_to_bottom();
         assert_eq!(t.display_offset(), 0);
+    }
+
+    #[test]
+    fn select_all_clear_history_and_reset() {
+        let mut t = Terminal::new(10, 3, 50);
+        t.feed(b"a\r\nb\r\nc\r\nd\r\ne\x1b[?1h");
+        t.select_all();
+        assert_eq!(t.selection_text().as_deref(), Some("a\nb\nc\nd\ne\n"));
+        t.clear_history();
+        assert_eq!((t.history_size(), t.selection_text()), (0, None));
+        assert!(t.visible_text().starts_with("c\n"));
+        t.reset();
+        assert_eq!(t.visible_text(), "\n");
+        assert!(!t.mode().contains(TermMode::APP_CURSOR));
     }
 
     #[test]

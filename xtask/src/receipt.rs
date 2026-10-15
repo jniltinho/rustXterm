@@ -16,8 +16,8 @@ use anyhow::{Context, bail, ensure};
 use sha2::{Digest, Sha256};
 
 const RECEIPT: &str = "docs/gates/windows.md";
-/// Mandatory receipt rows (tasks.md 3.2).
-const ROWS: std::ops::RangeInclusive<u32> = 1..=41;
+/// Mandatory receipt rows (add-windows-port tasks.md 3.2; W42 local terminal, add-local-shell).
+const ROWS: std::ops::RangeInclusive<u32> = 1..=42;
 
 #[derive(Debug, Default, PartialEq)]
 struct Receipt {
@@ -164,7 +164,7 @@ mod tests {
     fn matching_pass_receipt_passes() {
         let r = parse(&receipt(|_| Some("PASS")));
         assert_eq!(r.commit.as_deref(), Some("abc123"));
-        assert_eq!(r.rows.len(), 41);
+        assert_eq!(r.rows.len(), 42);
         check_rows(&r).unwrap();
         check_digests(&r, &built()).unwrap();
         stale("docs/gates/windows.md\n", RECEIPT).unwrap();
@@ -179,9 +179,9 @@ mod tests {
 
     #[test]
     fn missing_row_is_refused_even_with_an_overall_pass() {
-        let md = receipt(|n| (n != 40).then_some("PASS")) + "\nOverall: PASS\n";
+        let md = receipt(|n| (n != 42).then_some("PASS")) + "\nOverall: PASS\n";
         let err = check_rows(&parse(&md)).unwrap_err().to_string();
-        assert!(err.contains("W40") && !err.contains("W41"), "{err}");
+        assert!(err.contains("W42") && !err.contains("W41"), "{err}");
     }
 
     #[test]

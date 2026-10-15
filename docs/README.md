@@ -10,12 +10,31 @@ requirements live in OpenSpec under [`openspec/`](../openspec/).
 - [SSH connections](#ssh-connections)
 - [Settings and encrypted store](#settings-and-encrypted-store)
 - [Agent control (CLI and MCP)](#agent-control-cli-and-mcp)
+- [Local terminal](#local-terminal)
 - [Build, release and CI](#build-release-and-ci)
 - [Protocol test lab](#protocol-test-lab)
 - [Gate receipts](#gate-receipts)
 - [Roadmap and OpenSpec changes](#roadmap-and-openspec-changes)
 - [Screenshots](#screenshots)
 - [Diagrams](#diagrams)
+
+## Local terminal
+
+The tab strip "+" (default shortcut Ctrl+Shift+T) opens a shell on this computer
+([local-shell spec](../openspec/changes/add-local-shell/)). It is never saved, exported or added to
+recents, and it never writes a log file (use **Save terminal text**).
+
+| | Linux | Windows (10 1809 or later) |
+|---|---|---|
+| Shell | `$SHELL` if executable, else the passwd login shell, else `/bin/sh`; started as a login shell | `pwsh.exe` on `PATH`, else Windows PowerShell, else `%ComSpec%` |
+| Folder | `$HOME`, else `/` | `%USERPROFILE%`, else `%SystemDrive%\` |
+| Environment | yours, plus `TERM=xterm-256color` and `COLORTERM=truecolor`; AppImage runtime variables removed | yours, plus `TERM` and `COLORTERM`; no console window |
+| Closing the tab | SIGHUP, then SIGKILL after 1 s, to every process group of the shell's session | the shell runs in a kill-on-close job object: the whole tree ends, also when the app is killed |
+
+On Linux, a process that leaves the shell's session on purpose (`setsid`, daemons) keeps running, as
+with any terminal emulator. Without a pseudo-console (macOS for now, older Windows) "+" opens New
+session. Agents (CLI and MCP) see local tabs in `tabs list` but every other request on them is
+denied and audited, and MultiExec input from agents skips them.
 
 ## Architecture
 

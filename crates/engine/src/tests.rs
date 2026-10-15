@@ -753,6 +753,7 @@ fn saved_password_skips_prompt_and_rejected_one_is_forgotten() {
 }
 
 mod agent;
+mod local;
 
 fn serial_session(port: &str) -> Session {
     Session::serial(port, rxt_core::LineConfig::default())

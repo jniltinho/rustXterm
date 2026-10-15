@@ -13,8 +13,8 @@ pub mod session;
 pub mod theme;
 
 pub use command::{
-    ApprovalId, Command, CommandId, ConnState, Direction, Event, HostKeyDecision, PromptAnswer, PromptId, PromptKind,
-    Secret, SshInfo, TabId, TransferId, TunnelState,
+    ApprovalId, Command, CommandId, ConnState, Direction, Event, HostKeyDecision, LaunchInfo, PromptAnswer, PromptId,
+    PromptKind, Secret, SshInfo, TabId, TransferId, TunnelState,
 };
 pub use desktop::{DesktopEvent, DesktopInput, Framebuffer, Rect};
 pub use error::{Error, Result};

@@ -35,6 +35,8 @@ pub struct Settings {
     /// Global terminal defaults; sessions override per field.
     pub terminal: TerminalPrefs,
     pub copy_on_select: bool,
+    /// Right click pastes (Ctrl+right click opens the terminal menu); off: right click opens it.
+    pub right_click_paste: bool,
     pub paste_guard: bool,
     pub confirm_close: bool,
     pub sidebar_open: bool,
@@ -63,6 +65,9 @@ pub struct Settings {
     pub remote_monitoring_interval_secs: u32,
     /// Desktop notifications for background transfers and dropped sessions; on by default.
     pub notifications: bool,
+    /// Rendering backend: `auto`, `gl`, `dx12`, `vulkan` or `cpu` (applies at the next start;
+    /// set by the crash-safe graphics start after a driver crash).
+    pub gpu_backend: String,
     /// First-run Light/Dark chooser answered. Missing in an existing file means an existing
     /// user (`true`); a fresh install starts from [`Default`] (`false`).
     #[serde(default = "first_run_done_in_old_files")]
@@ -86,6 +91,7 @@ impl Default for Settings {
                 ..TerminalPrefs::default()
             },
             copy_on_select: true,
+            right_click_paste: true,
             paste_guard: true,
             confirm_close: true,
             sidebar_open: true,
@@ -102,6 +108,7 @@ impl Default for Settings {
             remote_monitoring: true,
             remote_monitoring_interval_secs: 2,
             notifications: true,
+            gpu_backend: "auto".into(),
             first_run_theme_done: false,
         }
     }

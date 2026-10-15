@@ -22,6 +22,8 @@ notify-rust.workspace = true
 dirs.workspace = true
 oo7.workspace = true
 serialport.workspace = true
+portable-pty.workspace = true
+nix.workspace = true
 
 [features]
 # Enables the Secret Service container test (lab/keyring/run.sh); never in CI or the lab run.

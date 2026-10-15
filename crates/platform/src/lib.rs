@@ -120,10 +120,14 @@ pub struct Platform {
     pub control: Arc<dyn ControlTransport>,
     pub opener: Arc<dyn Opener>,
     pub serial: Arc<dyn SerialPorts>,
+    /// Local shell backend; `None` where the platform has none ("+" opens New session).
+    pub local_pty: Option<Arc<dyn LocalPty>>,
 }
 
 pub mod control;
 pub mod fake;
+pub mod local_pty;
 pub mod serial;
 
+pub use local_pty::{LocalPty, LocalShell, PtyControl, PtyReader, PtyWriter};
 pub use serial::{PortInfo, SerialPorts, SerialStream};

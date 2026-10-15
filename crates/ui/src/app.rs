@@ -65,6 +65,19 @@ const FOCUS_MENU_DEFAULT: &str = "Ctrl+Shift+F10";
 /// Minimum main window size (logical px); also set on the native viewport.
 pub const MIN_WINDOW: egui::Vec2 = egui::vec2(800.0, 500.0);
 
+/// Frames painted before a graphics start counts as working.
+const GPU_START_FRAMES: u32 = 3;
+
+/// Crash-safe graphics start handed over by the binary ([`App::with_gpu_start`]).
+pub struct GpuStart {
+    /// `gpu_backend` value to save once painted (a working fallback).
+    pub save: Option<String>,
+    /// Status line explaining a fallback.
+    pub notice: Option<String>,
+    /// Called once painted: removes the start marker.
+    pub on_started: Box<dyn FnOnce() + Send>,
+}
+
 /// What the UI needs from the engine; implemented by [`EngineHandle`] and by test doubles.
 pub trait Backend {
     fn send(&self, command: Command) -> rxt_core::Result<()>;
@@ -380,6 +393,8 @@ pub struct App {
     open_menu: bool,
     /// Window geometry checked against the monitor once (restored state may be off-screen).
     window_synced: bool,
+    /// Crash-safe graphics start still waiting for painted frames, and frames painted so far.
+    gpu_start: Option<(GpuStart, u32)>,
     out_buf: Vec<u8>,
     /// Remote-desktop tab last reported visible to the engine.
     visible_desktop: Option<TabId>,
@@ -461,6 +476,7 @@ impl App {
             focus_quick: false,
             open_menu: false,
             window_synced: false,
+            gpu_start: None,
             out_buf: Vec::new(),
             visible_desktop: None,
             vault: None,
@@ -500,6 +516,16 @@ impl App {
 
     /// Keep sessions in the encrypted database: locked until unlocked; sessions found in eframe
     /// storage are migrated on the first unlock.
+    /// Hand over the crash-safe graphics start: its notice shows now; once frames painted, the
+    /// marker is cleared and a working fallback backend is saved.
+    pub fn with_gpu_start(mut self, start: GpuStart) -> Self {
+        if let Some(notice) = &start.notice {
+            self.status.clone_from(notice);
+        }
+        self.gpu_start = Some((start, 0));
+        self
+    }
+
     pub fn with_vault(mut self, vault: Arc<Vault>) -> Self {
         let old = std::mem::take(&mut self.store);
         if !(old.sessions.is_empty() && old.folders.is_empty() && old.tunnels.is_empty()) {
@@ -507,6 +533,20 @@ impl App {
         }
         self.vault = Some(vault);
         self
+    }
+
+    /// After [`GPU_START_FRAMES`] frames the graphics start counts as working.
+    fn gpu_started(&mut self) {
+        let Some((_, frames)) = self.gpu_start.as_mut() else { return };
+        *frames += 1;
+        if *frames < GPU_START_FRAMES {
+            return;
+        }
+        let Some((start, _)) = self.gpu_start.take() else { return };
+        if let Some(backend) = start.save {
+            self.settings.gpu_backend = backend;
+        }
+        (start.on_started)();
     }
 
     /// Whether a session database exists but is not unlocked.
@@ -719,6 +759,10 @@ impl App {
             Ok(x) => {
                 let n = self.store.merge(&x.folders, &x.sessions, &x.tunnels);
                 self.status = format!("Imported {n} session(s) from {}.", path.display());
+                if x.skipped_local > 0 {
+                    self.status +=
+                        &format!(" Skipped {} local terminal entry(ies): they are never saved.", x.skipped_local);
+                }
             }
             Err(e) => self.modal = Some(Modal::Notice(format!("Cannot import {}: {e}", path.display()))),
         }
@@ -769,6 +813,7 @@ impl App {
         self.sync_store();
         self.sync_sftp();
         self.sync_visible();
+        self.gpu_started();
         self.sync_agent();
         self.sync_monitor();
     }
@@ -904,7 +949,7 @@ impl App {
             let Some(term) = self.tabs.iter_mut().find(|t| t.id == tab).and_then(|t| t.term.as_mut()) else { continue };
             for ev in term.feed(&buf) {
                 match ev {
-                    rxt_term::TermEvent::Reply(bytes) => replies.push(Command::Input { tab, bytes }),
+                    rxt_term::TermEvent::Reply(bytes) => replies.push(Command::Reply { tab, bytes }),
                     rxt_term::TermEvent::CwdChanged(path) => cwds.push((tab, path)),
                     rxt_term::TermEvent::Title(_) | rxt_term::TermEvent::Bell => {}
                 }
@@ -934,7 +979,9 @@ impl App {
                         let home = self.platform.paths.home_dir();
                         file_tab::local_action(&mut f.local, SftpAction::Navigate(HOME.into()), &home);
                     }
-                    if let (Some(term), Some(path)) = (t.term.as_mut(), t.session.terminal.log_file.as_deref()) {
+                    // Local terminals never log (terminal-emulation spec, Session logging).
+                    let log = t.session.terminal.log_file.clone().filter(|_| t.session.protocol != Protocol::Local);
+                    if let (Some(term), Some(path)) = (t.term.as_mut(), log.as_deref()) {
                         let format = if t.session.terminal.log_raw { LogFormat::Raw } else { LogFormat::Plain };
                         if let Err(e) = term.start_log(std::path::Path::new(path), format) {
                             self.status = format!("Could not open log file {path}: {e}");
@@ -957,7 +1004,7 @@ impl App {
                 let mut resize = None;
                 let mut list = None;
                 if connected {
-                    self.print_banner(tab);
+                    self.print_banner(tab, None);
                 }
                 if let Some(t) = self.tab_mut(tab) {
                     if state == ConnState::Connected {
@@ -977,6 +1024,8 @@ impl App {
                 }
                 if !connected {
                     self.parked_sftp.remove(&tab);
+                    // The session's last output goes above the notice, whatever the frame budget.
+                    self.flush_output(tab);
                     self.print_stopped(tab, &stopped);
                 }
                 if let Some(path) = list {
@@ -987,6 +1036,18 @@ impl App {
                 }
                 if let Some((cols, rows)) = resize {
                     self.send(Command::Resize { tab, cols, rows });
+                }
+            }
+            Event::LocalReady { tab, info } => {
+                self.print_banner(tab, Some(&info));
+                let start = self.tab_mut(tab).and_then(|t| t.term.as_ref()).map(|term| {
+                    let cursor = term.renderable().cursor.point;
+                    let cell = |v: usize| u16::try_from(v).unwrap_or(u16::MAX);
+                    let cursor = (cell(usize::try_from(cursor.line.0).unwrap_or(0)), cell(cursor.column.0));
+                    (cell(term.cols()), cell(term.rows()), cursor)
+                });
+                if let Some((cols, rows, cursor)) = start {
+                    self.send(Command::LocalStart { tab, cols, rows, cursor });
                 }
             }
             Event::SshInfo { tab, info } => {
@@ -1326,7 +1387,9 @@ impl App {
 
     /// Session info box of a newly connected SSH or Telnet tab, fed to its terminal before any
     /// remote output (Settings → SSH → Show session banner).
-    fn print_banner(&mut self, tab: TabId) {
+    /// Session box of SSH/Telnet tabs (on `Connected`) and the welcome box of local terminals
+    /// (on `LocalReady`, with `local`).
+    fn print_banner(&mut self, tab: TabId, local: Option<&rxt_core::LaunchInfo>) {
         if !self.settings.show_session_banner {
             return;
         }
@@ -1338,21 +1401,51 @@ impl App {
         if let Some(find) = self.settings.shortcut_text(CommandId::FIND) {
             hint = format!("{hint}{sep}{find}: find");
         }
+        let mut tips: Vec<String> = Vec::new();
+        if let Some(new) = self.settings.shortcut_text(CommandId::NEW_SESSION) {
+            tips.push(format!("{new}: new session"));
+        }
+        tips.push("Ctrl+right click: terminal menu".into());
         let Some(pos) = self.tabs.iter().position(|t| t.id == tab) else { return };
         let config = self.view_config(&self.tabs[pos].session);
         let t = &mut self.tabs[pos];
-        if !matches!(t.session.protocol, Protocol::Ssh | Protocol::Telnet) {
+        let wanted = match t.session.protocol {
+            Protocol::Ssh | Protocol::Telnet => local.is_none(),
+            Protocol::Local => local.is_some(),
+            _ => false,
+        };
+        if !wanted {
             return;
         }
         let ssh = t.ssh_info.take();
         let Some(term) = t.term.as_mut() else { return };
-        let info = banner::BannerInfo { session: &t.session, ssh: ssh.as_deref(), hint, unicode };
+        let info = banner::BannerInfo { session: &t.session, ssh: ssh.as_deref(), local, tips, hint, unicode };
         let mut bytes = banner::render(&info, term.cols(), &config.scheme);
         // A reconnect may leave the cursor after the old prompt.
         if term.renderable().cursor.point.column.0 != 0 {
             bytes.splice(0..0, *b"\r\n");
         }
         term.feed(&bytes);
+    }
+
+    /// Feed all of `tab`'s buffered output to its terminal now (before the stopped notice).
+    fn flush_output(&mut self, tab: TabId) {
+        let mut buf = Vec::new();
+        let mut replies = Vec::new();
+        // ponytail: bounded at 64 MiB; a stopped session produces no more output.
+        for _ in 0..64 {
+            buf.clear();
+            if self.backend.drain_output(tab, 1 << 20, &mut buf) == 0 {
+                break;
+            }
+            let Some(term) = self.tab_mut(tab).and_then(|t| t.term.as_mut()) else { return };
+            for ev in term.feed(&buf) {
+                if let rxt_term::TermEvent::Reply(bytes) = ev {
+                    replies.push(Command::Reply { tab, bytes });
+                }
+            }
+        }
+        replies.into_iter().for_each(|c| self.send(c));
     }
 
     /// Write the "Session stopped" notice into a terminal tab whose session just ended.
@@ -1381,6 +1474,7 @@ impl App {
             prefs,
             scheme,
             copy_on_select: self.settings.copy_on_select,
+            right_click_paste: self.settings.right_click_paste,
             paste_guard: self.settings.paste_guard,
         }
     }
@@ -1416,6 +1510,18 @@ impl App {
             CommandId::NEW_SESSION => {
                 if self.require_unlocked() {
                     self.apply(Action::NewSession(None));
+                }
+            }
+            CommandId::NEW_LOCAL_TERMINAL => {
+                if let Some(pty) = self.platform.local_pty.clone() {
+                    // No vault needed: nothing is saved. Named `user@host` like the tab title.
+                    let mut s = Session::new(Protocol::Local, "localhost", None, None);
+                    s.name = "Local terminal".into();
+                    if let Ok(info) = pty.prepare() {
+                        s.name = format!("{}@{}", info.user, info.host);
+                        (s.host, s.user) = (info.host, Some(info.user));
+                    }
+                    self.apply(Action::Open(Box::new(s)));
                 }
             }
             CommandId::QUICK_CONNECT => self.quick_connect(),
@@ -1623,8 +1729,11 @@ impl App {
                     Some(live) if session.id.0 != 0 => Box::new(live.clone()),
                     _ => session,
                 };
-                self.store.push_recent(&session);
-                self.history(&session);
+                // Local terminals are never persisted (local-shell spec).
+                if session.protocol != Protocol::Local {
+                    self.store.push_recent(&session);
+                    self.history(&session);
+                }
                 self.status = format!("Connecting to {}…", session.name);
                 self.send(Command::Open { session });
             }
@@ -2019,6 +2128,7 @@ impl App {
                     &self.tabs,
                     self.active,
                     self.multiexec,
+                    self.platform.local_pty.is_some(),
                     &self.settings,
                     &self.icons,
                     &self.tokens,
@@ -2262,6 +2372,7 @@ impl App {
             desktop_tab(ui, id, view, &tab.session, &self.settings, self.backend.as_ref(), &self.platform, out);
             return;
         }
+        let live = tab.is_live();
         let Some(term) = tab.term.as_mut() else { return };
         if tab.session.protocol == Protocol::Ssh && tab.state == ConnState::Connected && tab.monitor.shown() {
             if let Some(sample) = self.backend.take_metrics(id) {
@@ -2285,6 +2396,11 @@ impl App {
             && self.status.is_empty()
         {
             out.push(Action::Status(note));
+        }
+        if let Some(area) = resp.area.take()
+            && let Some(cmd) = terminal_menu(&area, resp.menu, term, live, &self.icons, &self.settings)
+        {
+            out.push(Action::OnTab(id, cmd));
         }
         if std::mem::take(&mut resp.paste_from_clipboard) {
             match self.platform.clipboard.get_text() {
@@ -2423,6 +2539,61 @@ fn desktop_tab(
         out.push(Action::Status(e.to_string()));
     }
     out.extend(inputs.into_iter().map(|input| Action::Engine(Command::DesktopInput { tab, input })));
+}
+
+/// Terminal context menu (MobaXterm-like): Ctrl+right click, or right click when it does not
+/// paste. Local terminal actions run here; the others are returned to run on the tab.
+fn terminal_menu(
+    area: &egui::Response,
+    open: Option<bool>,
+    term: &mut rxt_term::Terminal,
+    live: bool,
+    icons: &Icons,
+    settings: &Settings,
+) -> Option<CommandId> {
+    let mut run = None;
+    sidebar::popup_menu(area, open, true, |ui| {
+        let item = |ui: &mut egui::Ui, icon, label, cmd: Option<CommandId>, enabled| {
+            let sc = cmd.and_then(|c| settings.shortcut_text(c));
+            sidebar::menu_item(ui, icons, icon, label, sc.as_deref(), enabled)
+        };
+        let has_selection = term.selection_text().is_some();
+        for (icon, label, cmd, enabled) in
+            [("copy", "Copy", CommandId::COPY, has_selection), ("paste", "Paste", CommandId::PASTE, true)]
+        {
+            if item(ui, icon, label, Some(cmd), enabled) {
+                run = Some(cmd);
+            }
+        }
+        if item(ui, "selection", "Select all", None, true) {
+            term.select_all();
+        }
+        for (icon, label, cmd) in
+            [("search", "Find", CommandId::FIND), ("save", "Save terminal text", CommandId::SAVE_TEXT)]
+        {
+            if item(ui, icon, label, Some(cmd), true) {
+                run = Some(cmd);
+            }
+        }
+        ui.separator();
+        if item(ui, "remove", "Clear scrollback", None, true) {
+            term.clear_history();
+        }
+        if item(ui, "refresh", "Reset terminal", None, true) {
+            term.reset();
+        }
+        ui.separator();
+        for (icon, label, cmd, enabled) in [
+            ("copy", "Duplicate tab", CommandId::DUPLICATE_TAB, true),
+            ("restart", "Reconnect", CommandId::RECONNECT, !live),
+            ("close", "Close tab", CommandId::CLOSE_TAB, true),
+        ] {
+            if item(ui, icon, label, Some(cmd), enabled) {
+                run = Some(cmd);
+            }
+        }
+    });
+    run
 }
 
 fn find_bar(ui: &mut egui::Ui, f: &mut FindBar, term: &mut rxt_term::Terminal) -> bool {

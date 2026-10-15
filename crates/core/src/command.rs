@@ -68,9 +68,11 @@ impl CommandId {
     pub const MONITORING_INTERVAL: Self = Self("settings.monitoring.interval");
     /// Show and focus the Find session filter above the session tree; GUI-only.
     pub const FIND_SESSION: Self = Self("session.find");
+    /// Open a local terminal tab (the tab strip "+" where a local shell exists); GUI-only.
+    pub const NEW_LOCAL_TERMINAL: Self = Self("tab.new_local");
 
     /// UI-only ids, never callable by agents.
-    pub const UI_ONLY: [Self; 11] = [
+    pub const UI_ONLY: [Self; 12] = [
         Self::IMPORT_SESSIONS,
         Self::EXPORT_SESSIONS,
         Self::ABOUT,
@@ -82,10 +84,11 @@ impl CommandId {
         Self::MONITORING_TOGGLE,
         Self::MONITORING_INTERVAL,
         Self::FIND_SESSION,
+        Self::NEW_LOCAL_TERMINAL,
     ];
 
     /// Every registered command id.
-    pub const ALL: [Self; 34] = [
+    pub const ALL: [Self; 35] = [
         Self::NEW_SESSION,
         Self::QUICK_CONNECT,
         Self::CLOSE_TAB,
@@ -120,6 +123,7 @@ impl CommandId {
         Self::MONITORING_TOGGLE,
         Self::MONITORING_INTERVAL,
         Self::FIND_SESSION,
+        Self::NEW_LOCAL_TERMINAL,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -257,6 +261,20 @@ pub enum Command {
         cols: u16,
         rows: u16,
     },
+    /// Bytes the terminal generated in answer to the session (DA, DSR); sent to `tab` only,
+    /// never through MultiExec.
+    Reply {
+        tab: TabId,
+        bytes: Vec<u8>,
+    },
+    /// Start the shell of a local terminal after `Event::LocalReady`: the UI wrote the banner and
+    /// reports the terminal size and the 0-based cursor (row, column) the shell starts at.
+    LocalStart {
+        tab: TabId,
+        cols: u16,
+        rows: u16,
+        cursor: (u16, u16),
+    },
     /// Keyboard/pointer/clipboard input for an RDP/VNC tab (high-priority path).
     DesktopInput {
         tab: TabId,
@@ -358,6 +376,18 @@ pub enum Command {
     Shutdown,
 }
 
+/// What a local terminal will start, resolved before it starts (title and banner).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LaunchInfo {
+    /// Shell executable path.
+    pub shell: String,
+    pub args: Vec<String>,
+    /// Working folder.
+    pub cwd: String,
+    pub user: String,
+    pub host: String,
+}
+
 /// Facts of an established SSH connection, shown in the session banner.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SshInfo {
@@ -391,6 +421,12 @@ pub enum Event {
     State {
         tab: TabId,
         state: ConnState,
+    },
+    /// A local terminal is ready to start: the UI writes the banner, then sends
+    /// `Command::LocalStart`. Sent again on reconnect.
+    LocalReady {
+        tab: TabId,
+        info: Box<LaunchInfo>,
     },
     /// Connection facts of an SSH tab; sent just before its `Connected` state.
     SshInfo {

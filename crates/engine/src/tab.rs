@@ -112,7 +112,7 @@ async fn connect_and_run(
     let tab_prompter = Arc::new(TabPrompter::new(sh.clone(), Some(tab), session, cancel.clone()));
     let prompter: Arc<dyn Prompter> = tab_prompter.clone();
     match session.protocol {
-        Protocol::Ssh | Protocol::Sftp | Protocol::Telnet | Protocol::Serial => {}
+        Protocol::Ssh | Protocol::Sftp | Protocol::Telnet | Protocol::Serial | Protocol::Local => {}
         Protocol::Ftp | Protocol::Ftps => {
             let fs = tokio::select! {
                 () = cancel.cancelled() => return (End::Failed(Error::Cancelled), false),
@@ -128,12 +128,19 @@ async fn connect_and_run(
             return run_desktop(sh, tab, generation, session, &tab_prompter, cancel).await;
         }
     }
-    let link = tokio::select! {
-        () = cancel.cancelled() => return (End::Failed(Error::Cancelled), false),
-        r = sh.transport.connect(session.clone(), prompter, cancel.clone()) => match r {
+    let link = if session.protocol == Protocol::Local {
+        match crate::local::start(sh, tab, generation, cancel).await {
             Ok(link) => link,
             Err(e) => return (End::Failed(e), false),
-        },
+        }
+    } else {
+        tokio::select! {
+            () = cancel.cancelled() => return (End::Failed(Error::Cancelled), false),
+            r = sh.transport.connect(session.clone(), prompter, cancel.clone()) => match r {
+                Ok(link) => link,
+                Err(e) => return (End::Failed(e), false),
+            },
+        }
     };
     tab_prompter.commit();
     if session.protocol == Protocol::Sftp {
@@ -214,7 +221,7 @@ async fn connect_and_run(
 /// Automatic reconnect after a dropped connection (serial unplug is handled separately).
 fn auto_reconnect(session: &Session) -> bool {
     match session.protocol {
-        Protocol::Serial => false,
+        Protocol::Serial | Protocol::Local => false,
         _ => session.ssh.auto_reconnect,
     }
 }

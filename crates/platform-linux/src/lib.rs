@@ -1,6 +1,6 @@
 //! Linux adapter for the platform contracts: XDG paths, XDG portal theme, clipboard,
 //! notifications, file dialogs, Secret Service keyring, the agent control socket ([`UnixControl`])
-//! and serial ports ([`LinuxSerial`]).
+//! serial ports ([`LinuxSerial`]) and local shells ([`LinuxPty`]).
 //!
 //! Contract used by the app: [`platform`] builds every service; it never fails
 //! (missing portal/clipboard degrade to fallbacks).
@@ -20,12 +20,14 @@ use rxt_platform::{
 mod control;
 mod desktop;
 mod keyring;
+mod pty;
 mod serial;
 mod theme;
 
 pub use control::{SOCKET, UnixControl, peer_allowed, private_dir};
 pub use desktop::install_desktop_entry;
 pub use keyring::SecretService;
+pub use pty::{LinuxPty, child_env};
 pub use serial::{LinuxSerial, group_name, permission_message};
 pub use theme::PortalTheme;
 
@@ -43,6 +45,7 @@ pub fn platform() -> Platform {
         control: Arc::new(UnixControl::new(XdgPaths.runtime_dir())),
         opener: Arc::new(XdgOpen),
         serial: Arc::new(LinuxSerial::default()),
+        local_pty: Some(Arc::new(LinuxPty)),
     }
 }
 

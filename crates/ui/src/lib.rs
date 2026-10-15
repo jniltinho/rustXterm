@@ -39,6 +39,6 @@ mod shell_tests;
 #[cfg(test)]
 mod tests;
 
-pub use app::{App, Backend, EXIT, HELP, MIN_WINDOW};
+pub use app::{App, Backend, EXIT, GpuStart, HELP, MIN_WINDOW};
 pub use icons::OVERRIDE_ENV as ICON_OVERRIDE_ENV;
 pub use vault::Vault;

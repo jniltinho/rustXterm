@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+pub use crate::local_pty::{FakePty, FakeShell};
 pub use crate::serial::{FakeDevice, FakeSerial};
 use crate::*;
 
@@ -17,6 +18,7 @@ pub struct Fake {
     pub notes: Mutex<Vec<(String, String)>>,
     pub secrets: Mutex<HashMap<String, Vec<u8>>>,
     pub serial: crate::serial::FakeSerial,
+    pub local_pty: crate::local_pty::FakePty,
     /// Last [`FileDialogs::set_parent`] value.
     pub dialog_parent: Mutex<Option<String>>,
     /// Directories passed to [`Paths::make_private`].
@@ -56,6 +58,7 @@ impl Fake {
             control: self.clone(),
             opener: self.clone(),
             serial: Arc::new(self.serial.clone()),
+            local_pty: Some(Arc::new(self.local_pty.clone())),
         }
     }
 }

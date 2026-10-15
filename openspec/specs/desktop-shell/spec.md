@@ -97,6 +97,17 @@ Invalid configuration, malformed import files, network errors and protocol error
 - **WHEN** the settings file contains invalid TOML
 - **THEN** the application starts with defaults, keeps a backup of the corrupt file and shows a notice naming the file
 
+### Requirement: Crash-safe graphics start
+A graphics driver that kills the process while the window's GPU device starts SHALL NOT make every later launch fail. The next launch SHALL detect that the previous start died before painting and use the next safer rendering backend (Windows: OpenGL, DirectX 12, Vulkan, software; Linux: Vulkan, OpenGL, software), say so in the status line, and save a working hardware fallback as the rendering backend setting (Settings › Display), never the software one silently. `--safe-gpu` SHALL force software rendering for one launch and `WGPU_BACKEND` SHALL override the choice. A second instance that is still starting SHALL NOT count as a crash.
+
+#### Scenario: Driver crash on OpenGL
+- **WHEN** a Windows launch dies inside the OpenGL driver before the window painted
+- **THEN** the next launch starts on DirectX 12, shows why, and keeps DirectX 12 after it painted
+
+#### Scenario: Instance still starting
+- **WHEN** a second launch starts while the first one is still creating its window
+- **THEN** the second launch uses the configured backend
+
 ### Requirement: Remote monitoring bar
 SSH terminal tabs with monitoring active SHALL show a bar 26 ± 1 px high along the bottom of the tab area, below the terminal and above the window status bar, without overlapping the terminal grid. Left to right it SHALL hold chips with catalog icons: host, CPU percent with a sparkline, memory used/total, upload, download, uptime, then one chip per disk. CPU, memory and disk values SHALL use the theme's warning color at 80 % or more and its danger color at 95 % or more. Values with no reply for two intervals SHALL render muted. When the chips do not fit, left/right arrow buttons SHALL scroll them. A close (×) button SHALL always be visible at the right end and SHALL turn monitoring off for that tab. Every chip and button SHALL have an accessible name and a tooltip with details. The bar SHALL be complete in light, dark and system themes.
 

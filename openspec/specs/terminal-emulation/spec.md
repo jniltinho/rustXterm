@@ -25,11 +25,18 @@ The terminal SHALL keep a configurable scrollback (default 10000 lines) and offe
 - **THEN** matches are highlighted and next/previous move through them
 
 ### Requirement: Clipboard
-The terminal SHALL copy on selection (configurable), paste with right click or Shift+Insert/Ctrl+Shift+V, and ask for confirmation before pasting text containing a newline into a remote session (configurable).
+The terminal SHALL copy on selection (configurable), paste with right click (configurable) or Shift+Insert/Ctrl+Shift+V, and ask for confirmation before pasting text containing a newline into a remote session (configurable).
 
 #### Scenario: Multi-line paste guard
 - **WHEN** the user pastes three lines into an SSH tab with the guard enabled
 - **THEN** a dialog shows the text and nothing is sent until the user confirms
+
+### Requirement: Terminal context menu
+Ctrl+right click on a terminal (or right click when right-click paste is off) SHALL open a menu with Copy, Paste, Select all, Find, Save terminal text, Clear scrollback, Reset terminal, Duplicate tab, Reconnect and Close tab. Unavailable items are disabled, not hidden.
+
+#### Scenario: Select all from the menu
+- **WHEN** the user Ctrl+right clicks a terminal and chooses Select all
+- **THEN** the scrollback and the screen are selected and Copy copies them
 
 ### Requirement: Fonts and appearance
 The user SHALL choose the terminal font family, size, cursor shape and blink, and color scheme per session or globally.

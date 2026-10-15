@@ -22,6 +22,7 @@ pub(crate) struct Settings {
     /// Global terminal defaults; sessions override per field.
     pub terminal: TerminalPrefs,
     pub copy_on_select: bool,
+    pub right_click_paste: bool,
     pub paste_guard: bool,
     pub confirm_close: bool,
     /// Command id → shortcut text such as `Ctrl+Shift+N`; missing or empty means unbound.
@@ -52,6 +53,8 @@ pub(crate) struct Settings {
     pub remote_monitoring_interval_secs: u32,
     /// Desktop notifications while the window is not focused (transfers, dropped sessions).
     pub notifications: bool,
+    /// Rendering backend for the next start (`auto`, `gl`, `dx12`, `vulkan`, `cpu`).
+    pub gpu_backend: String,
     /// First-run Light/Dark chooser answered. Missing in an existing file means an existing
     /// user (`true`); a fresh install starts from [`Default`] (`false`).
     #[serde(default = "first_run_done_in_old_files")]
@@ -72,6 +75,7 @@ impl Default for Settings {
                 ..TerminalPrefs::default()
             },
             copy_on_select: true,
+            right_click_paste: true,
             paste_guard: true,
             confirm_close: true,
             shortcuts: default_shortcuts(),
@@ -89,6 +93,7 @@ impl Default for Settings {
             remote_monitoring: true,
             remote_monitoring_interval_secs: 2,
             notifications: true,
+            gpu_backend: "auto".into(),
             first_run_theme_done: false,
         }
     }
@@ -103,6 +108,7 @@ fn first_run_done_in_old_files() -> bool {
 pub(crate) fn default_shortcuts() -> BTreeMap<String, String> {
     [
         (CommandId::NEW_SESSION, "Ctrl+Shift+N"),
+        (CommandId::NEW_LOCAL_TERMINAL, "Ctrl+Shift+T"),
         (CommandId::QUICK_CONNECT, "Ctrl+Shift+K"),
         (CommandId::CLOSE_TAB, "Ctrl+Shift+W"),
         (CommandId::NEXT_TAB, "Ctrl+Tab"),
@@ -182,6 +188,7 @@ impl Settings {
             theme: s.theme,
             terminal: s.terminal.clone(),
             copy_on_select: s.copy_on_select,
+            right_click_paste: s.right_click_paste,
             paste_guard: s.paste_guard,
             confirm_close: s.confirm_close,
             shortcuts,
@@ -199,6 +206,7 @@ impl Settings {
             remote_monitoring: s.remote_monitoring,
             remote_monitoring_interval_secs: s.remote_monitoring_interval_secs,
             notifications: s.notifications,
+            gpu_backend: s.gpu_backend.clone(),
             first_run_theme_done: s.first_run_theme_done,
         }
     }
@@ -211,6 +219,7 @@ impl Settings {
             theme: self.theme,
             terminal: self.terminal.clone(),
             copy_on_select: self.copy_on_select,
+            right_click_paste: self.right_click_paste,
             paste_guard: self.paste_guard,
             confirm_close: self.confirm_close,
             shortcuts: self
@@ -233,6 +242,7 @@ impl Settings {
             remote_monitoring: self.remote_monitoring,
             remote_monitoring_interval_secs: self.remote_monitoring_interval_secs,
             notifications: self.notifications,
+            gpu_backend: self.gpu_backend.clone(),
             first_run_theme_done: self.first_run_theme_done,
             ..base.clone()
         }
@@ -259,6 +269,7 @@ impl Settings {
 pub(crate) fn command_label(c: CommandId) -> &'static str {
     match c {
         CommandId::NEW_SESSION => "New session",
+        CommandId::NEW_LOCAL_TERMINAL => "New local terminal",
         CommandId::QUICK_CONNECT => "Quick connect",
         CommandId::CLOSE_TAB => "Close tab",
         CommandId::CLOSE_OTHERS => "Close other tabs",
@@ -583,6 +594,7 @@ fn terminal(ui: &mut egui::Ui, s: &mut Settings, icons: &Icons) {
             }
         });
         ui.checkbox(&mut s.copy_on_select, "Copy on select");
+        ui.checkbox(&mut s.right_click_paste, "Paste with right click (Ctrl+right click opens the menu)");
         ui.checkbox(&mut s.paste_guard, "Confirm multi-line paste");
     });
 }
@@ -594,6 +606,10 @@ fn skin_label(t: ThemeMode) -> &'static str {
         ThemeMode::System => "System",
     }
 }
+
+/// `gpu_backend` values and labels (Settings › Display › Graphics).
+const GPU_BACKENDS: [(&str, &str); 5] =
+    [("auto", "Automatic"), ("gl", "OpenGL"), ("dx12", "DirectX 12"), ("vulkan", "Vulkan"), ("cpu", "Software (CPU)")];
 
 fn display(ui: &mut egui::Ui, s: &mut Settings, icons: &Icons) {
     group(ui, icons, "Appearance", |ui| {
@@ -614,6 +630,26 @@ fn display(ui: &mut egui::Ui, s: &mut Settings, icons: &Icons) {
         ui.checkbox(&mut s.toolbar_captions, "Toolbar captions");
         ui.checkbox(&mut s.show_tab_numbers, "Show tab numbers");
         ui.checkbox(&mut s.show_close_buttons, "Show close buttons");
+    });
+    group(ui, icons, "Graphics", |ui| {
+        ui.horizontal(|ui| {
+            let l = ui.label("Rendering backend");
+            let label = |v: &str| GPU_BACKENDS.iter().find(|(k, _)| *k == v).map_or("Automatic", |(_, l)| *l);
+            egui::ComboBox::from_id_salt("settings-gpu-backend")
+                .selected_text(label(&s.gpu_backend))
+                .show_ui(ui, |ui| {
+                    for (value, text) in GPU_BACKENDS {
+                        if cfg!(windows) || value != "dx12" {
+                            ui.selectable_value(&mut s.gpu_backend, value.to_owned(), text);
+                        }
+                    }
+                })
+                .response
+                .labelled_by(l.id);
+        });
+        ui.label(
+            egui::RichText::new("Applies at the next start. After a driver crash rustXterm picks a safer one.").small(),
+        );
     });
     group(ui, icons, "Interface size", |ui| {
         ui.horizontal(|ui| {

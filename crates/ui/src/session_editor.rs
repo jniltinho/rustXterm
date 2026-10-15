@@ -215,6 +215,7 @@ fn label(p: Protocol) -> &'static str {
         Protocol::Vnc => "VNC",
         Protocol::Telnet => "Telnet",
         Protocol::Serial => "Serial",
+        Protocol::Local => "Local terminal",
     }
 }
 
@@ -228,6 +229,7 @@ fn description(p: Protocol) -> &'static str {
         Protocol::Vnc => "Remote desktop (VNC) session",
         Protocol::Telnet => "Telnet or raw TCP session (unencrypted)",
         Protocol::Serial => "Serial console (COM) session",
+        Protocol::Local => "Shell on this computer",
     }
 }
 
@@ -537,6 +539,8 @@ fn page(ui: &mut egui::Ui, ed: &mut Editor, folders: &[Folder], icons: &Icons, t
         (_, Protocol::Vnc) => vnc(ui, s),
         (_, Protocol::Telnet) => telnet(ui, s, &mut ed.password, ed.has_password, tokens),
         (_, Protocol::Serial) => serial(ui, s),
+        // Never edited: local terminals are not saved sessions.
+        (_, Protocol::Local) => {}
     }
     // FTPS TLS modes move the default port.
     if ed.session.port != port {

@@ -341,6 +341,13 @@ struct Ctx {
     tunnel: Option<Tunnel>,
 }
 
+/// Local terminals are off limits to agents until echo-off masking exists (agent-control spec).
+const LOCAL_DENIED: &str = "local terminals are not available to agents";
+
+fn not_local(session: Session) -> Result<Session, ControlError> {
+    if session.protocol == rxt_core::Protocol::Local { Err(ControlError::denied(LOCAL_DENIED)) } else { Ok(session) }
+}
+
 fn op_tab(op: &AgentOp) -> Option<TabId> {
     match op {
         AgentOp::Send { tab, .. }
@@ -386,12 +393,13 @@ impl Shared {
         if let Some(tab) = op_tab(op) {
             let session = self.tabs.lock().get(&tab).map(|t| t.session.clone());
             let session = session.ok_or_else(|| ControlError::new(ErrorCode::Usage, format!("no tab {}", tab.0)))?;
+            let session = not_local(session)?;
             let policy = self.with_store(|s| policy_of(s, session.id))?;
             return Ok(Ctx { session: Some(session), policy: Some(policy), tab: Some(tab), tunnel: None });
         }
         match op {
             AgentOp::Open { session } => self.with_store(|s| {
-                let session = find_session(s, session)?;
+                let session = not_local(find_session(s, session)?)?;
                 let policy = policy_of(s, session.id)?;
                 Ok(Ctx { session: Some(session), policy: Some(policy), ..Ctx::default() })
             }),
@@ -401,7 +409,7 @@ impl Shared {
                     .into_iter()
                     .find(|t| t.name == *name)
                     .ok_or_else(|| ControlError::new(ErrorCode::Usage, format!("no tunnel named {name:?}")))?;
-                let session = s.session(tunnel.via)?;
+                let session = not_local(s.session(tunnel.via)?)?;
                 let policy = policy_of(s, session.id)?;
                 Ok(Ctx { session: Some(session), policy: Some(policy), tab: None, tunnel: Some(tunnel) })
             }),
@@ -485,7 +493,10 @@ impl Shared {
         };
         let result = self.execute(&op, &ctx).await;
         let (decision, outcome) = match &result {
-            Ok(_) => (decision, "success".to_owned()),
+            Ok(v) => match v.get("skipped").and_then(Value::as_array).filter(|s| !s.is_empty()) {
+                Some(skipped) => (decision, format!("success; skipped local terminal tabs {skipped:?}")),
+                None => (decision, "success".to_owned()),
+            },
             Err(e) if e.code == ErrorCode::Denied => ("denied", e.message.clone()),
             Err(e) => (decision, e.message.clone()),
         };
@@ -565,19 +576,19 @@ impl Shared {
 
     /// Agent input: to `tab`, plus MultiExec peers only when their own session policy is `allow`.
     fn agent_send(&self, tab: TabId, bytes: &[u8]) -> Result<Value, ControlError> {
-        let peers: Vec<(TabId, SessionId)> = {
+        let (peers, skipped): (Vec<(TabId, SessionId)>, Vec<u64>) = {
             let multi = self.multi.lock();
             let tabs = self.tabs.lock();
-            if multi.enabled && multi.selected.contains(&tab) {
-                multi
-                    .selected
-                    .iter()
-                    .filter(|t| **t != tab)
-                    .filter_map(|t| tabs.get(t).map(|x| (*t, x.session.id)))
-                    .collect()
+            let group: Vec<_> = if multi.enabled && multi.selected.contains(&tab) {
+                multi.selected.iter().filter(|t| **t != tab).filter_map(|t| tabs.get(t).map(|x| (*t, x))).collect()
             } else {
                 Vec::new()
-            }
+            };
+            let local = |x: &crate::Tab| x.session.protocol == rxt_core::Protocol::Local;
+            (
+                group.iter().filter(|(_, x)| !local(x)).map(|(t, x)| (*t, x.session.id)).collect(),
+                group.iter().filter(|(_, x)| local(x)).map(|(t, _)| t.0).collect(),
+            )
         };
         let mut targets = vec![tab];
         if !peers.is_empty() {
@@ -603,7 +614,7 @@ impl Shared {
         if !sent.contains(&tab.0) {
             return Err(ControlError::new(ErrorCode::Failed, "tab is not accepting input"));
         }
-        Ok(json!({ "sent_to": sent }))
+        Ok(json!({ "sent_to": sent, "skipped": skipped }))
     }
 
     async fn wait(&self, tab: TabId, pattern: &str, timeout: Duration, content: bool) -> Result<Value, ControlError> {
