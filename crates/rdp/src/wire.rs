@@ -7,6 +7,8 @@ use std::time::Duration;
 use bytes::BytesMut;
 use ironrdp::pdu::{Action, PduHint, find_size};
 use rxt_core::{Error, Result};
+
+use crate::legacy::Security;
 use tokio::io::{AsyncRead, AsyncReadExt as _, AsyncWrite, AsyncWriteExt as _};
 use tokio::time::{Instant, timeout, timeout_at};
 
@@ -52,11 +54,13 @@ pub(crate) struct Wire<S> {
     limits: Limits,
     /// When the PDU being received started (or the connection-phase wait began).
     since: Option<Instant>,
+    /// Standard RDP Security, once the Security Exchange PDU is sent.
+    pub(crate) legacy: Option<Box<Security>>,
 }
 
 impl<S: AsyncRead + AsyncWrite + Unpin> Wire<S> {
     pub(crate) fn new(io: S, limits: Limits) -> Self {
-        Self { io, buf: BytesMut::new(), limits, since: None }
+        Self { io, buf: BytesMut::new(), limits, since: None, legacy: None }
     }
 
     /// The stream, once no unread bytes are buffered (before a TLS upgrade).
@@ -94,7 +98,11 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Wire<S> {
         }
         let pdu = self.buf.split_to(len);
         self.since = (!self.buf.is_empty()).then(Instant::now);
-        Ok(Some(pdu))
+        // Every PDU goes through the legacy layer, dropped ones too (the RC4 stream is shared).
+        match &mut self.legacy {
+            Some(security) => Ok(Some(BytesMut::from(&security.open(&pdu)?[..]))),
+            None => Ok(Some(pdu)),
+        }
     }
 
     /// Next active-stage PDU. Cancel-safe (state lives in `self`).
@@ -126,6 +134,20 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Wire<S> {
     }
 
     pub(crate) async fn write(&mut self, data: &[u8]) -> Result<()> {
+        self.write_sealed(data, false).await
+    }
+
+    /// Writes `data`; with Standard RDP Security, `has_header` marks slow-path PDUs that already
+    /// carry a basic security header (Client Info, licensing).
+    pub(crate) async fn write_sealed(&mut self, data: &[u8], has_header: bool) -> Result<()> {
+        let sealed;
+        let data = match &mut self.legacy {
+            Some(security) => {
+                sealed = security.seal(data, has_header)?;
+                &sealed[..]
+            }
+            None => data,
+        };
         let io = &mut self.io;
         timeout(self.limits.stall, async {
             io.write_all(data).await?;

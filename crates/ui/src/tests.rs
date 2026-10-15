@@ -1543,6 +1543,7 @@ fn snapshot_m2_editors_and_certificate() {
     rdp.rdp.resolution = rxt_core::RdpResolution::Fixed { width: 1600, height: 900 };
     rdp.rdp.keyboard_layout = 0x0416;
     rdp.rdp.allow_legacy_tls = true;
+    rdp.rdp.allow_standard_security = true;
     let mut vnc = Session::new(Protocol::Vnc, "kiosk.lab.example", None, None);
     vnc.vnc.via_ssh =
         Some(JumpHost { host: "bastion.lab.example".into(), port: 22, user: "alice".into(), key_file: None });
@@ -1567,6 +1568,18 @@ fn snapshot_m2_editors_and_certificate() {
         },
     );
     e.snap("dialog_certificate_unknown");
+    e.app().prompts.clear();
+    prompt(
+        &mut e,
+        2,
+        PromptKind::CertificateUnknown {
+            host: "legacy.lab.example".into(),
+            port: 3389,
+            subject: "Legacy RDP security (no TLS): this connection is not protected against interception".into(),
+            fingerprint: "RSA 4F:9A:0C:7E:21:B3:58:D6:AA:10:3F:C2:9E:77:05:B1".into(),
+        },
+    );
+    e.snap("dialog_legacy_rdp_key_unknown");
 }
 
 // ---- encrypted store ----

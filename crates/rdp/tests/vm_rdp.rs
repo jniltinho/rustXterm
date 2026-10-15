@@ -67,3 +67,65 @@ async fn rdp_windows_nla_wrong_password_fails_in_credssp() {
     println!("VM wrong password: {e}");
     assert!(matches!(&e, rxt_core::Error::Auth(m) if m.contains("CredSSP")), "{e:?}");
 }
+
+/// Standard RDP Security: run with the VM's Security Layer set to RDP
+/// (`SecurityLayer=0`, `UserAuthentication=0`; recipe in `lab/vagrant/README.md`).
+/// Opted in: the legacy key prompt comes first, then login, input and resize work.
+#[tokio::test]
+#[ignore = "windows-vm-standard-security"]
+async fn rdp_windows_standard_security_login_input_and_resize() {
+    let script = Script::new(HostKeyDecision::AcceptOnce, Some("vagrant"));
+    let mut s = session("vagrant", VM);
+    s.rdp.allow_standard_security = true;
+    let started = Instant::now();
+    let mut d = rxt_rdp::connect(&s, ctx(script.clone(), Arc::new(Trust::default())), (1024, 768)).await.unwrap();
+    println!("VM (Standard RDP Security) connected in {:?}; prompts: {:?}", started.elapsed(), script.prompts());
+    let p = script.prompts();
+    assert!(
+        matches!(&p[0], PromptKind::CertificateUnknown { subject, fingerprint, .. }
+            if subject.starts_with("Legacy RDP security") && fingerprint.starts_with("RSA ")),
+        "{p:?}"
+    );
+    assert!(matches!(p[1], PromptKind::Password { .. }), "{p:?}");
+    assert_eq!(next(&mut d, T).await, DesktopEvent::Resized { width: 1024, height: 768 });
+    next_update(&mut d, T).await;
+    let input = d.input();
+    input.send(DesktopInput::Pointer { x: 500, y: 400, buttons: 0 }).unwrap();
+    // Enough key traffic to cross the 4096-packet RC4 key update in the client-to-server stream.
+    for _ in 0..2100 {
+        // Shift down/up: a harmless key that changes nothing on screen.
+        for down in [true, false] {
+            input.send(DesktopInput::Key { keysym: 0xffe1, down }).unwrap();
+        }
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
+    for keysym in [0xffeb_u32, 0xff1b] {
+        input.send(DesktopInput::Key { keysym, down: true }).unwrap();
+        input.send(DesktopInput::Key { keysym, down: false }).unwrap();
+        next_update(&mut d, T).await;
+    }
+    input.send(DesktopInput::Resize { width: 1280, height: 720 }).unwrap();
+    let deadline = Instant::now() + T;
+    loop {
+        assert!(Instant::now() < deadline, "no Resized after display-control request");
+        if let DesktopEvent::Resized { width, height } = next(&mut d, T).await {
+            assert_eq!((width, height), (1280, 720));
+            break;
+        }
+    }
+    next_update(&mut d, T).await;
+    println!("VM (Standard RDP Security) input and resize ok after {:?}", started.elapsed());
+}
+
+/// Option off: the actionable error, before any prompt.
+#[tokio::test]
+#[ignore = "windows-vm-standard-security"]
+async fn rdp_windows_standard_security_off_is_actionable() {
+    let script = Script::new(HostKeyDecision::AcceptOnce, Some("vagrant"));
+    let r =
+        rxt_rdp::connect(&session("vagrant", VM), ctx(script.clone(), Arc::new(Trust::default())), (1024, 768)).await;
+    let Err(e) = r else { panic!("connected without the option") };
+    println!("VM option off: {e}");
+    assert!(e.to_string().contains("Allow legacy RDP security"), "{e}");
+    assert!(script.prompts().is_empty());
+}

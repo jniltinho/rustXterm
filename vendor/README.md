@@ -48,3 +48,28 @@ Change (3 lines + comment, `src/auxil/dxgi/factory.rs` `should_keep_adapter`): t
 WARP adapter is skipped only when it has no output (`EnumOutputs(0)` fails), so headless machines
 keep upstream behavior. `examples/` are not vendored (their `[[example]]` entries are removed from
 `Cargo.toml`). Remove the patch once wgpu keeps output-owning WARP adapters upstream.
+
+## ironrdp-connector 0.10.0 and ironrdp-pdu 0.9.0 (opt-in Standard RDP Security, add-rdp-standard-security)
+
+Why: IronRDP refuses servers whose Remote Desktop Security Layer is "RDP" (Standard RDP Security,
+MS-RDPBCGR 5.3). rustXterm supports them opt-in per session; the RC4 layer itself lives in
+`crates/rdp/src/legacy.rs` and runs on the transport, so the IronRDP changes stay small. Both crates
+are copied from the crates.io packages (`src/`, `Cargo.toml`, licenses, README); every change is
+marked with a `rustXterm:` comment.
+
+- `ironrdp-connector` (`src/connection.rs`, `src/license_exchange.rs`):
+  - a `Config` with neither `enable_tls` nor `enable_credssp` requests `PROTOCOL_RDP` instead of
+    failing, and accepts it as the selected protocol;
+  - in that mode the Client Security Data offers 40/56/128-bit RC4 (never FIPS), and neither network
+    auto-detect nor the message channel is requested (their PDUs carry security headers the transform
+    does not map);
+  - `ClientConnector::server_security` keeps the Server Security Data (server random, certificate);
+  - the licensing sequence uses that certificate when a Server License Request omits its own
+    (MS-RDPELE 2.2.2.1).
+  - TLS/NLA connections are byte-identical to upstream.
+- `ironrdp-pdu` (`src/gcc/security_data.rs`): `MAX_SERVER_CERT_LEN` 1024 → 16 KiB, so X.509 chains
+  in Server Security Data decode (still bounded; the transport PDU cap applies too).
+
+Remove both patches once IronRDP supports Standard RDP Security upstream (or drops the 1024-byte
+certificate cap and accepts `PROTOCOL_RDP`); verify with `crates/rdp/tests/vm_rdp.rs`
+`standard_security` tests against the Windows VM.

@@ -79,6 +79,10 @@ msi = "=0.10.0"
 uuid = "=1.28.0"
 hmac = "=0.13.0"
 sha1 = "=0.11.0"
+# Standard RDP Security (crates/rdp/src/legacy.rs); all already in the lockfile.
+md-5 = "=0.11.0"
+num-bigint = "=0.4.8"
+pkcs1 = "=0.7.5"
 base64 = "=0.23.1"
 data-encoding = "=2.11.1"
 regex = "=1.13.1"
@@ -141,6 +145,9 @@ sspi = { path = "vendor/sspi" }
 vnc-rs = { path = "vendor/vnc-rs" }
 # wgpu-hal 30.0.1 + DX12 keeps the display-owning WARP adapter (GPU-less Windows VMs; vendor/README.md).
 wgpu-hal = { path = "vendor/wgpu-hal" }
+# ironrdp-connector 0.10.0 / ironrdp-pdu 0.9.0 + opt-in Standard RDP Security (vendor/README.md).
+ironrdp-connector = { path = "vendor/ironrdp-connector" }
+ironrdp-pdu = { path = "vendor/ironrdp-pdu" }
 
 [profile.release]
 lto = "thin"

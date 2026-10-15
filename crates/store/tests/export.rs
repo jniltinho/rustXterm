@@ -57,6 +57,7 @@ fn sample() -> Export {
             keyboard_layout: 0x0409,
             clipboard: false,
             allow_legacy_tls: true,
+            allow_standard_security: true,
         },
         vnc: VncOptions { view_only: true, scale_to_fit: false, clipboard: false, via_ssh: Some(jump("gw.example")) },
         telnet: TelnetOptions { raw: true, newline: Newline::CrNul, auto_login: true, ..TelnetOptions::default() },

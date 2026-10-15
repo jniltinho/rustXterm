@@ -243,6 +243,9 @@ pub struct RdpOptions {
     pub clipboard: bool,
     /// Accept TLS 1.0/1.1 with legacy ciphers (old Windows servers such as 2008); less secure.
     pub allow_legacy_tls: bool,
+    /// Fall back to Standard RDP Security (RC4, no TLS/NLA) when the server's Security Layer is
+    /// "RDP"; insecure (no server authentication).
+    pub allow_standard_security: bool,
 }
 
 impl Default for RdpOptions {
@@ -253,6 +256,7 @@ impl Default for RdpOptions {
             keyboard_layout: 0,
             clipboard: true,
             allow_legacy_tls: false,
+            allow_standard_security: false,
         }
     }
 }
@@ -780,8 +784,8 @@ mod tests {
     #[test]
     fn rdp_legacy_tls_is_opt_in_and_round_trips() {
         let old: RdpOptions = serde_json::from_str(r#"{"clipboard":false}"#).unwrap();
-        assert!(!old.allow_legacy_tls && !old.clipboard);
-        let on = RdpOptions { allow_legacy_tls: true, ..RdpOptions::default() };
+        assert!(!old.allow_legacy_tls && !old.allow_standard_security && !old.clipboard);
+        let on = RdpOptions { allow_legacy_tls: true, allow_standard_security: true, ..RdpOptions::default() };
         assert_eq!(serde_json::from_str::<RdpOptions>(&serde_json::to_string(&on).unwrap()).unwrap(), on);
     }
 }

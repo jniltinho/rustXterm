@@ -166,6 +166,89 @@ async fn oversized_pdu_drops_connection() {
 }
 
 #[tokio::test]
+async fn standard_rdp_security_only_gives_actionable_error() {
+    // X.224 confirm with RDP_NEG_FAILURE SSL_NOT_ALLOWED_BY_SERVER (Security Layer = RDP).
+    let (l, port) = listen().await;
+    tokio::spawn(async move {
+        let (mut tcp, _) = l.accept().await.unwrap();
+        let mut buf = [0; 512];
+        let _ = tcp.read(&mut buf).await.unwrap();
+        let failure = [3, 0, 0, 19, 14, 0xd0, 0, 0, 0x12, 0x34, 0, 3, 0, 8, 0, 2, 0, 0, 0];
+        tcp.write_all(&failure).await.unwrap();
+    });
+    let e = client(port, quick()).await.err().expect("standard RDP security accepted");
+    assert!(e.to_string().contains("Security Layer") && e.to_string().contains("Allow legacy RDP security"), "{e}");
+}
+
+/// Serves X.224 connection requests on `l`, answering each with RDP_NEG_FAILURE `codes[i]` (or
+/// closing when the codes run out), and returns the requested protocols of every connection.
+async fn refuse_all(l: TcpListener, codes: Vec<u8>) -> Vec<u32> {
+    let mut requested = Vec::new();
+    loop {
+        let Ok(Ok((mut tcp, _))) = tokio::time::timeout(Duration::from_secs(2), l.accept()).await else {
+            return requested;
+        };
+        let mut buf = [0; 512];
+        let n = tcp.read(&mut buf).await.unwrap();
+        requested.push(u32::from_le_bytes(buf[n - 4..n].try_into().unwrap()));
+        let Some(code) = codes.get(requested.len() - 1) else { continue };
+        let failure = [3, 0, 0, 19, 14, 0xd0, 0, 0, 0x12, 0x34, 0, 3, 0, 8, 0, *code, 0, 0, 0];
+        tcp.write_all(&failure).await.unwrap();
+    }
+}
+
+async fn legacy_client(port: u16, trust: Arc<common::Trust>) -> rxt_core::Result<Desktop> {
+    let s = Script::new(HostKeyDecision::AcceptOnce, Some("hostile-pass"));
+    let mut session = session("alice", port);
+    session.rdp.allow_standard_security = true;
+    rxt_rdp::connect_with_limits(&session, ctx(s, trust), (800, 600), quick()).await
+}
+
+#[tokio::test]
+async fn standard_security_refusal_reconnects_requesting_protocol_rdp() {
+    let (l, port) = listen().await;
+    let server = tokio::spawn(refuse_all(l, vec![2]));
+    assert!(legacy_client(port, Arc::default()).await.is_err());
+    // First TLS|HYBRID|HYBRID_EX, then PROTOCOL_RDP (0) on a new connection.
+    assert_eq!(server.await.unwrap(), vec![0b1011, 0]);
+}
+
+#[tokio::test]
+async fn other_negotiation_failures_never_fall_back() {
+    let (l, port) = listen().await;
+    let server = tokio::spawn(refuse_all(l, vec![5]));
+    let e = legacy_client(port, Arc::default()).await.err().unwrap();
+    assert!(!e.to_string().contains("legacy"), "{e}");
+    assert_eq!(server.await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn forged_refusal_for_a_tls_trusted_host_is_a_downgrade_error() {
+    let (l, port) = listen().await;
+    let server = tokio::spawn(refuse_all(l, vec![2]));
+    let trust = Arc::new(common::Trust::default());
+    rxt_core::CertTrust::save(&*trust, "127.0.0.1", port, "AB:CD:EF");
+    let e = legacy_client(port, trust).await.err().unwrap();
+    assert!(matches!(&e, Error::HostKey(m) if m.contains("downgrade")), "{e:?}");
+    assert_eq!(server.await.unwrap().len(), 1);
+}
+
+#[test]
+fn server_security_data_accepts_large_certificate_chains() {
+    use ironrdp::pdu::gcc::{EncryptionLevel, EncryptionMethod, ServerSecurityData};
+    let data = |len| ServerSecurityData {
+        encryption_method: EncryptionMethod::BIT_128,
+        encryption_level: EncryptionLevel::ClientCompatible,
+        server_random: Some([7; 32]),
+        server_cert: vec![1; len],
+    };
+    let ok = ironrdp::core::encode_vec(&data(3 << 10)).unwrap();
+    assert_eq!(ironrdp::core::decode::<ServerSecurityData>(&ok).unwrap(), data(3 << 10));
+    let big = ironrdp::core::encode_vec(&data(20 << 10)).unwrap();
+    assert!(ironrdp::core::decode::<ServerSecurityData>(&big).is_err());
+}
+
+#[tokio::test]
 async fn stalled_peer_during_connection_times_out() {
     let (l, port) = listen().await;
     tokio::spawn(async move {

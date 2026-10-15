@@ -3207,8 +3207,6 @@ dependencies = [
 [[package]]
 name = "ironrdp-connector"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5898b3f1fcaca0f9b923b1463e158aeb64dfdec4ac361b7c086492466ff341c"
 dependencies = [
  "ironrdp-core",
  "ironrdp-error",
@@ -3294,8 +3292,6 @@ dependencies = [
 [[package]]
 name = "ironrdp-pdu"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ccd1179a4d106df1930347701388b5c79bc3725fa7dab4438d57db0d9d19347"
 dependencies = [
  "bit_field",
  "bitflags 2.13.2",
@@ -6190,9 +6186,14 @@ dependencies = [
  "ironrdp",
  "ironrdp-acceptor",
  "ironrdp-tokio",
+ "md-5 0.11.0",
+ "num-bigint 0.4.8",
  "openssl",
  "picky",
+ "pkcs1 0.7.5",
+ "rand 0.10.3",
  "rxt-core",
+ "sha1 0.11.0",
  "sha2 0.11.1",
  "thiserror 2.0.21",
  "tokio",

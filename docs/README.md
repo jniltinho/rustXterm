@@ -8,6 +8,7 @@ requirements live in OpenSpec under [`openspec/`](../openspec/).
 - [Architecture](#architecture)
 - [Runtime data flow](#runtime-data-flow)
 - [SSH connections](#ssh-connections)
+- [RDP connections (user guide)](rdp.md): security layers, legacy RDP security, trust prompts, errors
 - [Settings and encrypted store](#settings-and-encrypted-store)
 - [Agent control (CLI and MCP)](#agent-control-cli-and-mcp)
 - [Local terminal](#local-terminal)

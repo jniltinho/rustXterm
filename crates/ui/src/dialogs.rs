@@ -283,6 +283,7 @@ pub(crate) fn buttons(
 fn prompt_title(kind: &PromptKind) -> &str {
     match kind {
         PromptKind::HostKeyUnknown { .. } => "Unknown host key",
+        PromptKind::CertificateUnknown { fingerprint, .. } if fingerprint.starts_with("RSA ") => "Unknown server key",
         PromptKind::CertificateUnknown { .. } => "Unknown certificate",
         PromptKind::Password { .. } => "Password",
         PromptKind::KeyPassphrase { .. } => "Key passphrase",
@@ -343,6 +344,15 @@ fn prompt_body(ui: &mut Ui, icons: &Icons, p: &mut Prompt, can_save: bool, token
         PromptKind::HostKeyUnknown { host, port, algorithm, fingerprint: fp } => {
             ui.label(format!("The authenticity of host {host}:{port} cannot be established."));
             fingerprint(ui, icons, &format!("{algorithm} key fingerprint"), fp);
+            ui.label("Accept the key only if it matches the fingerprint published by the server administrator.");
+            trust_buttons(ui, icons)
+        }
+        // Legacy RDP security (rxt-rdp): an RSA key without TLS, fingerprint prefixed "RSA ".
+        PromptKind::CertificateUnknown { host, port, subject, fingerprint: fp } if fp.starts_with("RSA ") => {
+            ui.colored_label(color(tokens.danger), subject.as_str());
+            ui.label(format!("{host}:{port} uses legacy RDP security: its RSA key cannot be verified."));
+            fingerprint(ui, icons, "SHA-256 key fingerprint", fp);
+            ui.label("No credentials are sent until you accept.");
             ui.label("Accept the key only if it matches the fingerprint published by the server administrator.");
             trust_buttons(ui, icons)
         }

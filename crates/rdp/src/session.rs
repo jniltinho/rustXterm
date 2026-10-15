@@ -12,8 +12,8 @@ use ironrdp::cliprdr::{CliprdrClient, CliprdrSvcMessages};
 use ironrdp::connector::connection_activation::{ConnectionActivationFactory, ConnectionActivationState};
 use ironrdp::connector::credssp::CredsspSequence;
 use ironrdp::connector::{
-    BitmapConfig, ClientConnector, ClientConnectorState, Config, ConnectorError, Credentials, DesktopSize, Sequence,
-    ServerName, Written,
+    BitmapConfig, ClientConnector, ClientConnectorState, Config, ConnectorError, ConnectorErrorKind, Credentials,
+    DesktopSize, Sequence, ServerName, Written,
 };
 use ironrdp::core::{ReadCursor, WriteBuf, decode_cursor, impl_as_any};
 use ironrdp::displaycontrol::client::DisplayControlClient;
@@ -26,6 +26,7 @@ use ironrdp::pdu::fast_path::{FastPathHeader, FastPathUpdatePdu, Fragmentation};
 use ironrdp::pdu::gcc::KeyboardType;
 use ironrdp::pdu::geometry::InclusiveRectangle;
 use ironrdp::pdu::input::fast_path::FastPathInputEvent;
+use ironrdp::pdu::nego::FailureCode;
 use ironrdp::pdu::rdp::capability_sets::{MajorPlatformType, client_codecs_capabilities};
 use ironrdp::pdu::rdp::client_info::{PerformanceFlags, TimezoneInfo};
 use ironrdp::pdu::rdp::headers::ShareDataPdu;
@@ -41,15 +42,32 @@ use tokio::sync::{Semaphore, mpsc};
 use tokio::time::timeout;
 
 use crate::tls::{self, Tls};
-use crate::trust::{public_key, trust_then_password};
+use crate::trust::{decide_then_password, public_key, trust_then_password};
 use crate::wire::{Limits, Wire};
-use crate::{Context, Queued, keymap};
+use crate::{Context, Queued, keymap, legacy};
 
 fn proto(e: impl std::fmt::Display) -> Error {
     Error::Protocol(e.to_string())
 }
 
+/// The server refused TLS/NLA because its Security Layer is "RDP" (`SSL_NOT_ALLOWED_BY_SERVER`).
+pub(crate) const STANDARD_ONLY: &str = "the server only allows the legacy Standard RDP Security layer (no TLS/NLA). \
+     Enable 'Allow legacy RDP security' in the session's RDP settings to connect (insecure), or set the \
+     server's Remote Desktop \"Security Layer\" to Negotiate or SSL (GPO: Require use of specific security \
+     layer for remote (RDP) connections)";
+
+/// The refusal arrived for a host already trusted over TLS (it is unauthenticated and could be forged).
+const DOWNGRADE: &str = "the server refused TLS, but this host was trusted over TLS before: the refusal may \
+     be a downgrade attempt, so legacy RDP security was not used. If the server's administrator really switched \
+     it to the legacy layer, connect with another name for it (such as its IP address): trust is saved per \
+     host name and port";
+
 fn connector_err(e: ConnectorError) -> Error {
+    if let ConnectorErrorKind::Negotiation(f) = e.kind()
+        && f.code() == FailureCode::SSL_NOT_ALLOWED_BY_SERVER
+    {
+        return Error::Protocol(STANDARD_ONLY.into());
+    }
     Error::Protocol(e.to_string())
 }
 
@@ -101,8 +119,15 @@ async fn write_written<S>(wire: &mut Wire<S>, buf: &WriteBuf, written: Written) 
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
+    write_written_sealed(wire, buf, written, false).await
+}
+
+async fn write_written_sealed<S>(wire: &mut Wire<S>, buf: &WriteBuf, written: Written, has_header: bool) -> Result<()>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
     if written.size().is_some() {
-        wire.write(buf.filled()).await?;
+        wire.write_sealed(buf.filled(), has_header).await?;
     }
     Ok(())
 }
@@ -122,13 +147,14 @@ fn adjust(w: u32, h: u32) -> (u32, u32) {
     (w.clamp(200, MAX_EDGE) & !1, h.clamp(200, MAX_EDGE))
 }
 
-fn config(session: &Session, tab: (u32, u32)) -> Result<Config> {
+/// `standard`: request Standard RDP Security (no TLS, no CredSSP).
+fn config(session: &Session, tab: (u32, u32), standard: bool) -> Result<Config> {
     let codecs = client_codecs_capabilities(&[]).map_err(proto)?;
     Ok(Config {
         desktop_size: requested_size(session, tab),
         desktop_scale_factor: 0,
-        enable_tls: true,
-        enable_credssp: true,
+        enable_tls: !standard,
+        enable_credssp: !standard,
         // The password is filled in only after the certificate is trusted.
         credentials: Credentials::UsernamePassword {
             username: session.user.clone().unwrap_or_default(),
@@ -164,8 +190,28 @@ fn config(session: &Session, tab: (u32, u32)) -> Result<Config> {
     })
 }
 
-/// Runs the connection sequence up to the active stage.
+/// Runs the connection sequence up to the active stage. A refusal of TLS/NLA is retried with
+/// Standard RDP Security only when the session opts in and the host was never trusted over TLS.
 pub(crate) async fn establish(session: &Session, ctx: &Context, tab: (u32, u32), limits: Limits) -> Result<Driver> {
+    match establish_with(session, ctx, tab, limits, false).await {
+        Err(Error::Protocol(m)) if m == STANDARD_ONLY && session.rdp.allow_standard_security => {
+            if ctx.trust.get(&session.host, session.port).is_some_and(|fp| !fp.starts_with(legacy::KEY_PREFIX)) {
+                return Err(Error::HostKey(DOWNGRADE.into()));
+            }
+            tracing::warn!(host = %session.host, "server allows only Standard RDP Security; reconnecting with it");
+            establish_with(session, ctx, tab, limits, true).await
+        }
+        r => r,
+    }
+}
+
+async fn establish_with(
+    session: &Session,
+    ctx: &Context,
+    tab: (u32, u32),
+    limits: Limits,
+    standard: bool,
+) -> Result<Driver> {
     let host = session.host.as_str();
     let port = session.port;
     let tcp = timeout(limits.stall, TcpStream::connect((host, port)))
@@ -176,7 +222,7 @@ pub(crate) async fn establish(session: &Session, ctx: &Context, tab: (u32, u32),
     let client_addr: SocketAddr = tcp.local_addr()?;
 
     let clip_events = Arc::new(Mutex::new(Vec::new()));
-    let mut connector = ClientConnector::new(config(session, tab)?, client_addr)
+    let mut connector = ClientConnector::new(config(session, tab, standard)?, client_addr)
         .with_static_channel(DrdynvcClient::new().with_dynamic_channel(DisplayControlClient::new(|_| Ok(Vec::new()))));
     if session.rdp.clipboard {
         connector.attach_static_channel(CliprdrClient::new(Box::new(ClipBackend(clip_events.clone()))));
@@ -189,24 +235,61 @@ pub(crate) async fn establish(session: &Session, ctx: &Context, tab: (u32, u32),
         write_written(&mut wire, &buf, written).await?;
     }
 
-    // TLS: the leaf is captured unverified; the trust decision follows before any credential.
-    let (stream, leaf) = tls::upgrade(wire.into_inner()?, host, session.rdp.allow_legacy_tls, limits.stall).await?;
-
     let user = session.user.clone().unwrap_or_default();
-    let password = trust_then_password(&*ctx.prompter, &*ctx.trust, host, port, &user, &leaf).await?;
-    connector.config.credentials = Credentials::UsernamePassword { username: user, password };
-    connector.mark_security_upgrade_as_done();
-
-    let mut wire = Wire::new(stream, limits);
-    if connector.should_perform_credssp() {
-        credssp(&mut wire, &mut connector, host, public_key(&leaf)?).await?;
-    }
+    let mut wire = if standard {
+        // Standard RDP Security: no TLS; the trust decision on the server's RSA key and the
+        // Security Exchange happen right before the Client Info PDU (below).
+        connector.mark_security_upgrade_as_done();
+        Wire::new(Box::new(wire.into_inner()?) as Tls, limits)
+    } else {
+        // TLS: the leaf is captured unverified; the trust decision follows before any credential.
+        let (stream, leaf) = tls::upgrade(wire.into_inner()?, host, session.rdp.allow_legacy_tls, limits.stall).await?;
+        let password = trust_then_password(&*ctx.prompter, &*ctx.trust, host, port, &user, &leaf).await?;
+        connector.config.credentials = Credentials::UsernamePassword { username: user.clone(), password };
+        connector.mark_security_upgrade_as_done();
+        let mut wire = Wire::new(stream, limits);
+        if connector.should_perform_credssp() {
+            credssp(&mut wire, &mut connector, host, public_key(&leaf)?).await?;
+        }
+        wire
+    };
     loop {
+        if standard
+            && wire.legacy.is_none()
+            && let ClientConnectorState::SecureSettingsExchange { io_channel_id, user_channel_id } = connector.state
+        {
+            let data = connector
+                .server_security
+                .clone()
+                .ok_or_else(|| Error::Protocol("server sent no security data for legacy RDP security".into()))?;
+            let key = legacy::ServerKey::parse(&data.server_cert)?;
+            let exchange = legacy::exchange(&data, &key, user_channel_id, io_channel_id)?;
+            let password = decide_then_password(
+                &*ctx.prompter,
+                &*ctx.trust,
+                host,
+                port,
+                &user,
+                key.fingerprint(),
+                legacy::PROMPT_SUBJECT.into(),
+            )
+            .await?;
+            connector.config.credentials = Credentials::UsernamePassword { username: user.clone(), password };
+            wire.write(&exchange.pdu).await?;
+            wire.legacy = Some(Box::new(exchange.security));
+        }
+        // Client Info and licensing PDUs already carry a basic security header.
+        let has_header = matches!(
+            connector.state,
+            ClientConnectorState::SecureSettingsExchange { .. }
+                | ClientConnectorState::ConnectTimeAutoDetection { .. }
+                | ClientConnectorState::LicensingExchange { .. }
+        );
         let written = step_read(&mut wire, &mut connector, &mut buf).await?;
         if let Some(size) = negotiated_size(&connector) {
             check_size(size.width, size.height)?;
         }
-        write_written(&mut wire, &buf, written).await?;
+        write_written_sealed(&mut wire, &buf, written, has_header).await?;
         if !matches!(connector.state, ClientConnectorState::Connected { .. }) {
             continue;
         }

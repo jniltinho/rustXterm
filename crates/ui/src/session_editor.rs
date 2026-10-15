@@ -778,6 +778,7 @@ fn rdp(ui: &mut egui::Ui, s: &mut Session) {
         [
             (&mut o.clipboard, "Share clipboard text"),
             (&mut o.allow_legacy_tls, "Allow legacy TLS 1.0/1.1 (old Windows servers, less secure)"),
+            (&mut o.allow_standard_security, "Allow legacy RDP security (no TLS, insecure)"),
         ],
     );
 }

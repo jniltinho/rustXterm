@@ -19,6 +19,23 @@ fictional, forwards bind to 127.0.0.1 only, and the VMs reach the host's Docker 
   desktop session, `click`, `keys`, `key`, `shot`). Screenshots go to the git-ignored `docs/prints/`.
   `RXT_WIN_VM` overrides the VirtualBox VM name (default `rustxterm-windows`).
 
+### Switching the RDP security layer
+
+The RDP tests in `crates/rdp/tests/vm_rdp.rs` expect NLA (the default). To try the other layers
+(see [`docs/rdp.md`](../../docs/rdp.md)), from `lab/vagrant/windows`:
+
+```sh
+k='HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp'
+# Standard RDP Security only (tests matching standard_security)
+vagrant winrm -s powershell -c "Set-ItemProperty '$k' SecurityLayer 0; Set-ItemProperty '$k' UserAuthentication 0"
+# Encryption level for that layer: 1 Low, 2 Client Compatible (default), 3 High, 4 FIPS
+vagrant winrm -s powershell -c "Set-ItemProperty '$k' MinEncryptionLevel 2"
+# Back to the default (Negotiate + NLA)
+vagrant winrm -s powershell -c "Set-ItemProperty '$k' SecurityLayer 1; Set-ItemProperty '$k' UserAuthentication 1"
+```
+
+Changes apply to new connections without a restart.
+
 ## Desktop matrix VMs (`desktop`)
 
 - Official cloud images plus cloud-init, checksum-verified; the fictional user `tester` logs in

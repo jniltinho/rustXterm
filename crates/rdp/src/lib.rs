@@ -9,6 +9,7 @@
 //! prompt, CredSSP/NLA or TLS logon, capability exchange (desktop size checked), active stage.
 
 mod keymap;
+mod legacy;
 mod session;
 mod tls;
 mod trust;

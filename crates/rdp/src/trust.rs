@@ -99,7 +99,20 @@ pub(crate) async fn trust_then_password(
     user: &str,
     leaf: &[u8],
 ) -> Result<String> {
-    let fp = fingerprint(leaf);
+    decide_then_password(prompter, trust, host, port, user, fingerprint(leaf), subject(leaf)).await
+}
+
+/// Trust decision for a server identity `fp` (TLS certificate or legacy RSA key), then the
+/// password prompt.
+pub(crate) async fn decide_then_password(
+    prompter: &dyn Prompter,
+    trust: &dyn CertTrust,
+    host: &str,
+    port: u16,
+    user: &str,
+    fp: String,
+    subject: String,
+) -> Result<String> {
     match trust.get(host, port) {
         Some(saved) if saved == fp => {}
         Some(saved) => {
@@ -107,12 +120,7 @@ pub(crate) async fn trust_then_password(
             return Err(Error::HostKey(format!("certificate of {host}:{port} changed")));
         }
         None => {
-            let kind = PromptKind::CertificateUnknown {
-                host: host.into(),
-                port,
-                subject: subject(leaf),
-                fingerprint: fp.clone(),
-            };
+            let kind = PromptKind::CertificateUnknown { host: host.into(), port, subject, fingerprint: fp.clone() };
             match prompter.prompt(kind).await {
                 PromptAnswer::HostKey(HostKeyDecision::AcceptOnce) => {}
                 PromptAnswer::HostKey(HostKeyDecision::AcceptAndSave) => trust.save(host, port, &fp),
