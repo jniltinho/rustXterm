@@ -50,7 +50,7 @@ live server monitoring and an encrypted session store. One Rust binary for Linux
 | Area | What you get |
 |---|---|
 | **SSH** | Password, public key, agent and keyboard-interactive auth; host keys checked before auth on every hop; jump hosts; compression; remote command; X11 forwarding (off by default) |
-| **Terminal** | xterm-256color with truecolor, mouse reporting, scrollback, search, paste confirmation; MultiExec typing into selected tabs; bundled Cascadia Mono (default), JetBrains Mono, Hack, DejaVu Sans Mono, Inconsolata, IBM Plex Mono, Source Code Pro, Fira Mono, Ubuntu Mono and Terminus; bar, block or underline cursor |
+| **Terminal** | xterm-256color with truecolor, mouse reporting, scrollback, search, paste confirmation; MultiExec typing into selected tabs; bundled Cascadia Mono (default), JetBrains Mono, Hack, DejaVu Sans Mono, Inconsolata, IBM Plex Mono, Source Code Pro, Fira Mono, Ubuntu Mono and Terminus; bar, block or underline cursor; 13 built-in color schemes (rustXterm light/dark, Solarized, Dracula, Gruvbox, Nord, One Dark, Monokai, Tango, xterm) plus your own, globally or per session; font zoom with Ctrl+wheel, Ctrl+= / Ctrl+- / Ctrl+0, remembered across restarts |
 | **Files** | SFTP side panel that follows the shell's directory, with Name, Size (KB), Last modified, Owner, Group and Access columns; dual-pane SFTP and FTP/FTPS tabs (explicit/implicit TLS, passive/active); per-tab transfer list with Open and Show in folder for downloads |
 | **Local terminal** | The "+" after the last tab (or Ctrl+Shift+T) opens your own shell in your home folder with a welcome box, like MobaXterm: your login shell on Linux, PowerShell (or cmd) on Windows 10 1809 and later. Closing the tab ends the shell and what it started; agents cannot use local terminals |
 | **Telnet and Serial** | Telnet sessions (raw TCP mode, optional auto-login, plaintext warning); serial consoles with port discovery and line settings |
@@ -149,6 +149,26 @@ Settings can be overridden with `--env-file` or `RXT_*` variables:
 | `RXT_AGENT_CONTROL` | Agent control on or off (`true`/`false`) |
 
 Precedence: CLI > environment / `.env` > TOML > defaults. Secret-like keys are refused.
+
+Custom terminal color schemes go in a `schemes/` folder next to `config.toml`
+(`~/.config/rustxterm/schemes/` on Linux, `%APPDATA%\rustxterm\schemes\` on Windows), one JSON file
+per scheme, and show up in **Settings › Terminal › Color scheme** after a restart:
+
+```json
+{
+  "name": "My scheme",
+  "foreground": [220, 220, 220, 255],
+  "background": [30, 30, 30, 255],
+  "cursor": [220, 220, 220, 255],
+  "selection": [60, 80, 110, 255],
+  "ansi": [[0,0,0,255], [205,49,49,255], [13,188,121,255], [229,229,16,255],
+           [36,114,200,255], [188,63,188,255], [17,168,205,255], [229,229,229,255],
+           [102,102,102,255], [241,76,76,255], [35,209,139,255], [245,245,67,255],
+           [59,142,234,255], [214,112,214,255], [41,184,219,255], [255,255,255,255]]
+}
+```
+
+Files over 64 KiB, invalid files and names already in use are skipped (see the log).
 
 If a graphics driver crashes while the window starts, the next launch picks a safer rendering
 backend by itself (Windows: OpenGL → DirectX 12 → Vulkan → software; Linux: Vulkan → OpenGL →
