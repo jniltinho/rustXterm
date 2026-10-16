@@ -39,6 +39,9 @@ rxt-platform-linux.workspace = true
 [target.'cfg(windows)'.dependencies]
 rxt-platform-windows.workspace = true
 
+[target.'cfg(target_os = "macos")'.dependencies]
+rxt-platform-macos.workspace = true
+
 [dev-dependencies]
 secrecy.workspace = true
 serde_json.workspace = true

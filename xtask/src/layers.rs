@@ -10,6 +10,7 @@ const LAYERS: &[(&str, u8)] = &[
     ("rxt-platform", 0),
     ("rxt-platform-linux", 1),
     ("rxt-platform-windows", 1),
+    ("rxt-platform-macos", 1),
     ("rxt-store", 1),
     ("rxt-term", 1),
     ("rxt-ssh", 2),
@@ -28,14 +29,15 @@ const LAYERS: &[(&str, u8)] = &[
 const SAME_LAYER_OK: &[(&str, &str)] = &[("rxt-platform", "rxt-core"), ("rxt-sftp", "rxt-ssh")];
 const UI_OWNERS: &[&str] = &["rxt-ui", "rustxterm"];
 /// Platform adapters: only the app may depend on them (dev-dependencies aside).
-const ADAPTERS: &[&str] = &["rxt-platform-linux", "rxt-platform-windows"];
+const ADAPTERS: &[&str] = &["rxt-platform-linux", "rxt-platform-windows", "rxt-platform-macos"];
 /// OS-specific crates and the crates allowed to depend on them (design W8).
 const OWNED: &[(&[&str], &[&str], &str)] = &[
     (&["ashpd", "oo7", "zbus", "portable-pty", "nix"], &["rxt-platform-linux", "rustxterm"], "Linux-only"),
     (&["windows", "windows-sys", "raw-window-handle"], &["rxt-platform-windows"], "Windows-only"),
+    (&["security-framework"], &["rxt-platform-macos"], "macOS-only"),
     (
         &["notify-rust", "rfd", "arboard", "serialport", "dirs"],
-        &["rxt-platform-linux", "rxt-platform-windows", "rustxterm"],
+        &["rxt-platform-linux", "rxt-platform-windows", "rxt-platform-macos", "rustxterm"],
         "adapter",
     ),
 ];
@@ -221,8 +223,9 @@ mod tests {
             ("rxt-sftp", &["rxt-core", "rxt-ssh"]),
             ("rxt-platform-linux", &["rxt-platform", "ashpd", "zbus", "arboard"]),
             ("rxt-platform-windows", &["rxt-platform", "windows-sys", "raw-window-handle", "arboard", "dirs"]),
+            ("rxt-platform-macos", &["rxt-platform", "security-framework", "arboard", "dirs"]),
             ("rxt-ui", &["rxt-engine", "egui", "eframe"]),
-            ("rustxterm", &["rxt-ui", "rxt-platform-linux", "rxt-platform-windows", "eframe"]),
+            ("rustxterm", &["rxt-ui", "rxt-platform-linux", "rxt-platform-windows", "rxt-platform-macos", "eframe"]),
             ("xtask", &["rxt-ui", "anything"]),
         ]);
         assert_eq!(check(&m), Vec::<String>::new());

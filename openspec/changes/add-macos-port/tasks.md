@@ -12,20 +12,20 @@
 
 ## 1. Adapter (`crates/platform-macos`)
 
-- [ ] 1.1 Crate skeleton (L1, `cfg(target_os = "macos")`, workspace lints with `unsafe_code = "forbid"`), registered in `cargo xtask layers`
-- [ ] 1.2 Paths: Application Support, Caches, Logs, `~/.ssh`, per-user runtime dir under `$TMPDIR`; owner-only modes as on Linux
-- [ ] 1.3 Theme: a watcher behind `ThemeSource` reading `AppleInterfaceStyle` and reporting light/dark/auto changes (safe `core-foundation` distributed-notification observer, or a short poll if no safe path); no eframe coupling, no `unsafe`
-- [ ] 1.4 Clipboard, notifications, opener with reported failures; native dialogs via `rfd`'s async main-window API (sheet-attached, no raw AppKit handle, no `unsafe`)
-- [ ] 1.5 Keychain keyring wrap (`rustxterm:<id>` generic password) with master-password fallback
-- [ ] 1.6 Agent control on a Unix socket, same-user peer check (`peer_cred`), tests for allow/deny
-- [ ] 1.7 Serial enumeration of `/dev/cu.*` with USB details, `/dev/tty.*` twins hidden
-- [ ] 1.8 Unit tests for each module that run on the macOS runner
+- [x] 1.1 Crate skeleton (L1, `cfg(target_os = "macos")`, workspace lints with `unsafe_code = "forbid"`), registered in `cargo xtask layers`
+- [x] 1.2 Paths: Application Support, Caches, Logs, `~/.ssh`, per-user runtime dir under `$TMPDIR`; owner-only modes as on Linux
+- [x] 1.3 Theme: a watcher behind `ThemeSource` reading `AppleInterfaceStyle` and reporting light/dark/auto changes (safe `core-foundation` distributed-notification observer, or a short poll if no safe path); no eframe coupling, no `unsafe`
+- [ ] 1.4 Clipboard, notifications, opener with reported failures — done; native dialogs still open (sync `rfd` lands as a flagged first cut that panics off the main thread; the verified form is `rfd`'s async main-window API, sheet-attached, no raw AppKit handle, no `unsafe` — needs a Mac, design 3b)
+- [x] 1.5 Keychain keyring wrap (`rustxterm:<id>` generic password) with master-password fallback
+- [x] 1.6 Agent control on a Unix socket, same-user peer check (`peer_cred`), tests for allow/deny
+- [x] 1.7 Serial enumeration of `/dev/cu.*` with USB details, `/dev/tty.*` twins hidden
+- [x] 1.8 Unit tests for each module that run on the macOS runner
 
 ## 2. App wiring
 
-- [ ] 2.1 `apps/rustxterm`: target dependency and `os.rs` branch for macOS; skip the `.desktop` entry
-- [ ] 2.2 Gate Linux-only tests and code paths found by the probe (`cfg(target_os = "linux")` where `cfg(unix)` is too wide)
-- [ ] 2.3 `rust-toolchain.toml` and `deny.toml` learn `aarch64-apple-darwin`
+- [x] 2.1 `apps/rustxterm`: target dependency and `os.rs` branch for macOS; skip the `.desktop` entry
+- [ ] 2.2 Gate Linux-only tests and code paths found by the probe (`cfg(target_os = "linux")` where `cfg(unix)` is too wide) — depends on the feasibility probe (0.3) on a Mac/runner
+- [x] 2.3 `rust-toolchain.toml` and `deny.toml` learn `aarch64-apple-darwin`
 
 ## 3. Packaging
 

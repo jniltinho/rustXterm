@@ -1,0 +1,33 @@
+[package]
+name = "rxt-platform-macos"
+description = "macOS adapter for the platform contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+rxt-core.workspace = true
+rxt-platform.workspace = true
+
+# macOS-only: on other targets the crate is empty (see lib.rs), so the workspace still builds there.
+# No `unsafe`: Keychain goes through security-framework's safe API and the theme reads
+# `AppleInterfaceStyle` via `defaults`, so the workspace `unsafe_code = "forbid"` stays in force
+# (the Windows exception is not extended).
+[target.'cfg(target_os = "macos")'.dependencies]
+tokio.workspace = true
+tracing.workspace = true
+arboard.workspace = true
+rfd.workspace = true
+notify-rust.workspace = true
+dirs.workspace = true
+serialport.workspace = true
+security-framework.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

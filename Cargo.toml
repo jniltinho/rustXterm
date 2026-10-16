@@ -5,6 +5,7 @@ members = [
     "crates/platform",
     "crates/platform-linux",
     "crates/platform-windows",
+    "crates/platform-macos",
     "crates/store",
     "crates/term",
     "crates/ssh",
@@ -47,6 +48,7 @@ rxt-core = { path = "crates/core" }
 rxt-platform = { path = "crates/platform" }
 rxt-platform-linux = { path = "crates/platform-linux" }
 rxt-platform-windows = { path = "crates/platform-windows" }
+rxt-platform-macos = { path = "crates/platform-macos" }
 rxt-store = { path = "crates/store" }
 rxt-term = { path = "crates/term" }
 rxt-ssh = { path = "crates/ssh" }
@@ -135,6 +137,8 @@ notify-rust = "=4.18.2"
 dirs = "=7.0.0"
 # Serial ports (platform-linux only). No default features: no libudev C library (design S1). MPL-2.0.
 serialport = { version = "=4.10.1", default-features = false }
+# macOS-only (Keychain, safe API).
+security-framework = "=2.11.1"
 portable-pty = "=0.9.0"
 nix = { version = "=0.28.0", default-features = false, features = ["signal"] }
 
