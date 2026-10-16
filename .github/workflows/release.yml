@@ -21,6 +21,8 @@ jobs:
       - name: Rust toolchain (pinned by rust-toolchain.toml)
         run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Remap build-machine home paths out of the binary (guard rejects them)
+        run: echo "RUSTFLAGS=--remap-path-prefix=$HOME=/build" >> "$GITHUB_ENV"
       - name: Version from the workspace
         id: version
         run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
