@@ -7,8 +7,10 @@
 //!
 //! - Windows: OpenGL → DirectX 12 → Vulkan → software (WARP)
 //! - Linux: Vulkan → OpenGL → software (llvmpipe/lavapipe)
-//! - macOS: Metal (wgpu) → OpenGL (eframe's glow renderer) → Apple's software GL. wgpu only
-//!   exposes Metal on macOS, so the non-Metal path switches renderer (not just wgpu backend).
+//! - macOS: Metal (wgpu) → OpenGL (eframe's glow renderer). wgpu only exposes Metal on macOS, so
+//!   the non-Metal path switches renderer (not just the wgpu backend). There is no separate
+//!   software tier: glow is hardware-preferred, so `Cpu` (what `--safe-gpu` forces) also maps to
+//!   glow — the safest renderer macOS offers once Metal is out.
 //!
 //! A hardware fallback that worked is saved as the `gpu_backend` setting (Settings › Display,
 //! where it can be reset); the software path is never saved silently. `WGPU_BACKEND` overrides
@@ -83,12 +85,13 @@ impl Os {
 /// Backends from the preferred one to the safest, per platform.
 ///
 /// On macOS wgpu only exposes Metal, so the ladder is Metal (`Auto`) → the glow (OpenGL) renderer
-/// (`Gl`) → Apple's software GL (`Cpu`); `main.rs` turns `Gl`/`Cpu` into `Renderer::Glow`.
+/// (`Gl`). There is no distinct software tier there; `Cpu` is the terminal `--safe-gpu` entry and
+/// `main.rs` turns both `Gl` and `Cpu` into `Renderer::Glow`.
 pub fn ladder(os: Os) -> &'static [Backend] {
     match os {
         Os::Windows => &[Backend::Gl, Backend::Dx12, Backend::Vulkan, Backend::Cpu],
         Os::Linux => &[Backend::Vulkan, Backend::Gl, Backend::Cpu],
-        Os::Macos => &[Backend::Auto, Backend::Gl, Backend::Cpu],
+        Os::Macos => &[Backend::Auto, Backend::Gl],
     }
 }
 
@@ -255,9 +258,9 @@ mod tests {
         assert_eq!(next(Backend::Auto, Os::Linux), Backend::Gl);
         assert_eq!(next(Backend::Gl, Os::Linux), Backend::Cpu);
         assert_eq!(next(Backend::Dx12, Os::Linux), Backend::Cpu, "not on the Linux ladder");
-        // macOS: Metal (Auto) → glow (Gl) → software GL (Cpu).
+        // macOS: Metal (Auto) → glow (Gl); no software tier, so the chain terminates at Cpu (glow).
         assert_eq!(next(Backend::Auto, Os::Macos), Backend::Gl, "Metal falls back to the glow renderer");
-        assert_eq!(next(Backend::Gl, Os::Macos), Backend::Cpu);
+        assert_eq!(next(Backend::Gl, Os::Macos), Backend::Cpu, "glow is the last rung; Cpu is the terminal");
         assert_eq!(next(Backend::Cpu, Os::Macos), Backend::Cpu);
         assert_eq!(next(Backend::Vulkan, Os::Macos), Backend::Cpu, "not on the macOS ladder");
     }

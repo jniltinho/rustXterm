@@ -107,12 +107,14 @@ fn run(loaded: LoadOutcome, config: PathBuf, safe_gpu: bool) -> anyhow::Result<(
     };
     // macOS falls back from Metal (wgpu) to the glow (OpenGL) renderer when the backend plan is
     // Gl/Cpu; every other platform renders through wgpu. glow is compiled in only on macOS.
+    // `WGPU_BACKEND` keeps its documented override: when set it forces the wgpu (Metal) path.
     #[cfg(target_os = "macos")]
-    let renderer = if matches!(plan.backend, gpu::Backend::Gl | gpu::Backend::Cpu) {
-        eframe::Renderer::Glow
-    } else {
-        eframe::Renderer::Wgpu
-    };
+    let renderer =
+        if std::env::var_os("WGPU_BACKEND").is_none() && matches!(plan.backend, gpu::Backend::Gl | gpu::Backend::Cpu) {
+            eframe::Renderer::Glow
+        } else {
+            eframe::Renderer::Wgpu
+        };
     #[cfg(not(target_os = "macos"))]
     let renderer = eframe::Renderer::Wgpu;
     let options = eframe::NativeOptions {

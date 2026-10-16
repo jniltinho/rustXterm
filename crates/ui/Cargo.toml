@@ -23,6 +23,11 @@ serde.workspace = true
 secrecy.workspace = true
 zeroize.workspace = true
 
+# macOS compiles in eframe's glow renderer (the Metal fallback), which changes the `App::on_exit`
+# signature; enable the feature here too so this crate builds on its own, not only via the app.
+[target.'cfg(target_os = "macos")'.dependencies]
+eframe = { workspace = true, features = ["glow"] }
+
 [lints]
 workspace = true
 [dev-dependencies]
