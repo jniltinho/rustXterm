@@ -18,7 +18,7 @@ Intel Macs (x86_64; can be added later as a universal binary), macOS 12 or older
 
 ### Build host
 
-macOS builds run only on Apple hardware: the hosted GitHub macOS arm64 runner (a real Apple-Silicon Mac, free for this public repo) for compilation, tests and packaging, and a real Mac for the end-to-end release receipt. No local virtual machine is used; cross-compiling in Docker is not an option (it cannot run, render, sign or notarize the result).
+macOS builds run only on Apple hardware: the hosted GitHub macOS arm64 runner (a real Apple-Silicon Mac, free for this public repo) for compilation, tests and packaging, and a real Mac for the end-to-end release receipt. Cross-compiling in Docker is not an option (it cannot run, render, sign or notarize the result).
 
 ### CI budget
 
