@@ -1,5 +1,5 @@
 # macOS build + package for add-macos-port, on a free public-repo Apple-Silicon runner.
-#  - On macOS-relevant pushes to main (and workflow_dispatch): build the aarch64-apple-darwin
+#  - On macOS-relevant pushes to main (and workflow_dispatch): build the universal (arm64 + x86_64)
 #    binary, run the adapter's clippy/tests, bundle rustXterm.app into a .dmg and a .tar.gz, and
 #    upload them as workflow artifacts. A fast loop for compile/package errors.
 #  - With workflow_dispatch input `publish_tag`: also publish those artifacts to a GitHub
@@ -50,27 +50,35 @@ jobs:
         run: |
           cargo clippy --locked --target aarch64-apple-darwin -p rxt-platform-macos --all-targets -- -D warnings
           cargo test --locked --target aarch64-apple-darwin -p rxt-platform-macos
-      - name: Build the app binary (release)
-        run: cargo build --release --locked --target aarch64-apple-darwin -p rustxterm
+      - name: Build the app binary (release, both slices)
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin -p rustxterm
+          cargo build --release --locked --target x86_64-apple-darwin -p rustxterm
+      - name: Fuse into a universal binary (lipo)
+        run: |
+          mkdir -p "$CARGO_TARGET_DIR/universal"
+          lipo -create -output "$CARGO_TARGET_DIR/universal/rustxterm" \
+            "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" \
+            "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/rustxterm"
       - name: Binary info (arch, linked frameworks, min OS)
         run: |
-          bin="$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm"
-          ls -la "$bin"; file "$bin"
+          bin="$CARGO_TARGET_DIR/universal/rustxterm"
+          ls -la "$bin"; file "$bin"; lipo -info "$bin"
           echo "--- otool -L ---"; otool -L "$bin"
           echo "--- min version ---"; vtool -show-build "$bin" 2>/dev/null | grep -iE 'platform|minos|sdk' || true
       - name: Version from the workspace
         id: version
         run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
-      - name: Bundle rustXterm.app into .dmg and .tar.gz (ad-hoc signed)
+      - name: Bundle rustXterm.app into .dmg and .tar.gz (universal, ad-hoc signed)
         run: |
           sh packaging/macos/bundle.sh \
-            "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" \
+            "$CARGO_TARGET_DIR/universal/rustxterm" \
             "${{ steps.version.outputs.version }}" \
-            dist-macos
+            dist-macos universal
           ls -la dist-macos
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: rustxterm-macos-arm64
+          name: rustxterm-macos-universal
           path: |
             dist-macos/*.dmg
             dist-macos/*.tar.gz
@@ -83,7 +91,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           ( cd dist-macos && shasum -a 256 *.dmg *.tar.gz > SHA256SUMS-macos.txt )
-          notes="macOS preview build of rustXterm $VERSION for Apple Silicon (arm64), built on a GitHub macOS runner.
+          notes="macOS preview build of rustXterm $VERSION, a universal binary (Apple Silicon + Intel), built on a GitHub macOS runner.
           The app is ad-hoc signed (no Developer ID): on first launch open it via Finder's right-click → Open, or System Settings → Privacy & Security → Open Anyway. Verify the download against SHA256SUMS-macos.txt. This is a preview: the end-to-end macOS receipt does not cover this build yet."
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist-macos/*.dmg dist-macos/*.tar.gz dist-macos/SHA256SUMS-macos.txt --clobber

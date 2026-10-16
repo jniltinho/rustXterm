@@ -25,7 +25,7 @@
 
 - [ ] 3.1 `packaging/macos/Info.plist` template (`LSMinimumSystemVersion` 13.0) and `.icns` from the existing icons — `Info.plist` done; the `.icns` app icon is still pending (bundle currently ships without a custom icon).
 - [x] 3.2 `packaging/macos/bundle.sh`: export `MACOSX_DEPLOYMENT_TARGET=13.0` for the Rust and native compile; build the `.app`, ad-hoc or Developer ID signature, `.dmg` and `.tar.gz`, optional notarization in order (`codesign` app → `.dmg` → `codesign` dmg → `notarytool submit --wait` → `stapler`)
-- [ ] 3.3 `cargo xtask dist-check`: macOS bundle layout, `otool -L` allowlist, version, Mach-O arch (`arm64`) and minimum-version (13.0) metadata, checksums equal to the receipt, guard — interim: `release.yml` runs `cargo xtask guard` on the tarball and prints `otool -L`/`vtool -show-build`; the dedicated macOS `dist-check` subcommand is not written yet.
+- [ ] 3.3 `cargo xtask dist-check`: macOS bundle layout, `otool -L` allowlist, version, universal Mach-O (`arm64` + `x86_64` slices) each with minimum-version (13.0) metadata, checksums equal to the receipt, guard — interim: `release.yml` runs `cargo xtask guard` on the tarball and prints `otool -L`/`vtool -show-build`; the dedicated macOS `dist-check` subcommand is not written yet.
 
 ## 4. CI and release
 

@@ -1,10 +1,10 @@
 ## ADDED Requirements
 
 ### Requirement: macOS release artifacts
-When a release is eligible for macOS (target verification on an available compliant Apple-Silicon host AND a receipt covering the tagged commit), it SHALL add, for Apple Silicon, `rustxterm-X.Y.Z-macos-arm64.dmg` containing `rustXterm.app` and a link to Applications, and `rustxterm-X.Y.Z-macos-arm64.tar.gz` containing the same app bundle and the licenses, both listed in `SHA256SUMS`. The app bundle SHALL carry the app icon, version and bundle identifier. Without signing secrets the bundle SHALL be ad-hoc signed and the release notes SHALL explain how to open an app from an unidentified developer; when Developer ID and notarization secrets exist, the bundle and the `.dmg` SHALL be signed and notarized. When a release is not eligible for macOS, it SHALL ship without macOS artifacts and SHALL remain valid (Linux and covered Windows artifacts only).
+When a release is eligible for macOS (target verification on an available compliant Apple-Silicon host AND a receipt covering the tagged commit), it SHALL add a universal (Apple Silicon + Intel) `rustxterm-X.Y.Z-macos-universal.dmg` containing `rustXterm.app` and a link to Applications, and `rustxterm-X.Y.Z-macos-universal.tar.gz` containing the same app bundle and the licenses, both listed in `SHA256SUMS`. The app bundle SHALL carry the app icon, version and bundle identifier. Without signing secrets the bundle SHALL be ad-hoc signed and the release notes SHALL explain how to open an app from an unidentified developer; when Developer ID and notarization secrets exist, the bundle and the `.dmg` SHALL be signed and notarized. When a release is not eligible for macOS, it SHALL ship without macOS artifacts and SHALL remain valid (Linux and covered Windows artifacts only).
 
 #### Scenario: Release contains macOS artifacts
-- **WHEN** a version tag is pushed, the hosted macOS job verified the arm64 target, and the macOS receipt covers the tagged commit
+- **WHEN** a version tag is pushed, the hosted macOS job verified the universal (arm64 + x86_64) build, and the macOS receipt covers the tagged commit
 - **THEN** the GitHub release lists the `.dmg` and the macOS `.tar.gz`, and `SHA256SUMS` matches them
 
 #### Scenario: Release without macOS
@@ -16,17 +16,17 @@ When a release is eligible for macOS (target verification on an available compli
 - **THEN** the app starts and later launches without a prompt
 
 ### Requirement: macOS quality gates
-The `aarch64-apple-darwin` target SHALL be built and tested on a hosted macOS arm64 runner (the macOS job in the release workflow, also runnable on demand before tagging) with the pinned toolchain, `--locked` and `MACOSX_DEPLOYMENT_TARGET=13.0`, running `cargo clippy -D warnings`, the unit tests, a render smoke test on a real Metal device, and the app's `--self-test`. This runner is the authoritative gate for the macOS artifacts; its failure SHALL block shipping them. Tests that need the Docker lab, the UI pixel snapshots, or Linux-only facilities SHALL be skipped by target, not deleted. A fast build-smoke workflow MAY compile the target on demand so contributors without a Mac see compile results, but it does not run the graphics gate or gate a release.
+The `aarch64-apple-darwin` and `x86_64-apple-darwin` targets SHALL be built on a hosted macOS arm64 runner (the macOS job in the release workflow, also runnable on demand before tagging) with the pinned toolchain, `--locked` and `MACOSX_DEPLOYMENT_TARGET=13.0`, and fused into one universal binary with `lipo`. The runner SHALL run `cargo clippy -D warnings`, the unit tests, a render smoke test on a real Metal device, and the app's `--self-test` (natively, on the arm64 slice). This runner is the authoritative gate for the macOS artifacts; its failure SHALL block shipping them. Tests that need the Docker lab, the UI pixel snapshots, or Linux-only facilities SHALL be skipped by target, not deleted. A fast build-smoke workflow MAY compile the target on demand so contributors without a Mac see compile results, but it does not run the graphics gate or gate a release.
 
 #### Scenario: macOS regression caught
-- **WHEN** a change breaks compilation, a unit test, or the render smoke test on the macOS arm64 runner
+- **WHEN** a change breaks compilation of either slice, a unit test, or the render smoke test on the macOS arm64 runner
 - **THEN** the `macos` job fails and the commit cannot ship macOS artifacts
 
 ### Requirement: macOS deployment-target floor
-The macOS binaries SHALL encode a minimum OS of macOS 13.0, set by `MACOSX_DEPLOYMENT_TARGET=13.0` for the Rust and native compilation (not by `Info.plist` alone). `cargo xtask dist-check` SHALL verify the Mach-O architecture is `arm64` and its minimum-version load command is 13.0, and the receipt SHALL record the SDK/toolchain used and include macOS 13 execution evidence before that floor is claimed.
+The macOS binaries SHALL encode a minimum OS of macOS 13.0, set by `MACOSX_DEPLOYMENT_TARGET=13.0` for the Rust and native compilation (not by `Info.plist` alone). `cargo xtask dist-check` SHALL verify the Mach-O is universal containing both an `arm64` and an `x86_64` slice, that each slice's minimum-version load command is 13.0, and the receipt SHALL record the SDK/toolchain used and include macOS 13 execution evidence before that floor is claimed.
 
 #### Scenario: Wrong minimum version rejected
-- **WHEN** the shipped binary's Mach-O minimum-version metadata is not 13.0 or its architecture is not arm64
+- **WHEN** the shipped binary is not universal (missing the arm64 or the x86_64 slice) or a slice's Mach-O minimum-version metadata is not 13.0
 - **THEN** `dist-check` fails and the artifacts are not released
 
 ### Requirement: macOS end-to-end verification
@@ -51,7 +51,7 @@ All compilation, linting and tests SHALL run inside a pinned Docker image (pinne
 
 #### Scenario: macOS build on the hosted runner
 - **WHEN** a release is prepared (a tag is pushed, or the macOS job is dispatched beforehand)
-- **THEN** the macOS arm64 artifacts are built and tested on the hosted macOS runner and no developer machine needed a Rust toolchain
+- **THEN** the macOS universal artifacts are built and tested on the hosted macOS runner and no developer machine needed a Rust toolchain
 
 #### Scenario: macOS compile smoke without a Mac
 - **WHEN** a contributor without a Mac triggers the build-smoke workflow on the hosted runner

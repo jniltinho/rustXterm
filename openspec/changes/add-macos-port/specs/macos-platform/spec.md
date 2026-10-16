@@ -5,7 +5,7 @@ Run rustXterm natively on macOS 13 Ventura or later on Apple Silicon through a m
 ## ADDED Requirements
 
 ### Requirement: Supported macOS versions
-rustXterm SHALL run on macOS 13 Ventura or later on Apple Silicon (arm64) without installing a runtime (no Homebrew, Rust toolchain, Python or XQuartz). The executable SHALL link only to libraries and frameworks shipped with macOS.
+rustXterm SHALL run on macOS 13 Ventura or later on Apple Silicon (arm64) and Intel (x86_64) without installing a runtime (no Homebrew, Rust toolchain, Python or XQuartz). The executable SHALL link only to libraries and frameworks shipped with macOS.
 
 #### Scenario: Clean Mac
 - **WHEN** the `.dmg` is opened on a clean Mac with a supported version and `rustXterm.app` is dragged to Applications and started

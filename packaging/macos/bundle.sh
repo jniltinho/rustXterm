@@ -3,7 +3,8 @@
 # runs on Apple hardware), headless and with nothing extra installed: `hdiutil create` makes the
 # DMG from a folder with no mounted device or Finder scripting.
 #
-# Usage: packaging/macos/bundle.sh <binary> <version> <out-dir>
+# Usage: packaging/macos/bundle.sh <binary> <version> <out-dir> [arch]
+#   arch defaults to arm64; pass `universal` for a lipo'd arm64+x86_64 binary (artifact names use it).
 # Env:
 #   MACOS_SIGN_IDENTITY  Developer ID identity; when set the bundle is signed with the hardened
 #                        runtime and a secure timestamp. Unset → ad-hoc signature (`-`).
@@ -14,7 +15,7 @@ set -eu
 bin=${1:?binary path}
 version=${2:?version}
 out=${3:?output directory}
-arch=arm64
+arch=${4:-arm64}
 here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "$here/../.." && pwd)
 

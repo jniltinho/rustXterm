@@ -62,8 +62,8 @@ live server monitoring and an encrypted session store. Native binaries for Linux
 | **Agent control** | `rustxterm` CLI and local MCP server: off by default, same user only, per-session policies, approvals, audit log |
 | **Desktop** | Light, dark and follow-system themes on every screen; original flat icon set; notifications for background transfers and dropped sessions; session folders remember their state; window reopens on the monitor you left it on |
 
-Status: Linux x86_64 is the primary target; Windows x86_64 and macOS (Apple Silicon) ship as
-previews with every release. Intel Macs (a universal build), XDMCP and rsh are planned; see the
+Status: Linux x86_64 is the primary target; Windows x86_64 and macOS (universal, Apple Silicon +
+Intel) ship as previews with every release. XDMCP and rsh are planned; see the
 [roadmap](docs/README.md#roadmap-and-openspec-changes).
 
 ## Screenshots
@@ -121,13 +121,12 @@ unsigned, so SmartScreen may ask for confirmation. The MSI installs
 without administrator rights, but Windows Server 2022 disables installs by standard users by default
 (`DisableMsi` policy, error 1625): install as an administrator there, or use the zip.
 
-**macOS (preview, Apple Silicon):** `rustxterm-X.Y.Z-macos-arm64.dmg` (drag `rustXterm.app` to
-Applications) and `rustxterm-X.Y.Z-macos-arm64.tar.gz` (the app bundle and licenses) ship with every
-release. They need macOS 13 (Ventura) or newer on an Apple Silicon Mac. The app is ad-hoc signed (no
-Apple Developer ID), so Gatekeeper blocks the first launch: right-click the app and choose **Open**,
-or allow it in System Settings → Privacy & Security → Open Anyway; after that it launches normally.
-Intel Macs are not built yet (a universal binary is planned). The Keychain holds the optional
-session-store key.
+**macOS (preview, universal):** `rustxterm-X.Y.Z-macos-universal.dmg` (drag `rustXterm.app` to
+Applications) and `rustxterm-X.Y.Z-macos-universal.tar.gz` (the app bundle and licenses) ship with
+every release. The binary is universal (Apple Silicon and Intel in one download) and needs macOS 13
+(Ventura) or newer. The app is ad-hoc signed (no Apple Developer ID), so Gatekeeper blocks the first
+launch: right-click the app and choose **Open**, or allow it in System Settings → Privacy & Security →
+Open Anyway; after that it launches normally. The Keychain holds the optional session-store key.
 
 The renderer picks a GPU backend automatically (OpenGL on Windows when a hardware adapter exists,
 since DX12 flickers on some Intel drivers). Set `WGPU_BACKEND=gl`, `vulkan` or `dx12` to force one if

@@ -10,8 +10,9 @@ permissions:
   contents: read
   actions: read
 jobs:
-  # Apple-Silicon artifacts, built natively (the Apple SDK only runs on Apple hardware). The
-  # release job waits for this and folds the .dmg/.tar.gz into the release set and SHA256SUMS.
+  # Universal (Apple Silicon + Intel) artifacts, built natively (the Apple SDK only runs on Apple
+  # hardware; the Intel slice is cross-compiled on the arm64 runner and lipo'd in). The release job
+  # waits for this and folds the .dmg/.tar.gz into the release set and SHA256SUMS.
   macos:
     runs-on: macos-14 # Apple Silicon (arm64)
     env:
@@ -27,16 +28,24 @@ jobs:
       - name: Version from the workspace
         id: version
         run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
-      - name: Build and test the macOS adapter and app (aarch64-apple-darwin)
+      - name: Build and test the macOS adapter and app (universal, arm64 + x86_64)
         run: |
           cargo clippy --locked --target aarch64-apple-darwin -p rxt-platform-macos --all-targets -- -D warnings
           cargo test --locked --target aarch64-apple-darwin -p rxt-platform-macos
           cargo build --release --locked --target aarch64-apple-darwin -p rustxterm
-      - name: Bundle rustXterm.app (.dmg and .tar.gz, ad-hoc signed)
+          cargo build --release --locked --target x86_64-apple-darwin -p rustxterm
+      - name: Fuse the two slices into a universal binary (lipo)
+        run: |
+          mkdir -p "$CARGO_TARGET_DIR/universal"
+          lipo -create -output "$CARGO_TARGET_DIR/universal/rustxterm" \
+            "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" \
+            "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/rustxterm"
+          lipo -info "$CARGO_TARGET_DIR/universal/rustxterm"
+      - name: Bundle rustXterm.app (.dmg and .tar.gz, universal, ad-hoc signed)
         run: |
           sh packaging/macos/bundle.sh \
-            "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" \
-            "${{ steps.version.outputs.version }}" dist-macos
+            "$CARGO_TARGET_DIR/universal/rustxterm" \
+            "${{ steps.version.outputs.version }}" dist-macos universal
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: macos-dist

@@ -14,7 +14,7 @@ Many of the people who manage servers from a laptop use a Mac with Apple Silicon
 
 ### Non-goals
 
-Intel Macs (x86_64; can be added later as a universal binary), macOS 12 or older, Mac App Store and sandboxing, local shell (phase 2), built-in X server (XQuartz is used when present), Homebrew cask (later).
+macOS 12 or older, Mac App Store and sandboxing, local shell (phase 2), built-in X server (XQuartz is used when present), Homebrew cask (later). (The binary is universal — Apple Silicon and Intel — via `lipo`.)
 
 ### Build host
 
