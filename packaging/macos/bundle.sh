@@ -20,6 +20,8 @@ root=$(CDPATH= cd -- "$here/../.." && pwd)
 
 [ -f "$bin" ] || { echo "binary not found: $bin" >&2; exit 1; }
 mkdir -p "$out"
+# Absolute, so the `cd "$stage"` subshells below still write here.
+out=$(CDPATH= cd -- "$out" && pwd)
 
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
