@@ -86,10 +86,10 @@ fn run(loaded: LoadOutcome, config: PathBuf, safe_gpu: bool) -> anyhow::Result<(
         tracing::warn!("desktop entry: {e}");
     }
     // Crash-safe graphics start (see `gpu`): a marker left by a start that died picks a safer backend.
-    let windows = cfg!(windows);
+    let os = gpu::Os::current();
     let config_dir = config.parent().map(PathBuf::from).unwrap_or_default();
     let preference = gpu::Backend::parse(&loaded.settings.gpu_backend);
-    let plan = gpu::plan(preference, gpu::Marker::died(&config_dir), safe_gpu, windows);
+    let plan = gpu::plan(preference, gpu::Marker::died(&config_dir), safe_gpu, os);
     if let Some(notice) = plan.notice() {
         tracing::warn!("{notice}");
     }
@@ -105,8 +105,18 @@ fn run(loaded: LoadOutcome, config: PathBuf, safe_gpu: bool) -> anyhow::Result<(
             }
         }),
     };
+    // macOS falls back from Metal (wgpu) to the glow (OpenGL) renderer when the backend plan is
+    // Gl/Cpu; every other platform renders through wgpu. glow is compiled in only on macOS.
+    #[cfg(target_os = "macos")]
+    let renderer = if matches!(plan.backend, gpu::Backend::Gl | gpu::Backend::Cpu) {
+        eframe::Renderer::Glow
+    } else {
+        eframe::Renderer::Wgpu
+    };
+    #[cfg(not(target_os = "macos"))]
+    let renderer = eframe::Renderer::Wgpu;
     let options = eframe::NativeOptions {
-        renderer: eframe::Renderer::Wgpu,
+        renderer,
         viewport: egui::ViewportBuilder::default()
             .with_app_id("rustxterm")
             .with_title("rustXterm")
@@ -116,7 +126,7 @@ fn run(loaded: LoadOutcome, config: PathBuf, safe_gpu: bool) -> anyhow::Result<(
         // Size, maximized, fullscreen and (on X11) position are restored by eframe; the app
         // refits a window restored onto a disconnected monitor.
         persist_window: true,
-        wgpu_options: gpu::configuration(plan.backend, windows).unwrap_or_default(),
+        wgpu_options: gpu::configuration(plan.backend, os).unwrap_or_default(),
         ..Default::default()
     };
     let config_path = config;

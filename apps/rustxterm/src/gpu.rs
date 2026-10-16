@@ -7,6 +7,8 @@
 //!
 //! - Windows: OpenGL → DirectX 12 → Vulkan → software (WARP)
 //! - Linux: Vulkan → OpenGL → software (llvmpipe/lavapipe)
+//! - macOS: Metal (wgpu) → OpenGL (eframe's glow renderer) → Apple's software GL. wgpu only
+//!   exposes Metal on macOS, so the non-Metal path switches renderer (not just wgpu backend).
 //!
 //! A hardware fallback that worked is saved as the `gpu_backend` setting (Settings › Display,
 //! where it can be reset); the software path is never saved silently. `WGPU_BACKEND` overrides
@@ -57,24 +59,48 @@ impl Backend {
     }
 }
 
+/// Host OS: the ladder and the wgpu/renderer choice differ per platform.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Os {
+    Windows,
+    Linux,
+    Macos,
+}
+
+impl Os {
+    /// This build's OS.
+    pub fn current() -> Self {
+        if cfg!(windows) {
+            Self::Windows
+        } else if cfg!(target_os = "macos") {
+            Self::Macos
+        } else {
+            Self::Linux
+        }
+    }
+}
+
 /// Backends from the preferred one to the safest, per platform.
-pub fn ladder(windows: bool) -> &'static [Backend] {
-    if windows {
-        &[Backend::Gl, Backend::Dx12, Backend::Vulkan, Backend::Cpu]
-    } else {
-        &[Backend::Vulkan, Backend::Gl, Backend::Cpu]
+///
+/// On macOS wgpu only exposes Metal, so the ladder is Metal (`Auto`) → the glow (OpenGL) renderer
+/// (`Gl`) → Apple's software GL (`Cpu`); `main.rs` turns `Gl`/`Cpu` into `Renderer::Glow`.
+pub fn ladder(os: Os) -> &'static [Backend] {
+    match os {
+        Os::Windows => &[Backend::Gl, Backend::Dx12, Backend::Vulkan, Backend::Cpu],
+        Os::Linux => &[Backend::Vulkan, Backend::Gl, Backend::Cpu],
+        Os::Macos => &[Backend::Auto, Backend::Gl, Backend::Cpu],
     }
 }
 
 /// The backend `Auto` stands for on the ladder (where a crash moves on from).
-fn effective(b: Backend, windows: bool) -> Backend {
-    if b == Backend::Auto { ladder(windows)[0] } else { b }
+fn effective(b: Backend, os: Os) -> Backend {
+    if b == Backend::Auto { ladder(os)[0] } else { b }
 }
 
 /// The next safer backend after a start on `tried` died.
-pub fn next(tried: Backend, windows: bool) -> Backend {
-    let l = ladder(windows);
-    let tried = effective(tried, windows);
+pub fn next(tried: Backend, os: Os) -> Backend {
+    let l = ladder(os);
+    let tried = effective(tried, os);
     l.iter().position(|b| *b == tried).and_then(|i| l.get(i + 1)).copied().unwrap_or(Backend::Cpu)
 }
 
@@ -104,12 +130,12 @@ impl Plan {
 }
 
 /// Decide from the setting, a marker left by a start that died, and `--safe-gpu`.
-pub fn plan(preference: Backend, died: Option<Backend>, safe: bool, windows: bool) -> Plan {
+pub fn plan(preference: Backend, died: Option<Backend>, safe: bool, os: Os) -> Plan {
     if safe {
         return Plan { backend: Backend::Cpu, crashed: None };
     }
     match died {
-        Some(tried) => Plan { backend: next(tried, windows), crashed: Some(tried) },
+        Some(tried) => Plan { backend: next(tried, os), crashed: Some(tried) },
         None => Plan { backend: preference, crashed: None },
     }
 }
@@ -153,7 +179,13 @@ impl Marker {
 
 /// wgpu setup for `backend`; `None` keeps eframe's default (`WGPU_BACKEND` set, or `Auto` off
 /// Windows).
-pub fn configuration(backend: Backend, windows: bool) -> Option<WgpuConfiguration> {
+pub fn configuration(backend: Backend, os: Os) -> Option<WgpuConfiguration> {
+    // macOS renders through Metal (`Auto`) or the glow renderer (`Gl`/`Cpu`, chosen in `main.rs`);
+    // wgpu is never reconfigured there, so keep eframe's defaults.
+    if os == Os::Macos {
+        return None;
+    }
+    let windows = os == Os::Windows;
     if std::env::var_os("WGPU_BACKEND").is_some() || (backend == Backend::Auto && !windows) {
         return None;
     }
@@ -215,26 +247,37 @@ mod tests {
 
     #[test]
     fn ladders_and_next() {
-        assert_eq!(next(Backend::Auto, true), Backend::Dx12, "auto starts at GL on Windows");
-        assert_eq!(next(Backend::Gl, true), Backend::Dx12);
-        assert_eq!(next(Backend::Dx12, true), Backend::Vulkan);
-        assert_eq!(next(Backend::Vulkan, true), Backend::Cpu);
-        assert_eq!(next(Backend::Cpu, true), Backend::Cpu);
-        assert_eq!(next(Backend::Auto, false), Backend::Gl);
-        assert_eq!(next(Backend::Gl, false), Backend::Cpu);
-        assert_eq!(next(Backend::Dx12, false), Backend::Cpu, "not on the Linux ladder");
+        assert_eq!(next(Backend::Auto, Os::Windows), Backend::Dx12, "auto starts at GL on Windows");
+        assert_eq!(next(Backend::Gl, Os::Windows), Backend::Dx12);
+        assert_eq!(next(Backend::Dx12, Os::Windows), Backend::Vulkan);
+        assert_eq!(next(Backend::Vulkan, Os::Windows), Backend::Cpu);
+        assert_eq!(next(Backend::Cpu, Os::Windows), Backend::Cpu);
+        assert_eq!(next(Backend::Auto, Os::Linux), Backend::Gl);
+        assert_eq!(next(Backend::Gl, Os::Linux), Backend::Cpu);
+        assert_eq!(next(Backend::Dx12, Os::Linux), Backend::Cpu, "not on the Linux ladder");
+        // macOS: Metal (Auto) → glow (Gl) → software GL (Cpu).
+        assert_eq!(next(Backend::Auto, Os::Macos), Backend::Gl, "Metal falls back to the glow renderer");
+        assert_eq!(next(Backend::Gl, Os::Macos), Backend::Cpu);
+        assert_eq!(next(Backend::Cpu, Os::Macos), Backend::Cpu);
+        assert_eq!(next(Backend::Vulkan, Os::Macos), Backend::Cpu, "not on the macOS ladder");
     }
 
     #[test]
     fn plan_and_what_is_saved() {
-        let p = plan(Backend::Auto, None, false, true);
+        let p = plan(Backend::Auto, None, false, Os::Windows);
         assert_eq!((p.backend, p.to_save(), p.notice()), (Backend::Auto, None, None));
-        let p = plan(Backend::Auto, Some(Backend::Gl), false, true);
+        let p = plan(Backend::Auto, Some(Backend::Gl), false, Os::Windows);
         assert_eq!((p.backend, p.to_save()), (Backend::Dx12, Some(Backend::Dx12)));
         assert!(p.notice().unwrap().contains("(gl); now using dx12"));
-        let p = plan(Backend::Dx12, Some(Backend::Vulkan), false, true);
+        let p = plan(Backend::Dx12, Some(Backend::Vulkan), false, Os::Windows);
         assert_eq!((p.backend, p.to_save()), (Backend::Cpu, None), "software is never saved silently");
-        assert_eq!(plan(Backend::Gl, Some(Backend::Gl), true, true), Plan { backend: Backend::Cpu, crashed: None });
+        assert_eq!(
+            plan(Backend::Gl, Some(Backend::Gl), true, Os::Windows),
+            Plan { backend: Backend::Cpu, crashed: None }
+        );
+        // macOS: a Metal start that died promotes glow, and that working fallback is saved.
+        let p = plan(Backend::Auto, Some(Backend::Auto), false, Os::Macos);
+        assert_eq!((p.backend, p.to_save()), (Backend::Gl, Some(Backend::Gl)));
         assert_eq!(Backend::parse(" OpenGL\n"), Backend::Gl);
         assert_eq!(Backend::parse("weird"), Backend::Auto);
     }

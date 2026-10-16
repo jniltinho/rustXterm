@@ -41,6 +41,9 @@ rxt-platform-windows.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 rxt-platform-macos.workspace = true
+# GPU fallback: Metal (wgpu) → OpenGL (eframe's glow renderer) when no Metal device is available
+# (VMs, headless). glow/glutin are pulled in only on macOS, so Linux/Windows stay wgpu-only.
+eframe = { workspace = true, features = ["glow"] }
 
 [dev-dependencies]
 secrecy.workspace = true
