@@ -12,7 +12,7 @@ Each release SHALL add, for Apple Silicon, `rustxterm-X.Y.Z-macos-arm64.dmg` con
 - **THEN** the app starts and later launches without a prompt
 
 ### Requirement: macOS quality gates
-CI SHALL build the workspace for `aarch64-apple-darwin` on a hosted macOS arm64 runner with the pinned toolchain and `--locked`, and SHALL run `cargo clippy -D warnings`, the unit tests, the UI snapshot tests and the app's `--self-test` there. Tests that need the Docker lab or Linux-only facilities SHALL be skipped by target, not deleted.
+The macOS target SHALL be built and tested natively on macOS — a disposable local macOS KVM VM for development, or a hosted macOS arm64 runner for CI — with the pinned toolchain and `--locked`, running `cargo clippy -D warnings`, the unit tests, the UI snapshot tests and the app's `--self-test`. Tests that need the Docker lab or Linux-only facilities SHALL be skipped by target, not deleted. The macOS KVM VM SHALL be disposable, kept out of Git, Docker build contexts and artifacts, and never used for CI or distributed builds.
 
 #### Scenario: macOS regression caught
 - **WHEN** a change breaks compilation or a unit test on macOS
@@ -28,7 +28,7 @@ The first release with macOS artifacts, and every later release with changes to 
 ## MODIFIED Requirements
 
 ### Requirement: Docker-only build
-All compilation, linting and tests SHALL run inside a pinned Docker image (pinned Rust toolchain, pinned base image by digest, `cargo --locked`). The host SHALL need only Docker. Exceptions: Windows test executables and the Windows release executables built in that image SHALL run natively on a hosted Windows runner (and on the manual verification VM) without installing or invoking a toolchain there; macOS builds, lints and tests SHALL run natively on a hosted macOS runner with the pinned toolchain from `rust-toolchain.toml`, because the Apple SDK may only be used on Apple hardware. No toolchain SHALL be installed on developer desktops for any target.
+All compilation, linting and tests SHALL run inside a pinned Docker image (pinned Rust toolchain, pinned base image by digest, `cargo --locked`). The host SHALL need only Docker. Exceptions: Windows test executables and the Windows release executables built in that image SHALL run natively on a hosted Windows runner (and on the manual verification VM) without installing or invoking a toolchain there; macOS builds, lints and tests SHALL run natively on macOS — a disposable local macOS KVM VM, or a hosted macOS runner — with the pinned toolchain from `rust-toolchain.toml`, because the Apple SDK may only be used on Apple hardware. No toolchain SHALL be installed on developer desktops for any target.
 
 #### Scenario: Clean host build
 - **WHEN** a developer with only Docker runs the documented build command
@@ -37,3 +37,7 @@ All compilation, linting and tests SHALL run inside a pinned Docker image (pinne
 #### Scenario: macOS build without a local Mac toolchain
 - **WHEN** a commit is pushed to `main`
 - **THEN** the macOS artifacts are built and tested on the hosted macOS runner and no developer machine needed a Rust toolchain
+
+#### Scenario: macOS build in a disposable VM
+- **WHEN** a developer without a Mac builds and tests the macOS target in the local macOS KVM VM over SSH
+- **THEN** the toolchain is installed only inside the VM, the VM is not committed or distributed, and the result does not gate a release until a real-Mac receipt covers it

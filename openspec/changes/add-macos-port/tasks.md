@@ -1,8 +1,14 @@
 ## 0. Prerequisites (user decisions)
 
-- [ ] 0.1 Unblock GitHub-hosted macOS arm64 runners (user decision: macOS builds run on GitHub, not in Docker): Actions budget for macOS minutes, or a public repository
+- [ ] 0.1 Choose the macOS build/test host (user decision): a disposable local macOS KVM VM (osx-kvm / ultimate-macOS-kvm; note the Apple-licence caveat on non-Apple hardware), a hosted GitHub macOS runner (needs Actions budget or a public repo), or a borrowed Mac
 - [ ] 0.2 Decide on Developer ID signing and notarization (Apple Developer Program) or ad-hoc signing only
-- [ ] 0.3 Feasibility probe on the `macos-probe` branch: `cargo check`/`cargo test` of the portable crates on `macos-15`; record what fails, then delete the branch
+- [ ] 0.3 Feasibility probe: `cargo check`/`cargo test` of the portable crates on the chosen macOS host (the KVM VM or a Mac); record what fails
+
+## 0b. macOS test VM (local KVM, lab/macos/)
+
+- [ ] 0b.1 `lab/macos/README.md`: create/destroy recipe for the disposable macOS VM on osx-kvm (`boot-macOS-headless.sh`) or ultimate-macOS-kvm, pinned guest macOS version and tool commit, fictional guest account, forwarded SSH port; never committed VM image, never in a Docker context or artifact (verified by `cargo xtask guard`)
+- [ ] 0b.2 Driver `lab/macos/rxt.sh` mirroring `lab/vagrant/windows/rxt.sh`: `push` the macOS build into the VM, run a command over SSH, capture a screenshot; the macOS `cargo build`/`clippy`/`test`/bundle run through it
+- [ ] 0b.3 Prove the toolchain lives only inside the VM: `rustup` + `cargo test --locked` of the portable crates succeed over SSH, and the host desktop has no Rust toolchain for the Apple target
 
 ## 1. Adapter (`crates/platform-macos`)
 
@@ -29,7 +35,7 @@
 
 ## 4. CI and release
 
-- [ ] 4.1 `ci.yml` job `macos` on `macos-15`: pinned toolchain, clippy, tests, `--self-test` (on `main` only)
+- [ ] 4.1 Optional `ci.yml` job `macos` on `macos-15` (enabled once a hosted runner is available): pinned toolchain, clippy, tests, `--self-test` (on `main` only); development uses the local KVM VM instead
 - [ ] 4.2 `release.yml`: macOS build job, bundle, dist-check, artifacts joined into the release and `SHA256SUMS`; receipt gate as for Windows
 - [ ] 4.3 Release notes text for unsigned builds (how to open an app from an unidentified developer)
 
