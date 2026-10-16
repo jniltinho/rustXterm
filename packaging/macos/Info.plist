@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Bundle metadata for rustXterm.app. `__VERSION__` is replaced by packaging/macos/bundle.sh.
+     The minimum-OS floor is enforced at compile time by MACOSX_DEPLOYMENT_TARGET=13.0; the key
+     below only tells Finder/Gatekeeper. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>rustXterm</string>
+    <key>CFBundleDisplayName</key>
+    <string>rustXterm</string>
+    <key>CFBundleIdentifier</key>
+    <string>io.github.jniltinho.rustxterm</string>
+    <key>CFBundleVersion</key>
+    <string>__VERSION__</string>
+    <key>CFBundleShortVersionString</key>
+    <string>__VERSION__</string>
+    <key>CFBundleExecutable</key>
+    <string>rustxterm</string>
+    <key>CFBundleIconFile</key>
+    <string>rustXterm</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.developer-tools</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>rustXterm is distributed under the MIT License.</string>
+</dict>
+</plist>

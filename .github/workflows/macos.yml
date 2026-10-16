@@ -1,15 +1,24 @@
-# Fast macOS build smoke for add-macos-port: compiles the aarch64-apple-darwin binary on a GitHub
-# Apple-Silicon runner so compile errors in crates/platform-macos surface quickly. This is NOT a
-# release workflow (that is release.yml); it builds only the binary and the adapter's own checks.
-# Runs on macOS-relevant pushes to main and on demand (workflow_dispatch).
+# macOS build + package for add-macos-port, on a free public-repo Apple-Silicon runner.
+#  - On macOS-relevant pushes to main (and workflow_dispatch): build the aarch64-apple-darwin
+#    binary, run the adapter's clippy/tests, bundle rustXterm.app into a .dmg and a .tar.gz, and
+#    upload them as workflow artifacts. A fast loop for compile/package errors.
+#  - With workflow_dispatch input `publish_tag`: also publish those artifacts to a GitHub
+#    prerelease (an ad-hoc-signed macOS preview). This is NOT release.yml; the Linux/Windows
+#    release path is untouched.
 name: macos-build
 on:
   workflow_dispatch:
+    inputs:
+      publish_tag:
+        description: "Publish the .dmg/.tar.gz to a prerelease with this tag (empty = build only)"
+        required: false
+        default: ""
   push:
     branches: [main]
     paths:
       - 'crates/platform-macos/**'
       - 'apps/rustxterm/**'
+      - 'packaging/macos/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'rust-toolchain.toml'
@@ -25,6 +34,8 @@ env:
 jobs:
   build:
     runs-on: macos-14 # Apple Silicon (arm64)
+    permissions:
+      contents: write # the publish step creates/updates a prerelease
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Rust toolchain (pinned by rust-toolchain.toml)
@@ -44,8 +55,36 @@ jobs:
           ls -la "$bin"; file "$bin"
           echo "--- otool -L ---"; otool -L "$bin"
           echo "--- min version ---"; vtool -show-build "$bin" 2>/dev/null | grep -iE 'platform|minos|sdk' || true
+      - name: Version from the workspace
+        id: version
+        run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
+      - name: Bundle rustXterm.app into .dmg and .tar.gz (ad-hoc signed)
+        run: |
+          sh packaging/macos/bundle.sh \
+            target/aarch64-apple-darwin/release/rustxterm \
+            "${{ steps.version.outputs.version }}" \
+            dist-macos
+          ls -la dist-macos
       - uses: actions/upload-artifact@v4
         with:
           name: rustxterm-macos-arm64
-          path: target/aarch64-apple-darwin/release/rustxterm
+          path: |
+            dist-macos/*.dmg
+            dist-macos/*.tar.gz
           if-no-files-found: error
+      - name: Publish a macOS preview prerelease
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.publish_tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          ( cd dist-macos && shasum -a 256 *.dmg *.tar.gz > SHA256SUMS-macos.txt )
+          notes="macOS preview build of rustXterm $VERSION for Apple Silicon (arm64), built on a GitHub macOS runner.
+          The app is ad-hoc signed (no Developer ID): on first launch open it via Finder's right-click → Open, or System Settings → Privacy & Security → Open Anyway. Verify the download against SHA256SUMS-macos.txt. This is a preview: the end-to-end macOS receipt does not cover this build yet."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist-macos/*.dmg dist-macos/*.tar.gz dist-macos/SHA256SUMS-macos.txt --clobber
+          else
+            gh release create "$TAG" dist-macos/*.dmg dist-macos/*.tar.gz dist-macos/SHA256SUMS-macos.txt \
+              --title "rustXterm $VERSION — macOS preview" --prerelease --notes "$notes"
+          fi
