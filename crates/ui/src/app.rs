@@ -2800,7 +2800,23 @@ impl eframe::App for App {
         storage.set_string(KEY_AGENT_WORKSPACE, self.agent_workspace.clone().unwrap_or_default());
     }
 
+    // On macOS the glow renderer is compiled in as the Metal fallback, which gives `on_exit` a
+    // glow-context parameter; every other platform (wgpu only) keeps the no-argument form.
+    #[cfg(not(target_os = "macos"))]
     fn on_exit(&mut self) {
+        self.on_exit_shutdown();
+    }
+
+    #[cfg(target_os = "macos")]
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.on_exit_shutdown();
+    }
+}
+
+impl App {
+    /// Answer every pending approval as denied and stop the backend (shared by both `on_exit`
+    /// signatures above).
+    fn on_exit_shutdown(&mut self) {
         let pending: Vec<_> = self.approvals.iter().map(|a| a.id).collect();
         pending.into_iter().for_each(|id| self.answer_approval(id, false));
         self.backend.shutdown(Duration::from_secs(3));
