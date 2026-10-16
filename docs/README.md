@@ -79,14 +79,14 @@ rustXterm is a layered Cargo workspace (design D1). A crate may depend only on c
 | Layer | Crates | Role |
 |---|---|---|
 | L0 | `rxt-core`, `rxt-platform` | Domain types (sessions, commands/events, theme tokens, `FileOps`) and OS contracts (paths, keyring, theme source, clipboard, control transport). No IO. |
-| L1 | `rxt-platform-linux`, `rxt-store`, `rxt-term` | Linux adapter (XDG, Secret Service, portal, Unix socket), settings + encrypted store, terminal model on `alacritty_terminal`. |
+| L1 | `rxt-platform-linux`, `rxt-platform-windows`, `rxt-platform-macos`, `rxt-store`, `rxt-term` | Per-OS platform adapters (Linux: XDG, Secret Service, portal, Unix socket; Windows: Known Folders, Credential Manager, named pipe; macOS: `~/Library`, Keychain, `AppleInterfaceStyle`, Unix socket), settings + encrypted store, terminal model on `alacritty_terminal`. |
 | L2 | `rxt-ssh`, `rxt-sftp`, `rxt-ftp`, `rxt-rdp`, `rxt-vnc` | One crate per protocol; usable and testable without a UI. |
 | L3 | `rxt-engine` | Session manager, command registry, transfer queue, authorization/approval/audit boundary, control server; owns tokio. |
 | L4 | `rxt-ui`, `rxt-agent` | egui/eframe shell; CLI and MCP server (no egui). |
-| app | `apps/rustxterm` | Single binary: GUI, CLI subcommands, `mcp`, `--self-test`; wires `rxt-platform-linux` in. |
+| app | `apps/rustxterm` | Single binary: GUI, CLI subcommands, `mcp`, `--self-test`; wires the per-OS platform adapter in (`os.rs` picks it by `target_os`). |
 
-Protocol and store crates never depend on a concrete platform adapter, so macOS and Windows adapters can
-be added later without touching protocol or UI code.
+Protocol and store crates never depend on a concrete platform adapter, so the Windows and macOS
+adapters were added without touching protocol or UI code.
 
 ![Architecture: crate layers](diagrams/01-architecture-layers.png)
 

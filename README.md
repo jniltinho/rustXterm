@@ -7,13 +7,13 @@
 **Every remote session you use, in one fast native window.**
 
 SSH, SFTP, FTP/FTPS, RDP, VNC, Telnet and Serial in tabs, with a file panel that follows your shell,
-live server monitoring and an encrypted session store. One Rust binary for Linux, no Electron.
+live server monitoring and an encrypted session store. Native binaries for Linux, Windows and macOS, no Electron.
 
 [![Release](https://img.shields.io/github/v/release/jniltinho/rustXterm?include_prereleases&sort=semver&color=blue)](https://github.com/jniltinho/rustXterm/releases)
 [![Downloads](https://img.shields.io/github/downloads/jniltinho/rustXterm/total?color=blue)](https://github.com/jniltinho/rustXterm/releases)
 [![CI](https://github.com/jniltinho/rustXterm/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jniltinho/rustXterm/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-![Platforms](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20(preview)-lightgrey)
+![Platforms](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20(preview)%20%7C%20macOS%20(preview)-lightgrey)
 
 **[⬇ Download the latest release](https://github.com/jniltinho/rustXterm/releases/latest)**
 
@@ -62,8 +62,8 @@ live server monitoring and an encrypted session store. One Rust binary for Linux
 | **Agent control** | `rustxterm` CLI and local MCP server: off by default, same user only, per-session policies, approvals, audit log |
 | **Desktop** | Light, dark and follow-system themes on every screen; original flat icon set; notifications for background transfers and dropped sessions; session folders remember their state; window reopens on the monitor you left it on |
 
-Status: **v0.3.0** is the first public release, for Linux x86_64, with Windows x86_64 builds in
-preview. A native Apple Silicon port, XDMCP and rsh are planned; see the
+Status: Linux x86_64 is the primary target; Windows x86_64 and macOS (Apple Silicon) ship as
+previews with every release. Intel Macs (a universal build), XDMCP and rsh are planned; see the
 [roadmap](docs/README.md#roadmap-and-openspec-changes).
 
 ## Screenshots
@@ -120,6 +120,14 @@ GNOME and KDE show the rustXterm icon on Wayland.
 unsigned, so SmartScreen may ask for confirmation. The MSI installs
 without administrator rights, but Windows Server 2022 disables installs by standard users by default
 (`DisableMsi` policy, error 1625): install as an administrator there, or use the zip.
+
+**macOS (preview, Apple Silicon):** `rustxterm-X.Y.Z-macos-arm64.dmg` (drag `rustXterm.app` to
+Applications) and `rustxterm-X.Y.Z-macos-arm64.tar.gz` (the app bundle and licenses) ship with every
+release. They need macOS 13 (Ventura) or newer on an Apple Silicon Mac. The app is ad-hoc signed (no
+Apple Developer ID), so Gatekeeper blocks the first launch: right-click the app and choose **Open**,
+or allow it in System Settings → Privacy & Security → Open Anyway; after that it launches normally.
+Intel Macs are not built yet (a universal binary is planned). The Keychain holds the optional
+session-store key.
 
 The renderer picks a GPU backend automatically (OpenGL on Windows when a hardware adapter exists,
 since DX12 flickers on some Intel drivers). Set `WGPU_BACKEND=gl`, `vulkan` or `dx12` to force one if
@@ -211,7 +219,7 @@ offline. See [agent control](docs/README.md#agent-control-cli-and-mcp) in the do
   <img src="docs/diagrams/01-architecture-layers.png" width="760" alt="Architecture: crate layers">
 </p>
 
-One crate per protocol, a `platform` contract crate with a Linux adapter, an engine where every UI action
+One crate per protocol, a `platform` contract crate with Linux, Windows and macOS adapters, an engine where every UI action
 is a command, and a thin egui UI with theme tokens; `cargo xtask layers` enforces the layers. The other
 seven diagrams (data flow, SSH sequence, encrypted store, agent control, release pipeline, test lab,
 roadmap) are in the [documentation index](docs/README.md).
