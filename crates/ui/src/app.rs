@@ -15,7 +15,7 @@ use rxt_core::{
     PromptId, Protocol, RdpResolution, Secret, Session, SessionId, TabId, ThemeMode, Tokens, TunnelState,
 };
 use rxt_engine::EngineHandle;
-use rxt_platform::{FileDialogs, Platform};
+use rxt_platform::{FileDialogs, Paths, Platform};
 use rxt_term::LogFormat;
 
 use crate::agent::{self, Approval, AuditView};
@@ -237,6 +237,10 @@ pub(crate) enum Action {
     ChangePassword(Secret),
     SetKeyring(bool),
     ImportIni,
+    /// Import the MobaXterm.ini found on first run (the offer card).
+    ImportMobaFound(std::path::PathBuf),
+    /// Dismiss the first-run MobaXterm import offer without importing.
+    DismissMobaOffer,
     ConfirmImport,
     ImportToml,
     ExportToml,
@@ -426,6 +430,8 @@ pub struct App {
     applied_monitor: Option<(bool, u32)>,
     /// Unix seconds (injectable for tests).
     pub(crate) clock: fn() -> i64,
+    /// A MobaXterm.ini found at startup to offer importing on first run; None once offered.
+    pub(crate) moba_found: Option<std::path::PathBuf>,
 }
 
 impl App {
@@ -438,7 +444,11 @@ impl App {
         let (dialog_tx, dialog_rx) = mpsc::channel();
         let (vault_tx, vault_rx) = mpsc::channel();
         let page = SidebarTab::of(&settings);
+        let moba_found = (!settings.first_run_moba_offered)
+            .then(|| rxt_store::moba_ini::find(&moba_dirs(&*platform.paths)))
+            .flatten();
         Self {
+            moba_found,
             saved_settings: settings.clone(),
             platform,
             backend: Box::new(backend),
@@ -504,6 +514,9 @@ impl App {
     pub fn with_settings(mut self, loaded: rxt_store::settings::LoadOutcome, path: PathBuf) -> Self {
         self.settings = Settings::from_store(&loaded.settings);
         self.saved_settings = self.settings.clone();
+        self.moba_found = (!self.settings.first_run_moba_offered)
+            .then(|| rxt_store::moba_ini::find(&moba_dirs(&*self.platform.paths)))
+            .flatten();
         self.sidebar_tab = SidebarTab::of(&self.settings);
         self.tokens = Tokens::for_dark(self.settings.theme.is_dark(None));
         let messages: Vec<String> =
@@ -1917,6 +1930,17 @@ impl App {
                     });
                 }
             }
+            Action::ImportMobaFound(path) => {
+                self.settings.first_run_moba_offered = true;
+                self.moba_found = None;
+                if self.require_unlocked() {
+                    self.import_ini(path);
+                }
+            }
+            Action::DismissMobaOffer => {
+                self.settings.first_run_moba_offered = true;
+                self.moba_found = None;
+            }
             Action::ConfirmImport => self.confirm_import(),
             Action::ImportToml => {
                 if self.require_unlocked() {
@@ -2555,6 +2579,13 @@ impl App {
             }
         }
     }
+}
+
+/// MobaXterm's default config directories (installed under the config dir, portable under Documents),
+/// where a `MobaXterm.ini` is looked for on first run.
+fn moba_dirs(paths: &dyn Paths) -> Vec<PathBuf> {
+    let home = paths.home_dir();
+    vec![paths.config_dir().join("MobaXterm"), home.join("Documents").join("MobaXterm"), home.join("MobaXterm")]
 }
 
 /// Remote-desktop tab: texture upload, painting, input and clipboard sharing.

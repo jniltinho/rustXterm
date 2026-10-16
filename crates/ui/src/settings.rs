@@ -59,6 +59,9 @@ pub(crate) struct Settings {
     /// user (`true`); a fresh install starts from [`Default`] (`false`).
     #[serde(default = "first_run_done_in_old_files")]
     pub first_run_theme_done: bool,
+    /// The first-run MobaXterm.ini import offer was shown (so it is not offered again).
+    #[serde(default = "first_run_done_in_old_files")]
+    pub first_run_moba_offered: bool,
 }
 
 impl Default for Settings {
@@ -95,6 +98,7 @@ impl Default for Settings {
             notifications: true,
             gpu_backend: "auto".into(),
             first_run_theme_done: false,
+            first_run_moba_offered: false,
         }
     }
 }
@@ -208,6 +212,7 @@ impl Settings {
             notifications: s.notifications,
             gpu_backend: s.gpu_backend.clone(),
             first_run_theme_done: s.first_run_theme_done,
+            first_run_moba_offered: true,
         }
     }
 

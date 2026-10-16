@@ -9,7 +9,7 @@
 //! `__DIEZE__` and `__PIPE__`; jump-host fields hold one `|`-joined entry per hop.
 //! Field positions below are counted in the `%`-separated list that starts with `<type>`.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use rxt_core::{DataBits, FlowControl, FtpTls, JumpHost, LineConfig, Parity, Protocol, Result, Session, StopBits};
 
@@ -63,6 +63,12 @@ const TERM_FONT_SIZE: usize = 1;
 
 /// Read `path` (read-only) and build the preview. Windows-1252/Latin-1 files are decoded
 /// byte-for-byte when they are not valid UTF-8.
+/// The first `MobaXterm.ini` present in `dirs` (MobaXterm's default locations, resolved by the
+/// platform layer), for the first-run import offer. Never reads it.
+pub fn find(dirs: &[PathBuf]) -> Option<PathBuf> {
+    dirs.iter().map(|d| d.join("MobaXterm.ini")).find(|p| p.is_file())
+}
+
 pub fn import_file(path: &Path) -> Result<ImportReport> {
     let bytes = std::fs::read(path)?;
     let text = match String::from_utf8(bytes) {

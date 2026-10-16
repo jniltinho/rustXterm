@@ -59,6 +59,10 @@ impl App {
                 ui.add_space(m.space[4]);
                 chooser(ui, out);
             }
+            if let Some(path) = &self.moba_found {
+                ui.add_space(m.space[4]);
+                moba_offer(ui, path, out);
+            }
             if !self.store.recent.is_empty() {
                 ui.add_space(m.space[6]);
                 recent_panel(ui, &self.icons, &self.store.recent, out);
@@ -151,6 +155,34 @@ pub(crate) fn flat_icon_button(
     }
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, ui.is_enabled(), label));
     r.on_hover_text(label)
+}
+
+/// First-run card offering to import a MobaXterm.ini found on disk. Import opens the usual preview
+/// (nothing is written until confirmed); "Choose a file" opens the picker; dismiss hides it for good.
+fn moba_offer(ui: &mut Ui, path: &std::path::Path, out: &mut Vec<Action>) {
+    let width = RECENT_PANEL_W.min(ui.available_width());
+    egui::Frame::new().fill(ui.visuals().faint_bg_color).inner_margin(12.0).corner_radius(8.0).show(ui, |ui| {
+        ui.set_width(width - 24.0);
+        ui.vertical_centered(|ui| {
+            ui.label(RichText::new("MobaXterm sessions found").strong());
+            ui.add_space(2.0);
+            ui.label(RichText::new(path.display().to_string()).weak().text_style(TextStyle::Small));
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 8.0;
+                if ui.button("Import").clicked() {
+                    out.push(Action::ImportMobaFound(path.to_owned()));
+                }
+                if ui.button("Choose a file\u{2026}").clicked() {
+                    out.push(Action::DismissMobaOffer);
+                    out.push(Action::Run(CommandId::IMPORT_SESSIONS));
+                }
+                if ui.button("Not now").clicked() {
+                    out.push(Action::DismissMobaOffer);
+                }
+            });
+        });
+    });
 }
 
 /// First-run Light/Dark chooser; a pick runs the theme command (which marks the chooser answered).

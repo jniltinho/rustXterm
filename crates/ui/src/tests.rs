@@ -271,6 +271,14 @@ fn snapshot_first_run_home() {
     e.snap("home_first_run");
 }
 
+#[test]
+fn snapshot_moba_import_offer() {
+    let mut e = env();
+    e.app().settings.first_run_theme_done = true;
+    e.app().moba_found = Some(std::path::PathBuf::from("/home/alice/Documents/MobaXterm/MobaXterm.ini"));
+    e.snap("home_moba_offer");
+}
+
 /// SSH tab connected with `info`, the remote sending `remote` right after login.
 fn connect_with_banner(e: &mut Env, s: Session, info: rxt_core::SshInfo, remote: &[u8]) -> TabId {
     e.app().settings.show_session_banner = true;
