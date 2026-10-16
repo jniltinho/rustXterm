@@ -31,6 +31,8 @@ concurrency:
 env:
   MACOSX_DEPLOYMENT_TARGET: "13.0"
   CARGO_TERM_COLOR: always
+  # Build outside $HOME so the vendored OpenSSL C build does not bake a home path in.
+  CARGO_TARGET_DIR: /tmp/rxt-target
 jobs:
   build:
     runs-on: macos-14 # Apple Silicon (arm64)
@@ -53,7 +55,7 @@ jobs:
         run: cargo build --release --locked --target aarch64-apple-darwin -p rustxterm
       - name: Binary info (arch, linked frameworks, min OS)
         run: |
-          bin=target/aarch64-apple-darwin/release/rustxterm
+          bin="$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm"
           ls -la "$bin"; file "$bin"
           echo "--- otool -L ---"; otool -L "$bin"
           echo "--- min version ---"; vtool -show-build "$bin" 2>/dev/null | grep -iE 'platform|minos|sdk' || true
@@ -63,7 +65,7 @@ jobs:
       - name: Bundle rustXterm.app into .dmg and .tar.gz (ad-hoc signed)
         run: |
           sh packaging/macos/bundle.sh \
-            target/aarch64-apple-darwin/release/rustxterm \
+            "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" \
             "${{ steps.version.outputs.version }}" \
             dist-macos
           ls -la dist-macos

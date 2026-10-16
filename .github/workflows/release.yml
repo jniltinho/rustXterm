@@ -16,6 +16,8 @@ jobs:
     runs-on: macos-14 # Apple Silicon (arm64)
     env:
       MACOSX_DEPLOYMENT_TARGET: "13.0"
+      # Build outside $HOME so the vendored OpenSSL C build does not bake a home path in.
+      CARGO_TARGET_DIR: /tmp/rxt-target
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Rust toolchain (pinned by rust-toolchain.toml)
@@ -34,7 +36,7 @@ jobs:
       - name: Bundle rustXterm.app (.dmg and .tar.gz, ad-hoc signed)
         run: |
           sh packaging/macos/bundle.sh \
-            target/aarch64-apple-darwin/release/rustxterm \
+            "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" \
             "${{ steps.version.outputs.version }}" dist-macos
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
