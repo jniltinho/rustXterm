@@ -1,0 +1,48 @@
+# Fast macOS build smoke for add-macos-port: compiles the aarch64-apple-darwin binary on a GitHub
+# Apple-Silicon runner so compile errors in crates/platform-macos surface quickly. This is NOT a
+# release workflow (that is release.yml); it builds only the binary and the adapter's own checks.
+# Runs on macOS-relevant pushes to main and on demand (workflow_dispatch).
+name: macos-build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/platform-macos/**'
+      - 'apps/rustxterm/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - '.github/workflows/macos.yml'
+permissions:
+  contents: read
+env:
+  MACOSX_DEPLOYMENT_TARGET: "13.0"
+  CARGO_TERM_COLOR: always
+jobs:
+  build:
+    runs-on: macos-14 # Apple Silicon (arm64)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Rust toolchain (pinned by rust-toolchain.toml)
+        run: rustup show && rustc -vV
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the adapter (fast, isolates macOS code)
+        run: cargo build --locked --target aarch64-apple-darwin -p rxt-platform-macos
+      - name: Adapter clippy and tests
+        run: |
+          cargo clippy --locked --target aarch64-apple-darwin -p rxt-platform-macos --all-targets -- -D warnings
+          cargo test --locked --target aarch64-apple-darwin -p rxt-platform-macos
+      - name: Build the app binary (release)
+        run: cargo build --release --locked --target aarch64-apple-darwin -p rustxterm
+      - name: Binary info (arch, linked frameworks, min OS)
+        run: |
+          bin=target/aarch64-apple-darwin/release/rustxterm
+          ls -la "$bin"; file "$bin"
+          echo "--- otool -L ---"; otool -L "$bin"
+          echo "--- min version ---"; vtool -show-build "$bin" 2>/dev/null | grep -iE 'platform|minos|sdk' || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustxterm-macos-arm64
+          path: target/aarch64-apple-darwin/release/rustxterm
+          if-no-files-found: error
