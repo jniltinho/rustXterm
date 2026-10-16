@@ -35,7 +35,7 @@ pub(crate) struct DesktopView {
     /// Keys sent down through the key path, with the keysym used, so key-up matches.
     down: Vec<(Key, u32)>,
     settle: Option<([u32; 2], Instant)>,
-    sent_size: Option<[u32; 2]>,
+    pub(crate) sent_size: Option<[u32; 2]>,
     /// `egui` time when the grab hint strip was shown (focus entered the view).
     hint_since: Option<f64>,
     /// `egui` time since the view has been waiting for the connection or the first frame.
@@ -191,6 +191,8 @@ pub(crate) fn show(ui: &mut egui::Ui, view: &mut DesktopView, cfg: &Config) -> R
         let ppp = ui.ctx().pixels_per_point();
         let want = desktop_size(avail.size() * ppp);
         let now = Instant::now();
+        // Debounce so dragging the window does not spam the server; the initial size is already
+        // reported while connecting (see `central`).
         match view.settle {
             Some((size, since)) if size == want => {
                 if now.duration_since(since) >= RESIZE_SETTLE && view.sent_size != Some(want) {
@@ -442,13 +444,23 @@ fn pointer(
 ) {
     let events = ui.input(|i| i.events.clone());
     let hovered = area.hovered();
+    // Only the latest pointer position matters, so coalesce a run of moves into one: the server
+    // then reacts to where the cursor is now instead of replaying every intermediate pixel, which
+    // is what makes the mouse feel laggy over a slow link. A button or wheel flushes the pending
+    // move first so it still fires at the right position.
+    let mut pending_move: Option<(u32, u32)> = None;
+    let flush_move = |out: &mut Vec<DesktopInput>, buttons: u8, pending: &mut Option<(u32, u32)>| {
+        if let Some((x, y)) = pending.take() {
+            out.push(DesktopInput::Pointer { x, y, buttons });
+        }
+    };
     for event in events {
         match event {
             Event::PointerMoved(pos) if area.rect.contains(pos) => {
-                let (x, y) = to_desktop(pos, image, fb);
-                out.push(DesktopInput::Pointer { x, y, buttons: view.buttons });
+                pending_move = Some(to_desktop(pos, image, fb));
             }
             Event::PointerButton { pos, button, pressed, .. } => {
+                flush_move(out, view.buttons, &mut pending_move);
                 let bit = match button {
                     PointerButton::Primary => 1,
                     PointerButton::Middle => 2,
@@ -463,6 +475,7 @@ fn pointer(
                 out.push(DesktopInput::Pointer { x, y, buttons: view.buttons });
             }
             Event::MouseWheel { unit, delta, .. } if hovered => {
+                flush_move(out, view.buttons, &mut pending_move);
                 let pos = ui.input(|i| i.pointer.hover_pos()).unwrap_or(image.min);
                 let (x, y) = to_desktop(pos, image, fb);
                 let (dx, dy) = (wheel_steps(unit, delta.x), wheel_steps(unit, delta.y));
@@ -473,6 +486,7 @@ fn pointer(
             _ => {}
         }
     }
+    flush_move(out, view.buttons, &mut pending_move);
 }
 
 fn wheel_steps(unit: MouseWheelUnit, delta: f32) -> i16 {

@@ -413,6 +413,8 @@ struct Tab {
     desktop: Option<DesktopSend>,
     /// Last requested desktop size; the initial RDP size on (re)connect.
     desktop_size: (u32, u32),
+    /// Set once the UI has reported the desktop area size (so the first RDP connect can use it).
+    desktop_size_known: bool,
     visible: bool,
     clipboard: Option<String>,
     /// Last emitted connection state (agent `tabs list`).
@@ -619,7 +621,10 @@ impl Shared {
             let mut tabs = self.tabs.lock();
             let Some(t) = tabs.get_mut(&tab) else { return };
             match input {
-                DesktopInput::Resize { width, height } => t.desktop_size = (width, height),
+                DesktopInput::Resize { width, height } => {
+                    t.desktop_size = (width, height);
+                    t.desktop_size_known = true;
+                }
                 DesktopInput::Visible(v) => t.visible = v,
                 _ => {}
             }
@@ -685,6 +690,7 @@ impl Shared {
             frame: Arc::default(),
             desktop: None,
             desktop_size: DEFAULT_DESKTOP,
+            desktop_size_known: false,
             visible: true,
             clipboard: None,
             state: ConnState::Connecting,

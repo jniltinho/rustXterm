@@ -5,8 +5,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use parking_lot::Mutex;
 use rxt_core::{
-    BoxFut, ConnState, DesktopEvent, DesktopInput, Error, Event, PromptAnswer, PromptKind, Protocol, Secret, Session,
-    TabId,
+    BoxFut, ConnState, DesktopEvent, DesktopInput, Error, Event, PromptAnswer, PromptKind, Protocol, RdpResolution,
+    Secret, Session, TabId,
 };
 use rxt_ssh::{Prompter, ShellMsg};
 use tokio::sync::mpsc;
@@ -281,6 +281,19 @@ async fn run_desktop(
     prompter: &Arc<TabPrompter>,
     cancel: &CancellationToken,
 ) -> (End, bool) {
+    // RDP fit-to-tab on a server without dynamic resize (e.g. Windows Server 2008) fixes its
+    // resolution at connect time, so the first connection must use the real tab size. The UI reports
+    // it shortly after the tab opens; wait briefly for that before connecting (later reconnects
+    // already know the size and skip the wait).
+    if session.protocol == Protocol::Rdp && matches!(session.rdp.resolution, RdpResolution::FitToTab) {
+        let deadline = tokio::time::Instant::now() + Duration::from_millis(1500);
+        while !sh.tabs.lock().get(&tab).is_some_and(|t| t.desktop_size_known) {
+            if tokio::time::Instant::now() >= deadline || cancel.is_cancelled() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(40)).await;
+        }
+    }
     let size = sh.tabs.lock().get(&tab).map_or(crate::DEFAULT_DESKTOP, |t| t.desktop_size);
     let (reader, send) = tokio::select! {
         () = cancel.cancelled() => return (End::Failed(Error::Cancelled), false),

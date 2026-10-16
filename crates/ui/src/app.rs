@@ -2354,8 +2354,38 @@ impl App {
         if let Some(view) = tab.desktop.as_mut()
             && tab.state != ConnState::Connected
         {
-            if desktop::state_ui(ui, view, &tab.session.host, &tab.state) {
+            // Report the desktop area size while still connecting too: a server without dynamic
+            // resize (e.g. Windows Server 2008) fixes its resolution at connect time, so the engine
+            // waits for this to open the session at the real tab size instead of a small default.
+            if tab.session.protocol == Protocol::Rdp && tab.session.rdp.resolution == RdpResolution::FitToTab {
+                let ppp = ui.ctx().pixels_per_point();
+                let want = desktop::desktop_size(ui.available_rect_before_wrap().size() * ppp);
+                if view.sent_size != Some(want) {
+                    view.sent_size = Some(want);
+                    out.push(Action::Engine(Command::DesktopInput {
+                        tab: id,
+                        input: DesktopInput::Resize { width: want[0], height: want[1] },
+                    }));
+                }
+            }
+            let reconnect = desktop::state_ui(ui, view, &tab.session.host, &tab.state);
+            // Keyboard shortcuts on a stopped desktop, like a stopped terminal: R reconnects,
+            // Ctrl+D or Escape closes.
+            let (key_reconnect, key_close) =
+                if matches!(tab.state, ConnState::Disconnected { .. } | ConnState::Error(_)) {
+                    ui.input(|i| {
+                        (
+                            i.key_pressed(egui::Key::R),
+                            (i.modifiers.ctrl && i.key_pressed(egui::Key::D)) || i.key_pressed(egui::Key::Escape),
+                        )
+                    })
+                } else {
+                    (false, false)
+                };
+            if reconnect || key_reconnect {
                 out.push(Action::OnTab(id, CommandId::RECONNECT));
+            } else if key_close {
+                out.push(Action::OnTab(id, CommandId::CLOSE_TAB));
             }
             return;
         }
