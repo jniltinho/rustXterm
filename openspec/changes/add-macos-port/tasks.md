@@ -1,14 +1,8 @@
 ## 0. Prerequisites (user decisions)
 
-- [ ] 0.1 Confirm the authoritative host: a hosted GitHub macOS arm64 runner (`macos-15`) — needs an Actions budget or a public repo. The x86_64 KVM VM and a borrowed Mac are only auxiliary.
+- [x] 0.1 Confirm the authoritative host: a hosted GitHub macOS arm64 runner (`macos-14`/`macos-15`) — free for this public repo. A real Mac is needed only for the end-to-end receipt.
 - [ ] 0.2 Decide on Developer ID signing and notarization (Apple Developer Program) or ad-hoc signing only.
 - [ ] 0.3 Feasibility probe on the runner: `cargo check`/`cargo test` of the portable crates for `aarch64-apple-darwin`; record what fails.
-
-## 0b. macOS dev VM (local KVM, lab/macos/) — x86_64, dev-only
-
-- [ ] 0b.1 `lab/macos/README.md`: create/destroy recipe for the disposable **x86_64** macOS VM on osx-kvm (`boot-macOS-headless.sh`) or ultimate-macOS-kvm, with a prominent note that it runs an **Intel guest** (cannot build/run the `aarch64-apple-darwin` target) and has **no Metal GPU** (cannot render-verify the UI); pinned guest macOS version and tool commit, fictional guest account, forwarded SSH port; a host-prerequisite note (x86 with VT-x/SVM, and **AVX2 for a macOS 13 Ventura guest** — our floor — per OSX-KVM and nicksherlock.com) and the Proxmox alternative recipe ([nicksherlock.com Ventura-on-Proxmox](https://www.nicksherlock.com/2022/10/installing-macos-13-ventura-on-proxmox/)); never committed VM image, never in a Docker context or artifact (verified by `cargo xtask guard`), never gates a release
-- [ ] 0b.2 Driver `lab/macos/rxt.sh` mirroring `lab/vagrant/windows/rxt.sh`, using SSH + VNC into the guest configured per osx-kvm's `networking-qemu-kvm-howto.txt` (inbound access is not on by default): `push` into the VM and run `cargo check`/`clippy`/non-graphical `cargo test` for `x86_64-apple-darwin` and the bundle-script shakeout over SSH; `screenshot` grabs the desktop over VNC. Note in the README that a VNC screenshot is inspection only — the guest has no Metal device, so it is not a graphics gate, and the ARM target is not runnable here
-- [ ] 0b.3 Prove the toolchain lives only inside the VM: `rustup` + the x86_64 subset succeed over SSH, and the host desktop has no Rust toolchain for any Apple target
 
 ## 1. Adapter (`crates/platform-macos`)
 
@@ -35,7 +29,7 @@
 
 ## 4. CI and release
 
-- [ ] 4.1 macOS `macos-15` (arm64) job in `release.yml` (+ `workflow_dispatch` to run it before tagging), following photocraft's "macOS tested only in release.yml" model to spare per-push runner minutes: pinned toolchain, `MACOSX_DEPLOYMENT_TARGET=13.0`, clippy, tests, the render smoke test, `--self-test`; a failure blocks the macOS artifacts. `ci.yml` stays Docker/Linux-only per push. Local dev uses the x86_64 KVM VM for the non-graphical subset only
+- [ ] 4.1 macOS `macos-15` (arm64) job in `release.yml` (+ `workflow_dispatch` to run it before tagging), following photocraft's "macOS tested only in release.yml" model to spare per-push runner minutes: pinned toolchain, `MACOSX_DEPLOYMENT_TARGET=13.0`, clippy, tests, the render smoke test, `--self-test`; a failure blocks the macOS artifacts. `ci.yml` stays Docker/Linux-only per push. A fast build-smoke workflow lets contributors without a Mac compile the target on demand
 - [ ] 4.2 In that job, build the ARM64 artifacts **once**, run the gates, write/verify the receipt, and promote those exact artifacts (not rebuilt) into the release and `SHA256SUMS`; no covering receipt ⇒ no macOS artifacts (do not copy the Windows path that ships without a receipt). When the hosted runner is unavailable, the release ships Linux/Windows only
 - [ ] 4.3 Release notes text for unsigned builds (how to open an app from an unidentified developer)
 

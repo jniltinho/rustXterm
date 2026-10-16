@@ -16,7 +16,7 @@ When a release is eligible for macOS (target verification on an available compli
 - **THEN** the app starts and later launches without a prompt
 
 ### Requirement: macOS quality gates
-The `aarch64-apple-darwin` target SHALL be built and tested on a hosted macOS arm64 runner (the macOS job in the release workflow, also runnable on demand before tagging) with the pinned toolchain, `--locked` and `MACOSX_DEPLOYMENT_TARGET=13.0`, running `cargo clippy -D warnings`, the unit tests, a render smoke test on a real Metal device, and the app's `--self-test`. This runner is the authoritative gate for the macOS artifacts; its failure SHALL block shipping them. Tests that need the Docker lab, the UI pixel snapshots, or Linux-only facilities SHALL be skipped by target, not deleted. A disposable local macOS KVM VM MAY be used for non-graphical developer iteration only; it is an x86_64 (Intel) guest without a Metal GPU, so it SHALL NOT build or verify the arm64 target, SHALL NOT run the graphics gate, SHALL be kept out of Git, Docker build contexts and artifacts, and SHALL NOT gate a release or produce distributed builds.
+The `aarch64-apple-darwin` target SHALL be built and tested on a hosted macOS arm64 runner (the macOS job in the release workflow, also runnable on demand before tagging) with the pinned toolchain, `--locked` and `MACOSX_DEPLOYMENT_TARGET=13.0`, running `cargo clippy -D warnings`, the unit tests, a render smoke test on a real Metal device, and the app's `--self-test`. This runner is the authoritative gate for the macOS artifacts; its failure SHALL block shipping them. Tests that need the Docker lab, the UI pixel snapshots, or Linux-only facilities SHALL be skipped by target, not deleted. A fast build-smoke workflow MAY compile the target on demand so contributors without a Mac see compile results, but it does not run the graphics gate or gate a release.
 
 #### Scenario: macOS regression caught
 - **WHEN** a change breaks compilation, a unit test, or the render smoke test on the macOS arm64 runner
@@ -43,7 +43,7 @@ The first release with macOS artifacts, and every later release that changes the
 ## MODIFIED Requirements
 
 ### Requirement: Docker-only build
-All compilation, linting and tests SHALL run inside a pinned Docker image (pinned Rust toolchain, pinned base image by digest, `cargo --locked`). The host SHALL need only Docker. Exceptions: Windows test executables and the Windows release executables built in that image SHALL run natively on a hosted Windows runner (and on the manual verification VM) without installing or invoking a toolchain there; macOS builds, lints and tests SHALL run natively on macOS — authoritatively on a hosted macOS arm64 runner, optionally with a disposable local x86_64 KVM VM for non-graphical developer iteration — with the pinned toolchain from `rust-toolchain.toml`, because the Apple SDK may only be used on Apple hardware. No toolchain SHALL be installed on developer desktops for any target.
+All compilation, linting and tests SHALL run inside a pinned Docker image (pinned Rust toolchain, pinned base image by digest, `cargo --locked`). The host SHALL need only Docker. Exceptions: Windows test executables and the Windows release executables built in that image SHALL run natively on a hosted Windows runner (and on the manual verification VM) without installing or invoking a toolchain there; macOS builds, lints and tests SHALL run natively on macOS on a hosted macOS arm64 runner with the pinned toolchain from `rust-toolchain.toml`, because the Apple SDK may only be used on Apple hardware. No toolchain SHALL be installed on developer desktops for any target.
 
 #### Scenario: Clean host build
 - **WHEN** a developer with only Docker runs the documented build command
@@ -53,6 +53,6 @@ All compilation, linting and tests SHALL run inside a pinned Docker image (pinne
 - **WHEN** a release is prepared (a tag is pushed, or the macOS job is dispatched beforehand)
 - **THEN** the macOS arm64 artifacts are built and tested on the hosted macOS runner and no developer machine needed a Rust toolchain
 
-#### Scenario: macOS iteration in a disposable VM
-- **WHEN** a developer without a Mac runs the non-graphical subset in the local x86_64 macOS KVM VM over SSH
-- **THEN** the toolchain is installed only inside the VM, the VM is not committed or distributed, and the result does not gate a release until the hosted runner verifies the arm64 target and a real-Mac receipt covers it
+#### Scenario: macOS compile smoke without a Mac
+- **WHEN** a contributor without a Mac triggers the build-smoke workflow on the hosted runner
+- **THEN** the target compiles (or the failure is reported) and nothing is published or gated until the full macOS job and a real-Mac receipt cover the commit
