@@ -30,20 +30,25 @@ jobs:
         run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
       - name: Build and test the macOS adapter and app (universal, arm64 + x86_64)
         run: |
+          mkdir -p "$CARGO_TARGET_DIR/universal"
           cargo clippy --locked --target aarch64-apple-darwin -p rxt-platform-macos --all-targets -- -D warnings
           cargo test --locked --target aarch64-apple-darwin -p rxt-platform-macos
+          # Build the slices one at a time, reclaiming each target tree before the next, so the
+          # runner's data volume only ever holds one full build; two at once overflowed it and
+          # hdiutil then failed with "No space left on device".
           cargo build --release --locked --target aarch64-apple-darwin -p rustxterm
+          cp "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" "$CARGO_TARGET_DIR/universal/rustxterm.arm64"
+          rm -rf "$CARGO_TARGET_DIR/aarch64-apple-darwin"
           cargo build --release --locked --target x86_64-apple-darwin -p rustxterm
+          cp "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/rustxterm" "$CARGO_TARGET_DIR/universal/rustxterm.x86_64"
+          rm -rf "$CARGO_TARGET_DIR/x86_64-apple-darwin"
       - name: Fuse the two slices into a universal binary (lipo)
         run: |
-          mkdir -p "$CARGO_TARGET_DIR/universal"
           lipo -create -output "$CARGO_TARGET_DIR/universal/rustxterm" \
-            "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" \
-            "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/rustxterm"
+            "$CARGO_TARGET_DIR/universal/rustxterm.arm64" \
+            "$CARGO_TARGET_DIR/universal/rustxterm.x86_64"
           lipo -info "$CARGO_TARGET_DIR/universal/rustxterm"
-          # Reclaim the two per-target build trees (APFS shares free space with the DMG volume).
-          rm -rf "$CARGO_TARGET_DIR/aarch64-apple-darwin" "$CARGO_TARGET_DIR/x86_64-apple-darwin"
-          df -h /
+          df -h / "$TMPDIR" || true
       - name: Bundle rustXterm.app (.dmg and .tar.gz, universal, ad-hoc signed)
         run: |
           sh packaging/macos/bundle.sh \
