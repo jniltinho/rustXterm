@@ -10,7 +10,39 @@ permissions:
   contents: read
   actions: read
 jobs:
+  # Apple-Silicon artifacts, built natively (the Apple SDK only runs on Apple hardware). The
+  # release job waits for this and folds the .dmg/.tar.gz into the release set and SHA256SUMS.
+  macos:
+    runs-on: macos-14 # Apple Silicon (arm64)
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "13.0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Rust toolchain (pinned by rust-toolchain.toml)
+        run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: Version from the workspace
+        id: version
+        run: echo "version=$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)" >> "$GITHUB_OUTPUT"
+      - name: Build and test the macOS adapter and app (aarch64-apple-darwin)
+        run: |
+          cargo clippy --locked --target aarch64-apple-darwin -p rxt-platform-macos --all-targets -- -D warnings
+          cargo test --locked --target aarch64-apple-darwin -p rxt-platform-macos
+          cargo build --release --locked --target aarch64-apple-darwin -p rustxterm
+      - name: Bundle rustXterm.app (.dmg and .tar.gz, ad-hoc signed)
+        run: |
+          sh packaging/macos/bundle.sh \
+            target/aarch64-apple-darwin/release/rustxterm \
+            "${{ steps.version.outputs.version }}" dist-macos
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos-dist
+          path: |
+            dist-macos/*.dmg
+            dist-macos/*.tar.gz
+          if-no-files-found: error
   release:
+    needs: macos
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -141,6 +173,11 @@ jobs:
             sh packaging/windows/sign.sh dist "$VERSION"
           rm -rf target/signing
           echo "signed=yes" >> "$GITHUB_OUTPUT"
+      - name: Add the macOS artifacts (from the macos job) to the release set
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: macos-dist
+          path: dist
       - name: Guard the final artifacts and write SHA256SUMS last
         run: |
           set -- --ci
@@ -165,5 +202,6 @@ jobs:
           if [ "$WINDOWS" != yes ]; then
             notes="$notes Windows packages are a preview: the Windows end-to-end receipt (docs/gates/windows.md) does not cover this commit."
           fi
+          notes="$notes The macOS .dmg and .tar.gz are for Apple Silicon (arm64), ad-hoc signed: open the app via right-click -> Open, or System Settings -> Privacy & Security -> Open Anyway. macOS is a preview: the end-to-end macOS receipt does not cover this build."
           gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes --notes "$notes" \
             --title "rustXterm $VERSION" $prerelease
