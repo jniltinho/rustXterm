@@ -198,3 +198,4 @@ rustXterm developers with the Codex CLI from the design documents and are MIT li
 | `06-build-release` | Docker toolchain, glibc 2.31 build, dist artifacts and the GitHub Actions workflows |
 | `07-test-lab` | Docker lab services, ports and networks |
 | `08-roadmap` | Milestones and planned changes |
+| `09-rdp-connection-sequence` | RDP trust-before-credentials flow: modern TLS/NLA vs legacy TLS or Standard RDP Security, capability exchange, the active stage and a clean logout |

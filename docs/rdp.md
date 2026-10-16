@@ -4,6 +4,8 @@ rustXterm has its own RDP client (Linux and Windows); no `mstsc`, FreeRDP or oth
 is used. This guide covers the session options, the security layers Windows servers use, the trust
 prompts and the errors you can meet, with the fix for each.
 
+![RDP connection sequence](diagrams/09-rdp-connection-sequence.png)
+
 ## Quick start
 
 1. **New session → RDP**, enter the host, port (default 3389) and user name. The user name accepts the
