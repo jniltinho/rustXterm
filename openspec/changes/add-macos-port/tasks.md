@@ -7,7 +7,7 @@
 ## 0b. macOS dev VM (local KVM, lab/macos/) — x86_64, dev-only
 
 - [ ] 0b.1 `lab/macos/README.md`: create/destroy recipe for the disposable **x86_64** macOS VM on osx-kvm (`boot-macOS-headless.sh`) or ultimate-macOS-kvm, with a prominent note that it runs an **Intel guest** (cannot build/run the `aarch64-apple-darwin` target) and has **no Metal GPU** (cannot render-verify the UI); pinned guest macOS version and tool commit, fictional guest account, forwarded SSH port; never committed VM image, never in a Docker context or artifact (verified by `cargo xtask guard`), never gates a release
-- [ ] 0b.2 Driver `lab/macos/rxt.sh` mirroring `lab/vagrant/windows/rxt.sh`: `push` into the VM and run `cargo check`/`clippy`/non-graphical `cargo test` for `x86_64-apple-darwin` and the bundle-script shakeout over SSH (the ARM target and graphics are not runnable here)
+- [ ] 0b.2 Driver `lab/macos/rxt.sh` mirroring `lab/vagrant/windows/rxt.sh`, using osx-kvm's out-of-the-box VNC + SSH (see its networking notes): `push` into the VM and run `cargo check`/`clippy`/non-graphical `cargo test` for `x86_64-apple-darwin` and the bundle-script shakeout over SSH; `screenshot` grabs the desktop over VNC. Note in the README that a VNC screenshot is inspection only — the guest has no Metal device, so it is not a graphics gate, and the ARM target is not runnable here
 - [ ] 0b.3 Prove the toolchain lives only inside the VM: `rustup` + the x86_64 subset succeed over SSH, and the host desktop has no Rust toolchain for any Apple target
 
 ## 1. Adapter (`crates/platform-macos`)
