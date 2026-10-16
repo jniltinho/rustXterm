@@ -33,13 +33,36 @@ cp "$bin" "$app/Contents/MacOS/rustxterm"
 chmod +x "$app/Contents/MacOS/rustxterm"
 sed "s/__VERSION__/$version/g" "$here/Info.plist" > "$app/Contents/Info.plist"
 
-# Icon: an explicit .icns, or build one from the app SVG if the tools are present; otherwise the
-# bundle ships without a custom icon (Finder shows a generic one).
+# Build an .icns from a square PNG using macOS' sips + iconutil (an .iconset with the standard
+# sizes, @2x included). Returns non-zero if the tools or source are missing.
+build_icns() {
+    src=$1
+    out=$2
+    command -v sips >/dev/null 2>&1 && command -v iconutil >/dev/null 2>&1 || return 1
+    [ -f "$src" ] || return 1
+    work=$(mktemp -d)
+    iconset="$work/icon.iconset"
+    mkdir -p "$iconset"
+    for s in 16 32 128 256 512; do
+        s2=$((s * 2))
+        sips -z "$s" "$s" "$src" --out "$iconset/icon_${s}x${s}.png" >/dev/null 2>&1 || { rm -rf "$work"; return 1; }
+        sips -z "$s2" "$s2" "$src" --out "$iconset/icon_${s}x${s}@2x.png" >/dev/null 2>&1 || { rm -rf "$work"; return 1; }
+    done
+    iconutil -c icns "$iconset" -o "$out" >/dev/null 2>&1
+    rc=$?
+    rm -rf "$work"
+    return $rc
+}
+
+# Icon: an explicit .icns (MACOS_ICON), a prebuilt one next to this script, or one generated from
+# the app PNG at build time; otherwise the bundle ships without a custom icon (generic in Finder).
 icns=""
 if [ -n "${MACOS_ICON:-}" ] && [ -f "${MACOS_ICON}" ]; then
     icns=$MACOS_ICON
 elif [ -f "$here/rustXterm.icns" ]; then
     icns="$here/rustXterm.icns"
+elif build_icns "$root/assets/icons/rustxterm-256.png" "$stage/rustXterm.icns"; then
+    icns="$stage/rustXterm.icns"
 fi
 if [ -n "$icns" ]; then
     cp "$icns" "$app/Contents/Resources/rustXterm.icns"
