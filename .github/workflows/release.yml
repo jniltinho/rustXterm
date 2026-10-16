@@ -41,6 +41,9 @@ jobs:
             "$CARGO_TARGET_DIR/aarch64-apple-darwin/release/rustxterm" \
             "$CARGO_TARGET_DIR/x86_64-apple-darwin/release/rustxterm"
           lipo -info "$CARGO_TARGET_DIR/universal/rustxterm"
+          # Reclaim the two per-target build trees (APFS shares free space with the DMG volume).
+          rm -rf "$CARGO_TARGET_DIR/aarch64-apple-darwin" "$CARGO_TARGET_DIR/x86_64-apple-darwin"
+          df -h /
       - name: Bundle rustXterm.app (.dmg and .tar.gz, universal, ad-hoc signed)
         run: |
           sh packaging/macos/bundle.sh \
