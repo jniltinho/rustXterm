@@ -211,12 +211,16 @@ mod tests {
             assert_eq!(fs::symlink_metadata(&sock).unwrap().permissions().mode() & 0o777, 0o600);
             assert!(matches!(t.listen(), Err(Error::AlreadyExists(_))), "second instance must not steal the socket");
             let server = async {
-                // The probe connection of the refused second `listen` comes first, already closed.
-                let mut probe = listener.accept().await.unwrap();
-                assert!(read_message::<Request, _>(&mut probe).await.unwrap().is_none());
-                let mut s = listener.accept().await.unwrap();
-                let req: Request = read_message(&mut s).await.unwrap().unwrap();
-                write_message(&mut s, &req).await.unwrap();
+                // Two connections arrive: the empty probe from the refused second `listen` and the
+                // real client. Their arrival order is not guaranteed across platforms (Linux queues
+                // the probe first, macOS may not), so accept until a request is read and reply to it.
+                loop {
+                    let mut s = listener.accept().await.unwrap();
+                    if let Some(req) = read_message::<Request, _>(&mut s).await.unwrap() {
+                        write_message(&mut s, &req).await.unwrap();
+                        break;
+                    }
+                }
             };
             let client = async {
                 let mut c = t.connect().await.unwrap();
