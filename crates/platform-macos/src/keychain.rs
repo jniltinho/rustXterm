@@ -3,9 +3,7 @@
 //! framework for us, so the workspace `unsafe_code = "forbid"` stays in force.
 
 use rxt_platform::{Error, Keyring, Result};
-use security_framework::passwords::{
-    delete_generic_password, get_generic_password, set_generic_password,
-};
+use security_framework::passwords::{delete_generic_password, get_generic_password, set_generic_password};
 
 const SERVICE: &str = "rustxterm";
 

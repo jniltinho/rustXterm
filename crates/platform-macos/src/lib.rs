@@ -65,9 +65,8 @@ impl Paths for MacPaths {
         // The uid comes from `$TMPDIR`'s owner (sync, no Tokio runtime); the socketpair-based
         // `own_uid` is only safe to call from inside a runtime (listen/connect/accept).
         let dir = std::env::temp_dir();
-        let name = std::fs::metadata(&dir)
-            .map(|m| format!("rustxterm-{}", m.uid()))
-            .unwrap_or_else(|_| APP_DIR.to_owned());
+        let name =
+            std::fs::metadata(&dir).map(|m| format!("rustxterm-{}", m.uid())).unwrap_or_else(|_| APP_DIR.to_owned());
         Some(dir.join(name))
     }
     fn home_dir(&self) -> PathBuf {

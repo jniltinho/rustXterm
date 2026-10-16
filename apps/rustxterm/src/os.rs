@@ -7,10 +7,10 @@ use rxt_platform::{ControlTransport, Keyring};
 
 #[cfg(target_os = "linux")]
 pub use rxt_platform_linux::{XdgPaths as SystemPaths, platform};
-#[cfg(windows)]
-pub use rxt_platform_windows::{KnownFolders as SystemPaths, platform};
 #[cfg(target_os = "macos")]
 pub use rxt_platform_macos::{MacPaths as SystemPaths, platform};
+#[cfg(windows)]
+pub use rxt_platform_windows::{KnownFolders as SystemPaths, platform};
 
 /// `rustxterm.exe` on Windows: GUI subsystem, no console (CLI runs from `rustxterm-cli.exe`).
 pub fn gui_only() -> bool {
