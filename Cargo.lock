@@ -6034,7 +6034,7 @@ checksum = "cf54715a573b99ac80df0bc206da022bcd442c974952c7b9720069370852e21f"
 
 [[package]]
 name = "rustxterm"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -6058,7 +6058,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-agent"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "base64 0.23.1",
  "clap",
@@ -6078,7 +6078,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-core"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -6087,7 +6087,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-engine"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "bytes",
  "cap-std",
@@ -6119,7 +6119,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-ftp"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "rxt-core",
  "sha2 0.11.1",
@@ -6132,7 +6132,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-platform"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "rxt-core",
  "serde",
@@ -6142,7 +6142,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-platform-linux"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "arboard",
  "ashpd",
@@ -6162,7 +6162,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-platform-macos"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "arboard",
  "dirs",
@@ -6178,7 +6178,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-platform-windows"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "arboard",
  "dirs",
@@ -6195,7 +6195,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-rdp"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "bytes",
  "ironrdp",
@@ -6221,7 +6221,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-serial"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "rxt-core",
  "rxt-platform",
@@ -6232,7 +6232,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-sftp"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "russh-sftp",
  "rxt-core",
@@ -6247,7 +6247,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-ssh"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "data-encoding",
  "hmac 0.13.0",
@@ -6263,7 +6263,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-store"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "argon2",
  "base64 0.23.1",
@@ -6284,7 +6284,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-telnet"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "rxt-core",
  "secrecy",
@@ -6295,7 +6295,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-term"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "alacritty_terminal",
  "rxt-core",
@@ -6304,7 +6304,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-ui"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "eframe",
  "egui",
@@ -6325,7 +6325,7 @@ dependencies = [
 
 [[package]]
 name = "rxt-vnc"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "rxt-core",
  "rxt-ssh",
@@ -8680,7 +8680,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xtask"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "msi",
