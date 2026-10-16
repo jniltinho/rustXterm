@@ -8,6 +8,10 @@ on:
   workflow_call:
 permissions:
   contents: read
+# Cancel a superseded run when a newer commit lands on the same branch/PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   checks:
     runs-on: ubuntu-24.04

@@ -16,6 +16,9 @@ on:
       - '.github/workflows/macos.yml'
 permissions:
   contents: read
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
 env:
   MACOSX_DEPLOYMENT_TARGET: "13.0"
   CARGO_TERM_COLOR: always
