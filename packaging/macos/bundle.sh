@@ -35,23 +35,27 @@ sed "s/__VERSION__/$version/g" "$here/Info.plist" > "$app/Contents/Info.plist"
 
 # Build an .icns from a square PNG using macOS' sips + iconutil (an .iconset with the standard
 # sizes, @2x included). Returns non-zero if the tools or source are missing.
+# Note: sh functions share the caller's variables, so these use `ic_`-prefixed names to avoid
+# clobbering the script's `$out` (the output directory) and friends.
 build_icns() {
-    src=$1
-    out=$2
+    ic_src=$1
+    ic_dest=$2
     command -v sips >/dev/null 2>&1 && command -v iconutil >/dev/null 2>&1 || return 1
-    [ -f "$src" ] || return 1
-    work=$(mktemp -d)
-    iconset="$work/icon.iconset"
-    mkdir -p "$iconset"
-    for s in 16 32 128 256 512; do
-        s2=$((s * 2))
-        sips -z "$s" "$s" "$src" --out "$iconset/icon_${s}x${s}.png" >/dev/null 2>&1 || { rm -rf "$work"; return 1; }
-        sips -z "$s2" "$s2" "$src" --out "$iconset/icon_${s}x${s}@2x.png" >/dev/null 2>&1 || { rm -rf "$work"; return 1; }
+    [ -f "$ic_src" ] || return 1
+    ic_work=$(mktemp -d)
+    ic_set="$ic_work/icon.iconset"
+    mkdir -p "$ic_set"
+    for ic_s in 16 32 128 256 512; do
+        ic_s2=$((ic_s * 2))
+        sips -z "$ic_s" "$ic_s" "$ic_src" --out "$ic_set/icon_${ic_s}x${ic_s}.png" >/dev/null 2>&1 ||
+            { rm -rf "$ic_work"; return 1; }
+        sips -z "$ic_s2" "$ic_s2" "$ic_src" --out "$ic_set/icon_${ic_s}x${ic_s}@2x.png" >/dev/null 2>&1 ||
+            { rm -rf "$ic_work"; return 1; }
     done
-    iconutil -c icns "$iconset" -o "$out" >/dev/null 2>&1
-    rc=$?
-    rm -rf "$work"
-    return $rc
+    iconutil -c icns "$ic_set" -o "$ic_dest" >/dev/null 2>&1
+    ic_rc=$?
+    rm -rf "$ic_work"
+    return $ic_rc
 }
 
 # Icon: an explicit .icns (MACOS_ICON), a prebuilt one next to this script, or one generated from
