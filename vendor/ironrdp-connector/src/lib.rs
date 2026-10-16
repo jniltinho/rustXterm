@@ -256,6 +256,11 @@ pub struct Config {
     /// [\[MS-RDPBCGR\] 2.2.1.3.7]: https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpbcgr/861f2bbb-6ca2-4c5a-8c44-0714fa901e70
     /// [`MultiTransportChannelData`]: ironrdp_pdu::gcc::MultiTransportChannelData
     pub multitransport_flags: Option<gcc::MultiTransportFlags>,
+
+    /// rustXterm: the peer is an old server (RDP 7.x, e.g. Windows Server 2008/2008 R2). Do not
+    /// advertise RDP 8+ GCC features (the MCS message channel, network auto-detect, skip channel
+    /// join); such servers reset the connection on the Connect Initial otherwise.
+    pub legacy_server: bool,
 }
 
 ironrdp_core::assert_impl!(Config: Send, Sync);

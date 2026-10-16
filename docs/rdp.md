@@ -95,6 +95,25 @@ Set-ItemProperty $k UserAuthentication 1   # NLA
 New connections use the new setting at once; no restart is needed. A Group Policy value overrides
 the registry value.
 
+## Old servers (Windows Server 2008 / 2008 R2)
+
+These servers predate RDP 8 and typically speak only **TLS 1.0**. Two things are needed:
+
+- **Tick "Allow legacy TLS 1.0/1.1"** in the session's RDP options. Without it the default TLS stack
+  offers only TLS 1.2/1.3, the old server resets the socket, and you get
+  `Connection reset by peer (os error 104)`.
+- With that option on, rustXterm also adapts to these servers automatically (no extra setting): it
+  stops advertising RDP 8 features (the MCS message channel and the network-auto-detect /
+  skip-channel-join capabilities), which otherwise make a 2008-era server reset the connection right
+  after the login; and it accepts screen and pointer updates that such servers batch together in one
+  message, which otherwise ended the session with a "decode error"; and it renders bitmaps whose width the server padded to a multiple of 4 without shearing the image.
+
+The login then works with full NLA/CredSSP. Use the domain forms from Quick start (for example
+`criarenet.net\administrator`, or `.\administrator` for a local account).
+
+Prefer enabling TLS 1.2 on the server when you can; the legacy option is a client-side workaround, not
+a fix for the server.
+
 ## Certificates and trust
 
 - TLS servers present a certificate; Windows uses a self-signed one by default. The prompt shows its
@@ -112,6 +131,7 @@ the registry value.
 | `the server offers no encryption (level None)` | Encryption level None | Set the server's encryption level to Client Compatible or High |
 | `the server requires FIPS encryption` | Encryption level FIPS Compliant | Use Negotiate/SSL on the server (TLS works with FIPS) |
 | `The server only offers legacy TLS (TLS 1.0/1.1 …)` | Old, unpatched server | Update the server, or tick **Allow legacy TLS 1.0/1.1** |
+| `Connection reset by peer (os error 104)` | Old server (2008/2008 R2): only TLS 1.0, or RDP 8 features it does not understand | Tick **Allow legacy TLS 1.0/1.1** (see "Old servers" above) |
 | `authentication failed: CredSSP: … STATUS_LOGON_FAILURE` | Wrong user, domain or password (NLA) | Check the credentials and the domain field |
 | `certificate of HOST:PORT changed` | The saved certificate differs | Confirm the new fingerprint with the administrator |
 | `HOST:PORT: connect timed out` | Port 3389 blocked, RDP disabled or wrong host | Check the firewall and "Allow remote connections to this computer" |
@@ -121,3 +141,8 @@ the registry value.
 The repository's Windows Server 2022 test VM (`lab/vagrant/windows`) can be switched between the
 layers to try each case; the recipe is in [`lab/vagrant/README.md`](../lab/vagrant/README.md) and the
 last results are in [`docs/gates/rdp-standard-security.md`](gates/rdp-standard-security.md).
+
+To check a real host before connecting, `scripts/rdp-probe.py <host>` reports its security layer
+without sending any credentials (it only does the RDP negotiation), so you know whether to tick a
+legacy option. `scripts/rdp-test.sh <host> <user> <password> [domain]` validates one login end to end
+with rdesktop (headless) — one credential per run, for your own or authorised hosts only.

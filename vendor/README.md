@@ -77,3 +77,34 @@ marked with a `rustXterm:` comment.
 Remove both patches once IronRDP supports Standard RDP Security upstream (or drops the 1024-byte
 certificate cap and accepts `PROTOCOL_RDP`); verify with `crates/rdp/tests/vm_rdp.rs`
 `standard_security` tests against the Windows VM.
+
+## ironrdp-session 0.11.0 (batched Share Control PDUs, add-rdp-standard-security follow-up)
+
+Why: some servers (observed on Windows Server 2008 R2) batch several Share Control PDUs — e.g.
+Synchronize, Bitmap Update, Synchronize, Pointer Update — in one MCS Send Data Indication. IronRDP's
+slow-path Update decoder reads to the end of the buffer (`remaining()`), so a single decode of a
+batched frame over-reads into the next PDU and the session dies with a decode error right after
+activation.
+
+Change (`src/x224/mod.rs`): `Processor::process_io_channel` splits the Send Data Indication user
+data into one slice per PDU, using the Share Control Header total length (Multitransport Requests,
+which carry no such length, are handled whole), then decodes and dispatches each slice in wire order.
+The per-PDU dispatch is the former body, moved unchanged into `dispatch_io_channel`. Paired with a
+one-line `ironrdp-pdu` change making `SHARE_CONTROL_HEADER_SIZE` public.
+
+Remove once IronRDP bounds the slow-path decoders to the Share Control total length upstream; verify
+with `crates/rdp/tests/batched_slowpath.rs` (a real 2008 R2 capture).
+
+
+## ironrdp-session 0.11.0 (bitmap width padding / sheared text, add-rdp-standard-security follow-up)
+
+Why: a server pads each bitmap's width to a multiple of 4, so a bitmap's source rows are 1-3 pixels
+wider than the destination rectangle (observed on Windows Server 2008 R2: e.g. a 609-px-wide update
+arrives as a 612-px-wide bitmap). IronRDP used the destination rectangle width as the source row
+stride in `DecodedImage::apply_*`, so every row after the first shifted and the image sheared —
+flat fills looked fine, text and icons were torn.
+
+Change (`src/image.rs`): each `apply_*_bitmap` derives the real source stride from the buffer length
+and the rectangle height (`buf.len() / height`), iterates source rows by that stride and copies only
+`rectangle_width` columns. For an unpadded bitmap this is identical to before. Regression:
+`crates/rdp/tests/bitmap_stride.rs`.

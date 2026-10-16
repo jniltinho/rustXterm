@@ -42,3 +42,27 @@ Not covered by this VM: a license server issuing licenses (the VM has no RD Lice
 server answers with a valid-client licensing message), servers with an X.509 certificate chain in
 Server Security Data (the VM sends a proprietary certificate), and whether the server used salted MACs
 (both variants are implemented and tested offline).
+
+## Legacy-TLS servers (Windows Server 2008 R2) — 2026-10-15
+
+Against a real Windows Server 2008 R2 (TLS 1.0 only), with "Allow legacy TLS" on, the Linux client
+connects end to end: X.224 → legacy TLS 1.0 → NLA/CredSSP (domain `DOMAIN\user`) → activation →
+live screen and pointer updates. Two server-interop fixes were needed and are covered offline:
+
+- `legacy_server`: the Connect Initial no longer advertises RDP 8 features (MCS message channel,
+  network auto-detect, skip channel join) when "Allow legacy TLS" is on; a 2008-era server reset the
+  connection on the Connect Initial otherwise.
+- Batched Share Control PDUs: the 2008 R2 server batches Synchronize + Bitmap Update + Synchronize +
+  Pointer Update in one MCS Send Data Indication; the vendored `ironrdp-session` splits them by the
+  Share Control total length. Regression: `crates/rdp/tests/batched_slowpath.rs` (a real capture).
+
+The Windows 2022 NLA receipt above still passes (no regression).
+
+## Bitmap rendering fix (sheared text on 2008 R2) — 2026-10-15
+
+Against the real Windows Server 2008 R2, bitmap updates whose width the server padded to a multiple
+of 4 (e.g. a 609-px rectangle sent as a 612-px bitmap) were sheared: flat areas fine, text and icons
+torn. The vendored `ironrdp-session` now derives the source row stride from the buffer. Captured the
+server's framebuffer before and after (login screen and full desktop) — text and icons render crisp.
+Regression `crates/rdp/tests/bitmap_stride.rs` (a padded bitmap must not shear). No change for
+unpadded bitmaps (Windows 2022 NLA receipt unchanged).

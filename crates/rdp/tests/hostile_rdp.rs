@@ -346,6 +346,59 @@ async fn unread_events_stop_socket_reads_and_drop_is_prompt() {
     assert!(started.elapsed() < Duration::from_millis(100));
 }
 
+/// A slow-path Send Data Indication whose Share Control Header has an invalid pduType, so IronRDP
+/// cannot decode it. Some old servers send such PDUs during logout; it must be skipped, not fatal.
+fn undecodable_slow_path(result: &AcceptorResult) -> Vec<u8> {
+    // totalLength = 10 (header only), pduType = 0x0015 (version 1 | type 5, not a valid type).
+    let mut user_data = vec![0x0a, 0x00, 0x15, 0x00];
+    user_data.extend_from_slice(&result.io_channel_id.to_le_bytes());
+    user_data.extend_from_slice(&[0, 0, 0, 0]); // shareId
+    let indication = SendDataIndication {
+        initiator_id: result.user_channel_id,
+        channel_id: result.io_channel_id,
+        user_data: Cow::Owned(user_data),
+    };
+    encode_vec(&X224(indication)).unwrap()
+}
+
+#[tokio::test]
+async fn deactivate_then_disconnect_ends_cleanly() {
+    // Windows Server 2008 sends a Server Deactivate All at logout and then drops the connection
+    // instead of reactivating. The client must end the session cleanly, not with a decode error.
+    let (l, port) = listen().await;
+    tokio::spawn(async move {
+        let (mut framed, _, result) = accept(&l, 640, 480).await.unwrap();
+        framed.write_all(&deactivate_all(&result)).await.unwrap();
+        // Drop `framed` (and its TLS/TCP) without any reactivation PDU: the server has gone.
+    });
+    let mut d = client(port, quick()).await.unwrap();
+    assert_eq!(next(&mut d, T).await, DesktopEvent::Resized { width: 640, height: 480 });
+    // The session ends without surfacing an error.
+    loop {
+        match tokio::time::timeout(T, d.next()).await.expect("no clean end in time") {
+            None => break,
+            Some(Ok(_)) => continue,
+            Some(Err(e)) => panic!("logout surfaced an error: {e}"),
+        }
+    }
+}
+
+#[tokio::test]
+async fn undecodable_slow_path_pdu_is_skipped_not_fatal() {
+    let (l, port) = listen().await;
+    tokio::spawn(async move {
+        let (mut framed, _, result) = accept(&l, 640, 480).await.unwrap();
+        // One PDU IronRDP cannot decode, then a valid bitmap: the session must survive the first.
+        framed.write_all(&undecodable_slow_path(&result)).await.unwrap();
+        framed.write_all(&bitmap_update()).await.unwrap();
+        tokio::time::sleep(T).await;
+    });
+    let mut d = client(port, quick()).await.unwrap();
+    assert_eq!(next(&mut d, T).await, DesktopEvent::Resized { width: 640, height: 480 });
+    // The bitmap after the bad PDU still arrives, proving the session was not killed.
+    assert!(matches!(next(&mut d, T).await, DesktopEvent::Update { .. }));
+}
+
 fn deactivate_all(result: &AcceptorResult) -> Vec<u8> {
     let pdu = ShareControlHeader {
         share_id: 0,

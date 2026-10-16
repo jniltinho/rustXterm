@@ -22,7 +22,8 @@ use crate::rdp::suppress_output::SuppressOutputPdu;
 pub const BASIC_SECURITY_HEADER_SIZE: usize = 4;
 pub const SHARE_DATA_HEADER_COMPRESSION_MASK: u8 = 0xF;
 const SHARE_CONTROL_HEADER_MASK: u16 = 0xF;
-const SHARE_CONTROL_HEADER_SIZE: usize = 2 * 3 + 4;
+// rustXterm: pub so ironrdp-session can split batched Share Control PDUs by total length.
+pub const SHARE_CONTROL_HEADER_SIZE: usize = 2 * 3 + 4;
 
 const PROTOCOL_VERSION: u16 = 0x10;
 

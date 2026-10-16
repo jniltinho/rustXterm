@@ -34,7 +34,7 @@ use ironrdp::pdu::rdp::refresh_rectangle::RefreshRectanglePdu;
 use ironrdp::pdu::rdp::suppress_output::SuppressOutputPdu;
 use ironrdp::session::fast_path::ProcessorBuilder;
 use ironrdp::session::image::DecodedImage;
-use ironrdp::session::{ActiveStage, ActiveStageBuilder, ActiveStageOutput, SessionError};
+use ironrdp::session::{ActiveStage, ActiveStageBuilder, ActiveStageOutput, SessionError, SessionErrorKind};
 use rxt_core::desktop::{MAX_CURSOR_EDGE, MAX_EDGE, RemoteCursor};
 use rxt_core::{DesktopEvent, DesktopInput, Error, RdpResolution, Rect, Result, Session};
 use tokio::net::TcpStream;
@@ -57,6 +57,9 @@ pub(crate) const STANDARD_ONLY: &str = "the server only allows the legacy Standa
      layer for remote (RDP) connections)";
 
 /// The refusal arrived for a host already trusted over TLS (it is unauthenticated and could be forged).
+/// Undecodable PDUs tolerated in a row before giving up (old servers send odd PDUs at logout).
+const MAX_DECODE_ERRORS: u32 = 32;
+
 const DOWNGRADE: &str = "the server refused TLS, but this host was trusted over TLS before: the refusal may \
      be a downgrade attempt, so legacy RDP security was not used. If the server's administrator really switched \
      it to the legacy layer, connect with another name for it (such as its IP address): trust is saved per \
@@ -168,6 +171,7 @@ fn config(session: &Session, tab: (u32, u32), standard: bool) -> Result<Config> 
         desktop_scale_factor: 0,
         enable_tls: !standard,
         enable_credssp: !standard,
+        legacy_server: standard || session.rdp.allow_legacy_tls,
         // The password is filled in only after the certificate is trusted.
         credentials: Credentials::UsernamePassword { username: account(session).0, password: String::new() },
         domain: account(session).1,
@@ -326,6 +330,7 @@ async fn establish_with(
                 visible: true,
                 fit: matches!(session.rdp.resolution, RdpResolution::FitToTab),
                 pending_resize: None,
+                decode_errors: 0,
                 fragmented: 0,
                 clip_events,
                 local_clip: None,
@@ -442,6 +447,8 @@ pub(crate) struct Driver {
     fit: bool,
     /// Requested size not sent yet (display control not ready).
     pending_resize: Option<(u32, u32)>,
+    /// Consecutive undecodable PDUs tolerated before the session is dropped.
+    decode_errors: u32,
     /// Bytes of the fast-path update being reassembled.
     fragmented: usize,
     clip_events: Arc<Mutex<Vec<ClipEvent>>>,
@@ -601,7 +608,24 @@ impl Driver {
         if action == Action::FastPath {
             track_fragments(frame, &mut self.fragmented, self.limits.max_fragmented)?;
         }
-        let outputs = self.stage.process(&mut self.image, action, frame).map_err(session_err)?;
+        let outputs = match self.stage.process(&mut self.image, action, frame) {
+            Ok(outputs) => {
+                self.decode_errors = 0;
+                outputs
+            }
+            // A PDU whose content IronRDP cannot decode (e.g. an update some old servers send during
+            // logout) must not kill the session: the framing is intact, so skip this one PDU and keep
+            // going. A run of them means the stream really is lost, so give up then.
+            Err(e) if matches!(e.kind(), SessionErrorKind::Decode(_)) => {
+                self.decode_errors += 1;
+                tracing::warn!(action = ?action, count = self.decode_errors, "skipping an undecodable PDU: {e}");
+                if self.decode_errors > MAX_DECODE_ERRORS {
+                    return Err(session_err(e));
+                }
+                return Ok(true);
+            }
+            Err(e) => return Err(session_err(e)),
+        };
         let more = self.on_outputs(outputs, events).await?;
         self.drain_clipboard(events).await?;
         self.send_pending_resize().await?;
@@ -617,7 +641,16 @@ impl Driver {
                     tracing::debug!(reason = %reason.description(), "RDP server ended the session");
                     return Ok(false);
                 }
-                ActiveStageOutput::DeactivateAll => self.reactivate(events).await?,
+                // A Server Deactivate All precedes both a capability re-exchange (resize) and the
+                // server's own disconnect (e.g. logout on Windows Server 2008). `reactivate` returns
+                // `false` when the server tears down instead of reactivating; end the session cleanly
+                // then rather than surfacing its decode/connection error.
+                ActiveStageOutput::DeactivateAll => {
+                    if !self.reactivate(events).await? {
+                        tracing::debug!("server deactivated without reactivating; ending the session");
+                        return Ok(false);
+                    }
+                }
                 ActiveStageOutput::PointerDefault => events.push(DesktopEvent::Cursor(RemoteCursor::Default)).await?,
                 ActiveStageOutput::PointerHidden => events.push(DesktopEvent::Cursor(RemoteCursor::Hidden)).await?,
                 ActiveStageOutput::PointerBitmap(p) => events.push(DesktopEvent::Cursor(cursor(&p))).await?,
@@ -627,12 +660,18 @@ impl Driver {
         Ok(true)
     }
 
-    /// Deactivation-Reactivation Sequence (e.g. after a display-control resize).
-    async fn reactivate(&mut self, events: &Events) -> Result<()> {
+    /// Deactivation-Reactivation Sequence (e.g. after a display-control resize). Returns `false`
+    /// when the server disconnected instead of reactivating (a teardown PDU the activation sequence
+    /// cannot decode, or a closed socket) — the common Windows Server 2008 logout path.
+    async fn reactivate(&mut self, events: &Events) -> Result<bool> {
         let mut seq = self.factory.create();
         let mut buf = WriteBuf::new();
         loop {
-            let written = step_read(&mut self.wire, &mut seq, &mut buf).await?;
+            let written = match step_read(&mut self.wire, &mut seq, &mut buf).await {
+                Ok(written) => written,
+                Err(Error::Protocol(_) | Error::Connection(_) | Error::Io(_)) => return Ok(false),
+                Err(e) => return Err(e),
+            };
             if let Some(size) = activation_size(seq.connection_activation_state()) {
                 check_size(size.width, size.height)?;
             }
@@ -659,7 +698,8 @@ impl Driver {
                 self.stage.set_share_id(share_id);
                 self.stage.set_enable_server_pointer(enable_server_pointer);
                 self.fragmented = 0;
-                return self.emit_resized(events).await;
+                self.emit_resized(events).await?;
+                return Ok(true);
             }
         }
     }

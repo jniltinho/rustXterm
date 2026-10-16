@@ -798,6 +798,9 @@ fn create_gcc_blocks<'a>(
     // rustXterm: Standard RDP Security offers RC4 (never FIPS) and skips auto-detect and the
     // message channel, whose PDUs carry security headers the transport transform does not map.
     let standard = selected_protocol.is_standard_rdp_security();
+    // rustXterm: old servers (RDP 7.x) reset on the Connect Initial if it advertises RDP 8+ GCC
+    // features, so drop them for Standard RDP Security and when the caller flags a legacy server.
+    let legacy = standard || config.legacy_server;
 
     // Derive the preferred depth indicator. 32bpp has no highColorDepth value; it is
     // expressed via WANT_32_BPP_SESSION in earlyCapabilityFlags instead.
@@ -848,11 +851,11 @@ fn create_gcc_blocks<'a>(
                 early_capability_flags: {
                     let mut early_capability_flags = ClientEarlyCapabilityFlags::VALID_CONNECTION_TYPE
                         | ClientEarlyCapabilityFlags::SUPPORT_ERR_INFO_PDU
-                        | ClientEarlyCapabilityFlags::STRONG_ASYMMETRIC_KEYS
-                        | ClientEarlyCapabilityFlags::SUPPORT_SKIP_CHANNELJOIN;
+                        | ClientEarlyCapabilityFlags::STRONG_ASYMMETRIC_KEYS;
 
-                    if !standard {
-                        early_capability_flags |= ClientEarlyCapabilityFlags::SUPPORT_NET_CHAR_AUTODETECT;
+                    if !legacy {
+                        early_capability_flags |= ClientEarlyCapabilityFlags::SUPPORT_NET_CHAR_AUTODETECT
+                            | ClientEarlyCapabilityFlags::SUPPORT_SKIP_CHANNELJOIN;
                     }
 
                     // TODO(#136): support for ClientEarlyCapabilityFlags::SUPPORT_STATUS_INFO_PDU
@@ -900,7 +903,7 @@ fn create_gcc_blocks<'a>(
         // Request the MCS message channel, which carries network auto-detect
         // ([MS-RDPBCGR] 2.2.14) and the multitransport / heartbeat PDUs. The
         // server assigns its ID in Server Message Channel Data.
-        message_channel: if standard { None } else { Some(gcc::ClientMessageChannelData) },
+        message_channel: if legacy { None } else { Some(gcc::ClientMessageChannelData) },
         multi_transport_channel: config
             .multitransport_flags
             .map(|flags| gcc::MultiTransportChannelData { flags }),

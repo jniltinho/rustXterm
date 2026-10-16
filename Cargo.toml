@@ -148,6 +148,8 @@ wgpu-hal = { path = "vendor/wgpu-hal" }
 # ironrdp-connector 0.10.0 / ironrdp-pdu 0.9.0 + opt-in Standard RDP Security (vendor/README.md).
 ironrdp-connector = { path = "vendor/ironrdp-connector" }
 ironrdp-pdu = { path = "vendor/ironrdp-pdu" }
+# ironrdp-session 0.11.0 + split batched Share Control PDUs (Windows 2008 R2); vendor/README.md.
+ironrdp-session = { path = "vendor/ironrdp-session" }
 
 [profile.release]
 lto = "thin"
