@@ -128,15 +128,31 @@ fn open_debug_log(path: &std::path::Path) -> std::io::Result<std::fs::File> {
     if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
         std::fs::create_dir_all(dir)?;
     }
-    let mut options = std::fs::OpenOptions::new();
-    options.create(true).append(true);
     #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    let file = options.open(path)?;
-    // `mode` applies only on creation: an existing log is made owner-only as well.
-    #[cfg(unix)]
-    file.set_permissions(std::os::unix::fs::PermissionsExt::from_mode(0o600))?;
-    Ok(file)
+    {
+        use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+        // A new file is created owner-only; `create_new` never follows a symlink.
+        match std::fs::OpenOptions::new().append(true).create_new(true).mode(0o600).open(path) {
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            r => return r,
+        }
+        // An existing one must be a plain file (no symlink or hard link planted in a shared folder),
+        // the same one that gets opened, and is then made owner-only.
+        let refuse = |why: &str| std::io::Error::new(std::io::ErrorKind::PermissionDenied, why.to_owned());
+        let before = std::fs::symlink_metadata(path)?;
+        if !before.file_type().is_file() || before.nlink() != 1 {
+            return Err(refuse("not a regular file"));
+        }
+        let file = std::fs::OpenOptions::new().append(true).open(path)?;
+        let after = file.metadata()?;
+        if (after.dev(), after.ino()) != (before.dev(), before.ino()) {
+            return Err(refuse("the file changed while opening it"));
+        }
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+        Ok(file)
+    }
+    #[cfg(not(unix))]
+    std::fs::OpenOptions::new().create(true).append(true).open(path)
 }
 
 const APP_ICON_PNG: &[u8] = include_bytes!("../../../assets/icons/rustxterm-256.png");
@@ -387,5 +403,32 @@ mod tests {
         assert_eq!(super::missing_library(p.as_ref()), Some("libxkbcommon-x11.so"));
         let other: Box<dyn std::any::Any + Send> = Box::new(String::from("index out of bounds"));
         assert_eq!(super::missing_library(other.as_ref()), None);
+    }
+}
+
+#[cfg(all(test, unix))]
+mod debug_log_tests {
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn debug_log_is_private_and_refuses_links() {
+        let dir = std::env::temp_dir().join(format!("rxt-debug-log-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let log = dir.join("rustxterm-debug.log");
+        drop(super::open_debug_log(&log).unwrap());
+        std::fs::set_permissions(&log, std::fs::Permissions::from_mode(0o644)).unwrap();
+        drop(super::open_debug_log(&log).unwrap());
+        assert_eq!(std::fs::metadata(&log).unwrap().permissions().mode() & 0o777, 0o600);
+
+        let target = dir.join("target");
+        std::fs::write(&target, b"").unwrap();
+        let link = dir.join("link.log");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        assert!(super::open_debug_log(&link).is_err());
+        let hard = dir.join("hard.log");
+        std::fs::hard_link(&target, &hard).unwrap();
+        assert!(super::open_debug_log(&hard).is_err());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
