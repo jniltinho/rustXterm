@@ -13,6 +13,12 @@ ignore = [
     # servers; it never decrypts attacker-supplied RSA ciphertext as a network oracle. Revisit when
     # RustCrypto/RSA#626 ships.
     { id = "RUSTSEC-2023-0071", reason = "no fix upstream; client-side use only, no decryption oracle" },
+    # zvariant, zvariant_derive, zbus_names: informational "unmaintained" notices (2026-10-19), no
+    # vulnerability; their code moved into zbus 6. They come with zbus 5 through ashpd and oo7 (Linux
+    # portals and keyring). Drop these when ashpd and oo7 move to zbus 6.
+    { id = "RUSTSEC-2026-0370", reason = "merged into zbus 6; pulled by zbus 5 via ashpd/oo7; no vulnerability" },
+    { id = "RUSTSEC-2026-0371", reason = "merged into zbus 6; pulled by zbus 5 via ashpd/oo7; no vulnerability" },
+    { id = "RUSTSEC-2026-0372", reason = "merged into zbus 6; pulled by zbus 5 via ashpd/oo7; no vulnerability" },
 ]
 
 [licenses]
