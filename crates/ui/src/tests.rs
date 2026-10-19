@@ -2048,6 +2048,50 @@ fn snapshot_settings_agent_control_applies_live() {
     assert!(back.settings.agent_control);
 }
 
+/// Diagnostic log double: reports the folder and file a real one would use.
+struct FakeDiag(std::sync::Arc<std::sync::Mutex<Vec<rxt_core::DiagLevel>>>);
+
+impl crate::diagnostics::DiagnosticsControl for FakeDiag {
+    fn apply(&self, s: &rxt_core::DiagSettings) -> crate::diagnostics::DiagState {
+        self.0.lock().unwrap().push(s.level);
+        let dir = std::env::temp_dir().join("rxt-ui-diag").join("rustxterm-logs");
+        let file = (s.level != rxt_core::DiagLevel::Off).then(|| dir.join("rustxterm-diagnostic.log"));
+        crate::diagnostics::DiagState { dir: Some(dir), file, ..Default::default() }
+    }
+}
+
+#[test]
+fn snapshot_settings_diagnostics_applies_live_and_asks_before_recording() {
+    let mut e = env();
+    let applied = std::sync::Arc::default();
+    e.app().diagnostics = Some(Box::new(FakeDiag(std::sync::Arc::clone(&applied))));
+    e.app().diag_applied = None;
+    e.settle();
+    assert_eq!(*applied.lock().unwrap(), [rxt_core::DiagLevel::Off]);
+    e.app().settings.diagnostics.level = rxt_core::DiagLevel::FullDebug;
+    e.settle();
+    assert_eq!(*applied.lock().unwrap(), [rxt_core::DiagLevel::Off, rxt_core::DiagLevel::FullDebug]);
+    e.app().run(CommandId::SETTINGS);
+    settings_tab(&mut e, "Diagnostics");
+    e.h.get_by_label("Record data stream").click();
+    e.settle();
+    assert!(e.h.state().stream.asking && !e.h.state().stream.on, "consent comes first");
+    e.snap("settings_diagnostics");
+    e.h.get_by_label("Cancel").click();
+    e.settle();
+    assert!(!e.h.state().stream.asking && !e.h.state().stream.on);
+    // Consent given: capture runs and the status bar says so until it is switched off.
+    e.h.get_by_label("Record data stream").click();
+    e.settle();
+    e.h.get_by_label("Start recording").click();
+    e.settle();
+    assert!(e.h.state().stream.on && rxt_engine::stream::active(), "{:?}", e.h.state().stream.error);
+    e.snap("settings_diagnostics_recording");
+    e.h.get_by_label("Record data stream").click();
+    e.settle();
+    assert!(!e.h.state().stream.on && !rxt_engine::stream::active());
+}
+
 fn audit_record(i: i64, decision: &str, result: &str) -> rxt_store::db::AuditRecord {
     rxt_store::db::AuditRecord {
         ts: NOW + i * 60,

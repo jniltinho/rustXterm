@@ -172,6 +172,12 @@ impl TelnetSession {
         }
     }
 
+    /// The session logs in automatically with a saved password, which the server could echo at any
+    /// point: data-stream capture leaves its output out entirely.
+    pub fn has_auto_login(&self) -> bool {
+        self.login.is_some()
+    }
+
     pub fn writer(&self) -> TelnetWriter {
         TelnetWriter { shared: Arc::clone(&self.shared) }
     }

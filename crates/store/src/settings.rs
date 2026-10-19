@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use rxt_core::{CursorShape, Error, Result, TerminalPrefs, ThemeMode, UiScale};
+use rxt_core::{CursorShape, DiagSettings, Error, Result, TerminalPrefs, ThemeMode, UiScale};
 use serde::{Deserialize, Serialize};
 
 /// Substrings (lower-case) that mark a key as secret-like; such keys never belong in plain settings.
@@ -72,6 +72,8 @@ pub struct Settings {
     /// user (`true`); a fresh install starts from [`Default`] (`false`).
     #[serde(default = "first_run_done_in_old_files")]
     pub first_run_theme_done: bool,
+    /// Diagnostic log level, traced protocols and folder (Settings → Diagnostics).
+    pub diagnostics: DiagSettings,
 }
 
 impl Default for Settings {
@@ -110,6 +112,7 @@ impl Default for Settings {
             notifications: true,
             gpu_backend: "auto".into(),
             first_run_theme_done: false,
+            diagnostics: DiagSettings::default(),
         }
     }
 }

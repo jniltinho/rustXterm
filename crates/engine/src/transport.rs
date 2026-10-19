@@ -95,6 +95,14 @@ pub(crate) trait Link: Send + Sync {
 
 pub(crate) trait ShellRead: Send {
     fn read(&mut self) -> BoxFut<'_, Option<ShellMsg>>;
+    /// The last data read was local echo of the user's input (Serial), not the device's output.
+    fn last_was_local_echo(&self) -> bool {
+        false
+    }
+    /// Output may carry a credential the app typed itself (Telnet auto-login): not captured.
+    fn capture_paused(&self) -> bool {
+        false
+    }
     /// Why the stream ended, once `read` returned `None` (serial: `Error::Gone` on unplug).
     fn end_reason(&mut self) -> Option<Error> {
         None
@@ -400,6 +408,10 @@ impl ShellRead for rxt_telnet::TelnetSession {
     fn read(&mut self) -> BoxFut<'_, Option<ShellMsg>> {
         Box::pin(async move { rxt_telnet::TelnetSession::read(self).await.map(ShellMsg::Data) })
     }
+
+    fn capture_paused(&self) -> bool {
+        self.has_auto_login()
+    }
 }
 
 impl ShellWrite for rxt_telnet::TelnetWriter {
@@ -430,7 +442,10 @@ impl Link for SerialLink {
         Box::pin(async move {
             let session = session.ok_or_else(|| Error::Invalid("serial port already in use by this tab".into()))?;
             let writer = session.writer();
-            Ok((Box::new(SerialReader { session, end: None }) as Box<dyn ShellRead>, Box::new(writer) as _))
+            Ok((
+                Box::new(SerialReader { session, end: None, echo: false }) as Box<dyn ShellRead>,
+                Box::new(writer) as _,
+            ))
         })
     }
 
@@ -450,19 +465,27 @@ impl Link for SerialLink {
 struct SerialReader {
     session: rxt_serial::SerialSession,
     end: Option<Error>,
+    echo: bool,
 }
 
 impl ShellRead for SerialReader {
     fn read(&mut self) -> BoxFut<'_, Option<ShellMsg>> {
         Box::pin(async move {
-            match self.session.read().await? {
-                Ok(bytes) => Some(ShellMsg::Data(bytes)),
+            match self.session.read_tagged().await? {
+                Ok((bytes, echo)) => {
+                    self.echo = echo;
+                    Some(ShellMsg::Data(bytes))
+                }
                 Err(e) => {
                     self.end = Some(e);
                     None
                 }
             }
         })
+    }
+
+    fn last_was_local_echo(&self) -> bool {
+        self.echo
     }
 
     fn end_reason(&mut self) -> Option<Error> {

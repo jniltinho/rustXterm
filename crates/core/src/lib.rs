@@ -4,6 +4,7 @@
 pub mod command;
 pub mod control;
 pub mod desktop;
+pub mod diag;
 pub mod error;
 pub mod fileops;
 pub mod monitor;
@@ -17,6 +18,7 @@ pub use command::{
     PromptKind, Secret, SshInfo, TabId, TransferId, TunnelState,
 };
 pub use desktop::{DesktopEvent, DesktopInput, Framebuffer, Rect};
+pub use diag::{DiagLevel, DiagSettings};
 pub use error::{Error, Result};
 pub use fileops::{BoxFut, FileEntry, FileKind, FileOps, Overwrite};
 pub use monitor::{Disk, MetricsSample, MonitorState};

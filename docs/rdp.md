@@ -139,9 +139,9 @@ a fix for the server.
 | `certificate of HOST:PORT changed` | The saved certificate differs | Confirm the new fingerprint with the administrator |
 | `HOST:PORT: connect timed out` | Port 3389 blocked, RDP disabled or wrong host | Check the firewall and "Allow remote connections to this computer" |
 
-For anything else, start rustXterm with `--debug-log` and try again: `rustxterm-debug.log` (current
-directory, or the config folder) shows the NLA user and domain sent, the negotiated protocol and every
-connection step, without passwords or the NTLM messages.
+For anything else, set Settings → Diagnostics to **Protocol trace** with RDP (or start rustXterm with
+`--debug-log`) and try again: `rustxterm-logs/rustxterm-diagnostic.log` shows the NLA user and domain
+sent, the negotiated protocol and every connection step, without passwords or the NTLM messages.
 
 ## Testing it yourself
 

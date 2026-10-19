@@ -237,6 +237,15 @@ pub(crate) enum Action {
     ChangePassword(Secret),
     SetKeyring(bool),
     ImportIni,
+    /// Settings → Diagnostics: choose the folder of `rustxterm-logs`.
+    PickDiagFolder,
+    /// Settings → Diagnostics: delete the diagnostic log and the stream files.
+    ClearDiagnostics,
+    /// Start (after consent) or stop data-stream capture.
+    StreamCapture {
+        on: bool,
+        include_input: bool,
+    },
     /// Import the MobaXterm.ini found on first run (the offer card).
     ImportMobaFound(std::path::PathBuf),
     /// Dismiss the first-run MobaXterm import offer without importing.
@@ -282,6 +291,7 @@ enum DialogKind {
     Import,
     Export,
     Workspace,
+    DiagFolder,
 }
 
 /// Result of a native file dialog run off the UI thread.
@@ -294,6 +304,7 @@ enum DialogResult {
     ImportToml(PathBuf),
     ExportToml(PathBuf),
     AgentWorkspace(PathBuf),
+    DiagFolder(PathBuf),
 }
 
 impl DialogResult {
@@ -307,6 +318,7 @@ impl DialogResult {
             Self::ImportIni(p) | Self::ImportToml(p) => (DialogKind::Import, p),
             Self::ExportToml(p) => (DialogKind::Export, p),
             Self::AgentWorkspace(p) => return Some((DialogKind::Workspace, p.clone())),
+            Self::DiagFolder(p) => return Some((DialogKind::DiagFolder, p.clone())),
         };
         Some((kind, path.parent()?.to_owned()))
     }
@@ -401,6 +413,13 @@ pub struct App {
     window_synced: bool,
     /// Crash-safe graphics start still waiting for painted frames, and frames painted so far.
     gpu_start: Option<(GpuStart, u32)>,
+    /// The binary's diagnostic log, the settings last applied to it and what it reported.
+    pub(crate) diagnostics: Option<Box<dyn crate::diagnostics::DiagnosticsControl>>,
+    pub(crate) diag_applied: Option<rxt_core::DiagSettings>,
+    pub(crate) diag_state: crate::diagnostics::DiagState,
+    stream_chip_clicked: bool,
+    /// Data-stream switch for this run (never saved).
+    pub(crate) stream: crate::diagnostics::StreamUi,
     out_buf: Vec<u8>,
     /// Remote-desktop tab last reported visible to the engine.
     visible_desktop: Option<TabId>,
@@ -489,6 +508,11 @@ impl App {
             open_menu: false,
             window_synced: false,
             gpu_start: None,
+            diagnostics: None,
+            diag_applied: None,
+            diag_state: crate::diagnostics::DiagState::default(),
+            stream_chip_clicked: false,
+            stream: crate::diagnostics::StreamUi::default(),
             out_buf: Vec::new(),
             visible_desktop: None,
             vault: None,
@@ -542,6 +566,91 @@ impl App {
         }
         self.gpu_start = Some((start, 0));
         self
+    }
+
+    /// Hand over the binary's diagnostic log; Settings → Diagnostics drives it from now on.
+    pub fn with_diagnostics(mut self, control: Box<dyn crate::diagnostics::DiagnosticsControl>) -> Self {
+        self.diagnostics = Some(control);
+        self.diag_applied = None;
+        self
+    }
+
+    /// Applies changed diagnostics settings at once (log level, folder) and moves stream capture to
+    /// the new folder.
+    fn sync_diagnostics(&mut self) {
+        self.poll_diagnostics();
+        if self.diag_applied.as_ref() == Some(&self.settings.diagnostics) {
+            return;
+        }
+        let Some(control) = &self.diagnostics else { return };
+        self.diag_state = control.apply(&self.settings.diagnostics);
+        self.diag_applied = Some(self.settings.diagnostics.clone());
+        if self.stream.on {
+            self.set_stream(true, self.stream.include_input);
+        }
+    }
+
+    /// Writer failures stop what they affect and show on the page; the REC chip follows the real
+    /// capture state.
+    fn poll_diagnostics(&mut self) {
+        if let Some(e) = self.diagnostics.as_ref().and_then(|c| c.poll_error()) {
+            self.diag_state.error = Some(e);
+            self.diag_state.file = None;
+        }
+        if self.stream.on {
+            if let Some(e) = rxt_engine::stream::take_error() {
+                let _ = rxt_engine::stream::configure(None);
+                self.stream.error = Some(format!("stream capture stopped: {e}"));
+            }
+            self.stream.on = rxt_engine::stream::active();
+        }
+    }
+
+    /// Deletes the diagnostic files: capture stops and the log closes first (written out, so no
+    /// file is open while it is deleted), then both resume as they were.
+    fn clear_diagnostics(&mut self) {
+        let Some(dir) = self.diag_state.dir.clone() else { return };
+        let was_on = self.stream.on;
+        self.set_stream(false, self.stream.include_input);
+        rxt_engine::stream::flush();
+        if let Some(c) = &self.diagnostics {
+            c.apply(&rxt_core::DiagSettings { level: rxt_core::DiagLevel::Off, ..self.settings.diagnostics.clone() });
+            c.flush();
+        }
+        let keep = self.diag_state.file.clone().filter(|_| self.diag_state.forced);
+        let (done, failed) = crate::diagnostics::clear(&dir, keep.as_deref());
+        self.status = if failed == 0 {
+            format!("Deleted {done} diagnostic file(s)")
+        } else {
+            format!("Deleted {done} diagnostic file(s); {failed} could not be deleted")
+        };
+        self.diag_applied = None;
+        self.sync_diagnostics();
+        if was_on {
+            self.set_stream(true, self.stream.include_input);
+        }
+    }
+
+    fn set_stream(&mut self, on: bool, include_input: bool) {
+        self.stream.include_input = include_input;
+        let dir = self.diag_state.dir.as_deref().map(crate::diagnostics::streams_dir);
+        let cfg = match (on, dir) {
+            (true, Some(dir)) => Some(rxt_engine::stream::StreamConfig { dir, include_input }),
+            (true, None) => {
+                let _ = rxt_engine::stream::configure(None);
+                self.stream.on = false;
+                self.stream.error = Some("no usable folder for the stream files".into());
+                return;
+            }
+            (false, _) => None,
+        };
+        self.stream.on = cfg.is_some();
+        self.stream.error = rxt_engine::stream::configure(cfg);
+        if self.stream.error.is_some() {
+            self.stream.on = false;
+            let _ = rxt_engine::stream::configure(None);
+        }
+        tracing::info!(on = self.stream.on, include_input, "data-stream capture");
     }
 
     pub fn with_vault(mut self, vault: Arc<Vault>) -> Self {
@@ -815,6 +924,7 @@ impl App {
             ctx.request_repaint();
             return;
         }
+        self.sync_diagnostics();
         self.pump(&ctx);
         self.confirm_exit(&ctx);
         self.apply_theme(&ctx, false);
@@ -1200,6 +1310,7 @@ impl App {
             DialogResult::ImportIni(path) => self.import_ini(path),
             DialogResult::ImportToml(path) => self.import_toml(&path),
             DialogResult::AgentWorkspace(path) => self.agent_workspace = Some(path.to_string_lossy().into_owned()),
+            DialogResult::DiagFolder(path) => self.settings.diagnostics.folder = Some(path),
             DialogResult::ExportToml(path) => {
                 let st = &self.store;
                 let (sessions, folders, tunnels) = (st.sessions.len(), st.folders.len(), st.tunnels.len());
@@ -1864,6 +1975,13 @@ impl App {
                 }
             }
             Action::OpenLocal { path, folder } => self.open_local(&path, folder),
+            Action::PickDiagFolder => {
+                self.spawn_dialog(DialogKind::DiagFolder, |d, start| {
+                    d.pick_folder("Diagnostics folder", start).map(DialogResult::DiagFolder)
+                });
+            }
+            Action::ClearDiagnostics => self.clear_diagnostics(),
+            Action::StreamCapture { on, include_input } => self.set_stream(on, include_input),
             Action::BrowseKeyFile => {
                 self.spawn_dialog(DialogKind::KeyFile, |d, start| {
                     d.pick_files("Select private key", start)
@@ -2132,6 +2250,11 @@ impl App {
             .exact_size(m.status_height)
             .frame(egui::Frame::NONE.fill(color(self.tokens.panel)).inner_margin(egui::Margin::symmetric(6, 0)))
             .show(ui, |ui| self.status_bar(ui));
+        if self.stream_chip_clicked {
+            self.stream_chip_clicked = false;
+            settings::open_on(ui.ctx(), settings::SettingsTab::Diagnostics);
+            self.show_settings = true;
+        }
         let max_w = (ui.max_rect().width() / 2.0).max(160.0);
         let side_frame = egui::Frame::NONE.fill(color(self.tokens.surface));
         if self.settings.sidebar_open {
@@ -2281,9 +2404,20 @@ impl App {
     }
 
     /// One line: latest message (ellipsized) left, tab count right; never grows the bar.
-    fn status_bar(&self, ui: &mut egui::Ui) {
+    fn status_bar(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.label(RichText::new(format!("{} tab(s)", self.tabs.len())).small());
+            if self.stream.on {
+                let text = RichText::new(" REC  Recording stream ")
+                    .small()
+                    .strong()
+                    .color(egui::Color32::WHITE)
+                    .background_color(color(self.tokens.danger));
+                let chip = ui.add(egui::Label::new(text).sense(egui::Sense::click()));
+                if chip.on_hover_text("Data-stream capture is on: open Settings → Diagnostics").clicked() {
+                    self.stream_chip_clicked = true;
+                }
+            }
             if self.multiexec {
                 ui.label(RichText::new("MultiExec ON").small().color(color(self.tokens.warning)));
             }
@@ -2520,6 +2654,7 @@ impl App {
                 &mut self.settings,
                 store,
                 agent,
+                settings::DiagPage { state: &self.diag_state, stream: &mut self.stream },
                 &self.icons,
                 &self.tokens,
                 out,
@@ -2820,5 +2955,10 @@ impl App {
         let pending: Vec<_> = self.approvals.iter().map(|a| a.id).collect();
         pending.into_iter().for_each(|id| self.answer_approval(id, false));
         self.backend.shutdown(Duration::from_secs(3));
+        // Queued stream records and log lines reach the disk before the process ends.
+        rxt_engine::stream::shutdown();
+        if let Some(c) = &self.diagnostics {
+            c.flush();
+        }
     }
 }

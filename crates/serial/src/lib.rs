@@ -139,13 +139,19 @@ impl SerialSession {
     /// Next received bytes (local echo included). `None` when cancelled or closed;
     /// `Some(Err(Error::Gone))` when the device was removed (then `None`).
     pub async fn read(&mut self) -> Option<Result<Vec<u8>>> {
+        self.read_tagged().await.map(|r| r.map(|(bytes, _)| bytes))
+    }
+
+    /// [`Self::read`] with `true` for local echo (the user's own input, generated here), so a
+    /// data-stream capture can leave it out.
+    pub async fn read_tagged(&mut self) -> Option<Result<(Vec<u8>, bool)>> {
         let r = tokio::select! {
             biased;
             () = self.cancel.cancelled() => return None,
-            Some(echo) = self.echo_rx.recv() => return Some(Ok(echo)),
+            Some(echo) = self.echo_rx.recv() => return Some(Ok((echo, true))),
             r = self.rx.recv() => r?,
         };
-        Some(r.map(|b| if self.lf_to_crlf { lf_to_crlf(&b) } else { b }))
+        Some(r.map(|b| (if self.lf_to_crlf { lf_to_crlf(&b) } else { b }, false)))
     }
 
     pub fn writer(&self) -> SerialWriter {

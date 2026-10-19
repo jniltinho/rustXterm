@@ -35,6 +35,7 @@ mod follow;
 mod local;
 mod monitor;
 pub mod offline;
+pub mod stream;
 mod tab;
 mod tail;
 #[cfg(test)]

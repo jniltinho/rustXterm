@@ -12,6 +12,7 @@
 pub mod db;
 pub mod envelope;
 pub mod export;
+pub mod logfile;
 pub mod moba_ini;
 pub mod schemes;
 pub mod settings;

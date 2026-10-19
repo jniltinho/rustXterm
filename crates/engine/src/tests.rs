@@ -755,6 +755,39 @@ fn saved_password_skips_prompt_and_rejected_one_is_forgotten() {
 mod agent;
 mod local;
 
+#[test]
+fn stream_capture_records_server_output_but_not_typed_passwords() {
+    let _one = crate::stream::TEST_LOCK.lock();
+    let dir = std::env::temp_dir().join(format!("rxt-engine-stream-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        crate::stream::configure(Some(crate::stream::StreamConfig { dir: dir.clone(), include_input: false }))
+            .is_none()
+    );
+    let (h, state, _) = start(1 << 20);
+    let tab = connect(&h, "banner");
+    let mut out = Vec::new();
+    wait_until(|| {
+        h.drain_output(tab, usize::MAX, &mut out);
+        out.ends_with(b"$ ")
+    });
+    h.send(Command::Input { tab, bytes: b"s3cret-pw\r".to_vec() }).unwrap();
+    wait_until(|| state.writes_to("banner").len() == 1);
+    h.shutdown(WAIT);
+    crate::stream::shutdown();
+    let text: String = std::fs::read_dir(&dir)
+        .unwrap()
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with("banner"))
+        .map(|e| std::fs::read_to_string(e.path()).unwrap())
+        .collect();
+    assert!(text.contains("RX 2 bytes") && text.contains("|$ |"), "{text}");
+    assert!(!text.contains("s3cret") && !text.contains("73 33 63 72 65 74"), "{text}");
+    // The pre-auth banner is shown by the app, not read through the tap.
+    assert!(!text.contains("Fictional lab banner"), "{text}");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
 fn serial_session(port: &str) -> Session {
     Session::serial(port, rxt_core::LineConfig::default())
 }

@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 
 use egui::{Key, KeyboardShortcut, Modifiers};
-use rxt_core::{CommandId, CursorShape, Metrics, TerminalPrefs, TerminalScheme, ThemeMode, Tokens, UiScale};
+use rxt_core::{
+    CommandId, CursorShape, DiagSettings, Metrics, TerminalPrefs, TerminalScheme, ThemeMode, Tokens, UiScale,
+};
 use rxt_store::settings::Settings as StoreSettings;
 use serde::{Deserialize, Serialize};
 
@@ -62,6 +64,9 @@ pub(crate) struct Settings {
     /// The first-run MobaXterm.ini import offer was shown (so it is not offered again).
     #[serde(default = "first_run_done_in_old_files")]
     pub first_run_moba_offered: bool,
+    /// Settings → Diagnostics (the data-stream switch is not saved).
+    #[serde(default)]
+    pub diagnostics: DiagSettings,
 }
 
 impl Default for Settings {
@@ -99,6 +104,7 @@ impl Default for Settings {
             gpu_backend: "auto".into(),
             first_run_theme_done: false,
             first_run_moba_offered: false,
+            diagnostics: DiagSettings::default(),
         }
     }
 }
@@ -213,6 +219,7 @@ impl Settings {
             gpu_backend: s.gpu_backend.clone(),
             first_run_theme_done: s.first_run_theme_done,
             first_run_moba_offered: true,
+            diagnostics: s.diagnostics.clone(),
         }
     }
 
@@ -249,6 +256,7 @@ impl Settings {
             notifications: self.notifications,
             gpu_backend: self.gpu_backend.clone(),
             first_run_theme_done: self.first_run_theme_done,
+            diagnostics: self.diagnostics.clone(),
             ..base.clone()
         }
     }
@@ -328,11 +336,20 @@ pub(crate) enum SettingsTab {
     Shortcuts,
     Security,
     AgentControl,
+    Diagnostics,
 }
 
 impl SettingsTab {
-    pub(crate) const ALL: [Self; 7] =
-        [Self::General, Self::Terminal, Self::Ssh, Self::Display, Self::Shortcuts, Self::Security, Self::AgentControl];
+    pub(crate) const ALL: [Self; 8] = [
+        Self::General,
+        Self::Terminal,
+        Self::Ssh,
+        Self::Display,
+        Self::Shortcuts,
+        Self::Security,
+        Self::AgentControl,
+        Self::Diagnostics,
+    ];
 
     /// (label, catalog icon).
     fn label_icon(self) -> (&'static str, &'static str) {
@@ -344,6 +361,7 @@ impl SettingsTab {
             Self::Shortcuts => ("Shortcuts", "keyboard"),
             Self::Security => ("Security", "lock"),
             Self::AgentControl => ("Agent control", "rocket"),
+            Self::Diagnostics => ("Diagnostics", "terminal-list"),
         }
     }
 }
@@ -356,6 +374,17 @@ fn tab_id() -> egui::Id {
     egui::Id::new("settings-last-tab")
 }
 
+/// Makes the Settings window open on `tab` next time it is shown.
+pub(crate) fn open_on(ctx: &egui::Context, tab: SettingsTab) {
+    ctx.data_mut(|d| d.insert_temp(tab_id(), tab));
+}
+
+/// The Diagnostics page's live state, owned by the app.
+pub(crate) struct DiagPage<'a> {
+    pub state: &'a crate::diagnostics::DiagState,
+    pub stream: &'a mut crate::diagnostics::StreamUi,
+}
+
 /// Settings window; edits apply immediately, OK, Escape and the close button only close it.
 /// `store` enables the Security page actions.
 #[allow(clippy::too_many_arguments)]
@@ -365,6 +394,7 @@ pub(crate) fn window(
     s: &mut Settings,
     store: Option<StoreState>,
     agent: AgentSettings<'_>,
+    diag: DiagPage<'_>,
     icons: &Icons,
     tokens: &Tokens,
     out: &mut Vec<Action>,
@@ -378,7 +408,7 @@ pub(crate) fn window(
         .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
         .show(ctx, |ui| {
             close = widgets::window_title(ui, "Settings");
-            widgets::window_body(ui, |ui| body(ui, &mut tab, &mut ok, s, store, agent, icons, tokens, out));
+            widgets::window_body(ui, |ui| body(ui, &mut tab, &mut ok, s, store, agent, diag, icons, tokens, out));
         });
     let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape)) && !egui::Popup::is_any_open(ctx);
     if ok || escape || close {
@@ -396,6 +426,7 @@ fn body(
     s: &mut Settings,
     store: Option<StoreState>,
     agent: AgentSettings<'_>,
+    diag: DiagPage<'_>,
     icons: &Icons,
     tokens: &Tokens,
     out: &mut Vec<Action>,
@@ -438,7 +469,7 @@ fn body(
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .max_height(ui.available_height() - footer)
-                .show(ui, |ui| page(ui, *tab, s, store, agent, icons, tokens, out));
+                .show(ui, |ui| page(ui, *tab, s, store, agent, diag, icons, tokens, out));
         });
     let y = page_frame.response.rect.top() + m.stroke / 2.0;
     ui.painter().hline(tab_rect.left() + m.stroke..=tab_rect.right() - m.stroke, y, egui::Stroke::new(m.stroke, fill));
@@ -476,6 +507,7 @@ fn page(
     s: &mut Settings,
     store: Option<StoreState>,
     agent: AgentSettings<'_>,
+    diag: DiagPage<'_>,
     icons: &Icons,
     tokens: &Tokens,
     out: &mut Vec<Action>,
@@ -520,6 +552,9 @@ fn page(
         SettingsTab::AgentControl => plain_box(ui, tokens, |ui| {
             crate::agent::settings_section(ui, &mut s.agent_control, agent, out);
         }),
+        SettingsTab::Diagnostics => {
+            crate::diagnostics::page(ui, &mut s.diagnostics, diag.state, diag.stream, icons, tokens, out);
+        }
     }
 }
 
@@ -867,7 +902,13 @@ pub(crate) mod tests {
                     if *open {
                         let mut ws = None;
                         let agent = AgentSettings { workspace: &mut ws, default_workspace: "/tmp/agent".into() };
-                        window(ui.ctx(), open, s, None, agent, icons, &Tokens::light(), out);
+                        let state = crate::diagnostics::DiagState {
+                            dir: Some("/home/user/rustxterm-logs".into()),
+                            ..Default::default()
+                        };
+                        let mut stream = crate::diagnostics::StreamUi::default();
+                        let diag = DiagPage { state: &state, stream: &mut stream };
+                        window(ui.ctx(), open, s, None, agent, diag, icons, &Tokens::light(), out);
                     }
                 },
                 // Opened after the theme is installed (the builder runs the first frame).

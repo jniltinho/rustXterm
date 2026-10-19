@@ -208,10 +208,12 @@ async fn connect_and_run(
     if !auth_banner.is_empty() && out.push(auth_banner.as_bytes()) {
         sh.emit(Event::Output { tab }).await;
     }
+    // Data-stream capture (after authentication; local terminals never write log files).
+    let tap = (session.protocol != Protocol::Local).then(|| crate::stream::Tap::new(session));
     let end = tokio::select! {
         () = cancel.cancelled() => End::Failed(Error::Cancelled),
-        end = pump_output(sh, tab, &out, reader, session) => end,
-        end = pump_input(writer, rx) => end,
+        end = pump_output(sh, tab, &out, reader, session, tap.as_ref()) => end,
+        end = pump_input(writer, rx, tap.as_ref()) => end,
         end = follow => end,
         end = monitor => end,
     };
@@ -303,6 +305,14 @@ async fn run_desktop(
         },
     };
     prompter.commit();
+    let tap = Arc::new(crate::stream::Tap::new(session));
+    let send: crate::transport::DesktopSend = {
+        let (tap, inner) = (tap.clone(), send);
+        Arc::new(move |input| {
+            tap.desktop_input(&input);
+            inner(input)
+        })
+    };
     let frame = {
         let mut tabs = sh.tabs.lock();
         let Some(t) = tabs.get_mut(&tab).filter(|t| t.generation == generation) else {
@@ -317,7 +327,7 @@ async fn run_desktop(
     sh.set_state(tab, generation, ConnState::Connected).await;
     let end = tokio::select! {
         () = cancel.cancelled() => End::Failed(Error::Cancelled),
-        end = pump_desktop(sh, tab, &frame, reader) => end,
+        end = pump_desktop(sh, tab, &frame, reader, &tap) => end,
     };
     (end, true)
 }
@@ -328,9 +338,14 @@ async fn pump_desktop(
     tab: TabId,
     frame: &parking_lot::Mutex<rxt_core::Framebuffer>,
     mut reader: Box<dyn DesktopRead>,
+    tap: &crate::stream::Tap,
 ) -> End {
     loop {
-        match reader.next().await {
+        let next = reader.next().await;
+        if let Some(Ok(event)) = &next {
+            tap.desktop_event(event);
+        }
+        match next {
             Some(Ok(DesktopEvent::Clipboard(text))) => {
                 if let Some(t) = sh.tabs.lock().get_mut(&tab) {
                     t.clipboard = Some(text);
@@ -351,7 +366,14 @@ async fn pump_desktop(
 }
 
 /// Reads the transport only while the tab's output buffer has room (channel-window backpressure).
-async fn pump_output(sh: &Shared, tab: TabId, out: &OutBuf, mut reader: Box<dyn ShellRead>, session: &Session) -> End {
+async fn pump_output(
+    sh: &Shared,
+    tab: TabId,
+    out: &OutBuf,
+    mut reader: Box<dyn ShellRead>,
+    session: &Session,
+    tap: Option<&crate::stream::Tap>,
+) -> End {
     let mut exit = None;
     loop {
         while out.len() >= out.cap {
@@ -359,6 +381,9 @@ async fn pump_output(sh: &Shared, tab: TabId, out: &OutBuf, mut reader: Box<dyn 
         }
         match reader.read().await {
             Some(ShellMsg::Data(bytes)) => {
+                if let Some(t) = tap.filter(|_| !reader.last_was_local_echo() && !reader.capture_paused()) {
+                    t.received(&bytes);
+                }
                 if out.push(&bytes) {
                     sh.emit(Event::Output { tab }).await;
                 } else {
@@ -383,10 +408,19 @@ async fn pump_output(sh: &Shared, tab: TabId, out: &OutBuf, mut reader: Box<dyn 
     }
 }
 
-async fn pump_input(writer: Box<dyn ShellWrite>, mut rx: mpsc::Receiver<InputMsg>) -> End {
+async fn pump_input(
+    writer: Box<dyn ShellWrite>,
+    mut rx: mpsc::Receiver<InputMsg>,
+    tap: Option<&crate::stream::Tap>,
+) -> End {
     while let Some(msg) = rx.recv().await {
         let result = match msg {
-            InputMsg::Bytes(bytes) => writer.write(&bytes).await,
+            InputMsg::Bytes(bytes) => {
+                if let Some(t) = tap {
+                    t.sent(&bytes);
+                }
+                writer.write(&bytes).await
+            }
             InputMsg::Resize(cols, rows) => writer.resize(cols, rows).await,
         };
         if let Err(e) = result {

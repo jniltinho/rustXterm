@@ -9,6 +9,7 @@ mod agent;
 mod app;
 mod banner;
 mod desktop;
+mod diagnostics;
 mod dialogs;
 mod file_tab;
 mod home;
@@ -40,5 +41,6 @@ mod shell_tests;
 mod tests;
 
 pub use app::{App, Backend, EXIT, GpuStart, HELP, MIN_WINDOW};
+pub use diagnostics::{DiagState, DiagnosticsControl};
 pub use icons::OVERRIDE_ENV as ICON_OVERRIDE_ENV;
 pub use vault::Vault;

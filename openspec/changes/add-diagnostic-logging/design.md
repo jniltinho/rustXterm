@@ -16,8 +16,7 @@ them.
 
 Live switching: the file layer is always registered (also at Off), with `reload` used only on its
 `EnvFilter` (Off = `off`). `reload` cannot replace a `Filtered` layer or insert one later, so the
-writer is a `MakeWriter` over a shared slot that the settings code points at a new file, or at
-nothing. Tested Off → Full debug → Off with a connection in progress.
+writer is a `MakeWriter` over the background [`Sink`] (D3a), whose file is closed and reopened by key. Tested Off → Full debug → Off with a connection in progress.
 
 ## D2. Folder
 
@@ -27,20 +26,24 @@ explicit folder. Files: `rustxterm-diagnostic.log` and `streams/<session>-<yyyym
 Files go into an app-owned `rustxterm-logs/` subfolder of the chosen folder, never into it directly.
 Opening follows the `--debug-log` rules: Unix creates with `create_new` + `0600`, and an existing file
 must be a regular file with one link and the same inode once opened (rotation files included). On
-Windows only that subfolder is protected (owner-only ACL on it, not `Paths::make_private`, which
-recurses and refuses folders outside the profile). A folder that cannot be created or protected
+Windows the subfolder and files inherit the chosen folder's permissions (`Paths::make_private` is not
+used: it recurses and refuses folders outside the profile); an owner-only ACL there is a follow-up. A folder that cannot be created or protected
 falls back to the config folder, and the page says why.
 
 ## D3. Data stream
 
-The tap sits on the session transport after authentication finishes, so credentials the app sends
+The tap sits in the engine's shell pumps (`pump_output`, `pump_input`) and desktop pump, after
+authentication finishes, so credentials the app sends
 itself (saved passwords, Telnet auto-login, SSH user authentication) never pass through it. It records
 `time direction length` and a hex+text dump of each chunk. Received bytes can still hold secrets the
 server echoes (a password typed where echo is on, another MultiExec target's echo, a pasted secret),
 so turning the switch on needs consent each time and the files are treated like session logs
 (`session-management` "Saved credentials" still holds: the app never writes a saved credential).
-Sent bytes are recorded only with **Include typed input**. Serial's synthetic local echo is generated
-above the tap and is not recorded. RDP/VNC record the PDU/message type and length only. Local terminal
+Telnet auto-login types the saved password into the session itself and a server may echo it at any
+time, so a Telnet session with automatic login is not captured at all. Sent bytes are recorded only
+with **Include typed input**. Serial's synthetic local echo is generated
+above the tap and is not recorded. RDP/VNC record the desktop event type and size only (updates, resizes, clipboard length; input
+kinds, with keys only when typed input is included). Local terminal
 tabs have no tap (their spec forbids log files). The switch is never saved; while on, the status bar
 shows a red "Recording stream" chip that opens the page.
 

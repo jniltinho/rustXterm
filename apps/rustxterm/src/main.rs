@@ -11,6 +11,7 @@ use clap::Parser;
 use eframe::egui;
 use rxt_engine::{Engine, EngineConfig, Records, Waker};
 use rxt_platform::Paths;
+use rxt_store::logfile;
 use rxt_store::settings::{self, CliOverrides, LoadOutcome};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::Layer;
@@ -62,8 +63,10 @@ pub fn main() -> ExitCode {
     }
     let debug_log =
         cli.debug_log.or_else(|| std::env::var_os("RXT_DEBUG_LOG").filter(|v| !v.is_empty()).map(PathBuf::from));
-    init_logging(&loaded.settings.log_level, debug_log.as_deref(), config.parent());
-    match run(loaded, config, cli.safe_gpu) {
+    let config_dir = config.parent().map(PathBuf::from).unwrap_or_default();
+    let diagnostics = init_logging(&loaded.settings.log_level, debug_log.as_deref(), config_dir);
+    rxt_ui::DiagnosticsControl::apply(&diagnostics, &loaded.settings.diagnostics);
+    match run(loaded, config, cli.safe_gpu, diagnostics) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("rustxterm: {e:#}");
@@ -75,84 +78,125 @@ pub fn main() -> ExitCode {
 /// Default `--debug-log` file, relative to the current directory.
 const DEBUG_LOG: &str = "rustxterm-debug.log";
 
-/// Debug everywhere except the graphics stack, whose per-frame events would bury everything else, and
-/// the NTLM/CredSSP code, kept at `info`: `sspi` debug spans record return values, plaintext RDP
-/// credentials included (`write_password_credentials`), and `ironrdp_connector::credssp` logs the NTLM
-/// messages, whose NTLMv2 response allows offline password guessing.
-const DEBUG_FILTER: &str = "debug,sspi=info,picky=info,picky_krb=info,ironrdp_connector::credssp=info,wgpu=warn,wgpu_core=warn,wgpu_hal=warn,naga=warn,egui=info,eframe=info,egui_wgpu=info,winit=info,calloop=info,sctk=info";
-
-/// Console log at `level` (or `RUST_LOG`); with `debug_log`, also a full debug log appended to that
-/// file (owner-only on Unix). The default name falls back to `fallback_dir` (the config folder) when
-/// the current directory is not writable, as for an app started from Finder (`/`) or a Windows shortcut
-/// (`Program Files`). A file that cannot be opened is reported and the app starts anyway.
-fn init_logging(level: &str, debug_log: Option<&std::path::Path>, fallback_dir: Option<&std::path::Path>) {
+/// Console log at `level` (or `RUST_LOG`), plus the diagnostic log file layer, always registered:
+/// its filter is reloaded and its file reopened by Settings → Diagnostics without a restart
+/// (`reload` cannot replace or add a filtered layer later). With `debug_log` (`--debug-log`) the
+/// file is that one at full debug for this run; the default name falls back to `config_dir` when
+/// the current directory is not writable (an app started from Finder or a Windows shortcut).
+fn init_logging(level: &str, debug_log: Option<&std::path::Path>, config_dir: PathBuf) -> Diagnostics {
     let console = tracing_subscriber::fmt::layer()
         .with_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level)));
-    let file = debug_log.and_then(|path| {
-        let fallback = fallback_dir.filter(|_| path == std::path::Path::new(DEBUG_LOG)).map(|d| d.join(DEBUG_LOG));
-        let open = |p: &std::path::Path| open_debug_log(p).map(|f| (p.to_path_buf(), f));
-        match open(path).or_else(|e| fallback.as_deref().map_or(Err(e), open)) {
-            Ok(opened) => Some(opened),
-            Err(e) => {
-                eprintln!("rustxterm: debug log {}: {e}", path.display());
-                None
+    let sink =
+        logfile::Sink::start("rustxterm-log").inspect_err(|e| eprintln!("rustxterm: diagnostic log writer: {e}")).ok();
+    let (filter, handle) = tracing_subscriber::reload::Layer::new(EnvFilter::new("off"));
+    let file_layer = sink.clone().map(|sink| {
+        tracing_subscriber::fmt::layer()
+            .with_ansi(false)
+            .with_thread_ids(true)
+            .with_target(true)
+            .with_writer(move || logfile::SinkWriter { sink: sink.clone(), key: LOG_KEY })
+            .with_filter(filter)
+    });
+    tracing_subscriber::registry().with(console).with(file_layer).init();
+    let reload: Reload = Box::new(move |f: &str| handle.reload(EnvFilter::new(f)).map_err(|e| e.to_string()));
+    let mut diagnostics = Diagnostics { reload, sink, config_dir, forced: None };
+    if let Some(path) = debug_log {
+        diagnostics.forced = diagnostics.open_forced(path);
+    }
+    diagnostics
+}
+
+/// Sink key of the diagnostic log file.
+const LOG_KEY: u64 = 0;
+
+/// The diagnostic log behind Settings → Diagnostics (add-diagnostic-logging D1, D2, D5).
+/// Swaps the diagnostic log filter (a `reload` handle).
+type Reload = Box<dyn Fn(&str) -> Result<(), String> + Send + Sync>;
+
+struct Diagnostics {
+    reload: Reload,
+    sink: Option<logfile::Sink>,
+    config_dir: PathBuf,
+    /// `--debug-log` file: wins over the Settings level for this run.
+    forced: Option<PathBuf>,
+}
+
+impl Diagnostics {
+    /// Opens the `--debug-log` file at full debug; the default name falls back to the config folder.
+    fn open_forced(&self, path: &std::path::Path) -> Option<PathBuf> {
+        let sink = self.sink.as_ref()?;
+        let fallback = (path == std::path::Path::new(DEBUG_LOG)).then(|| self.config_dir.join(DEBUG_LOG));
+        for p in std::iter::once(path.to_path_buf()).chain(fallback) {
+            let p = std::path::absolute(&p).unwrap_or(p);
+            sink.open(LOG_KEY, p.clone());
+            sink.flush();
+            match sink.take_error() {
+                None => {
+                    let _ = (self.reload)(&rxt_core::diag::debug_filter());
+                    eprintln!("rustxterm: writing the debug log to {}", p.display());
+                    tracing::info!(version = env!("CARGO_PKG_VERSION"), os = std::env::consts::OS, "debug log started");
+                    return Some(p);
+                }
+                Some(e) => eprintln!("rustxterm: debug log: {e}"),
             }
         }
-    });
-    let (path, file_layer) = match file {
-        Some((path, f)) => {
-            let layer = tracing_subscriber::fmt::layer()
-                .with_ansi(false)
-                .with_thread_ids(true)
-                .with_target(true)
-                .with_writer(std::sync::Mutex::new(f))
-                .with_filter(EnvFilter::new(DEBUG_FILTER));
-            (Some(path), Some(layer))
-        }
-        None => (None, None),
-    };
-    tracing_subscriber::registry().with(console).with(file_layer).init();
-    if let Some(path) = path {
-        let shown = std::path::absolute(&path).unwrap_or(path);
-        eprintln!("rustxterm: writing the debug log to {}", shown.display());
-        tracing::info!(
-            version = env!("CARGO_PKG_VERSION"),
-            os = std::env::consts::OS,
-            "debug log started: {}",
-            shown.display()
-        );
+        None
     }
 }
 
-fn open_debug_log(path: &std::path::Path) -> std::io::Result<std::fs::File> {
-    if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
-        std::fs::create_dir_all(dir)?;
+impl rxt_ui::DiagnosticsControl for Diagnostics {
+    fn apply(&self, s: &rxt_core::DiagSettings) -> rxt_ui::DiagState {
+        let mut state = rxt_ui::DiagState::default();
+        match logfile::logs_dir(s.folder.as_deref(), &self.config_dir) {
+            Ok((dir, note)) => {
+                state.dir = Some(dir);
+                state.note = note;
+            }
+            Err(e) => state.error = Some(format!("no usable folder for diagnostics: {e}")),
+        }
+        let Some(sink) = &self.sink else {
+            state.error = Some("the diagnostic log writer did not start".into());
+            return state;
+        };
+        if let Some(path) = &self.forced {
+            state.file = Some(path.clone());
+            state.forced = true;
+            return state;
+        }
+        sink.close(LOG_KEY);
+        let filter = rxt_core::diag::filter(s.level, &s.protocols);
+        let (Some(filter), Some(dir)) = (filter, state.dir.clone()) else {
+            let _ = (self.reload)("off");
+            return state;
+        };
+        let file = dir.join(logfile::DIAGNOSTIC_LOG);
+        // Queued, not awaited: a failure to open shows up through `poll_error`.
+        sink.open(LOG_KEY, file.clone());
+        if let Err(e) = (self.reload)(&filter) {
+            state.error = Some(format!("cannot change the log level: {e}"));
+        }
+        tracing::info!(
+            level = s.level.label(),
+            version = env!("CARGO_PKG_VERSION"),
+            os = std::env::consts::OS,
+            "diagnostic log started"
+        );
+        state.file = Some(file);
+        state
     }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
-        // A new file is created owner-only; `create_new` never follows a symlink.
-        match std::fs::OpenOptions::new().append(true).create_new(true).mode(0o600).open(path) {
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
-            r => return r,
-        }
-        // An existing one must be a plain file (no symlink or hard link planted in a shared folder),
-        // the same one that gets opened, and is then made owner-only.
-        let refuse = |why: &str| std::io::Error::new(std::io::ErrorKind::PermissionDenied, why.to_owned());
-        let before = std::fs::symlink_metadata(path)?;
-        if !before.file_type().is_file() || before.nlink() != 1 {
-            return Err(refuse("not a regular file"));
-        }
-        let file = std::fs::OpenOptions::new().append(true).open(path)?;
-        let after = file.metadata()?;
-        if (after.dev(), after.ino()) != (before.dev(), before.ino()) {
-            return Err(refuse("the file changed while opening it"));
-        }
-        file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
-        Ok(file)
+
+    fn poll_error(&self) -> Option<String> {
+        let e = self.sink.as_ref()?.take_error()?;
+        // Nothing more can be written: stop formatting log lines for a closed file.
+        let _ = (self.reload)("off");
+        Some(e)
     }
-    #[cfg(not(unix))]
-    std::fs::OpenOptions::new().create(true).append(true).open(path)
+
+    fn flush(&self) {
+        if let Some(sink) = &self.sink {
+            sink.flush();
+        }
+    }
 }
 
 const APP_ICON_PNG: &[u8] = include_bytes!("../../../assets/icons/rustxterm-256.png");
@@ -162,7 +206,7 @@ fn app_icon() -> egui::IconData {
     eframe::icon_data::from_png_bytes(APP_ICON_PNG).unwrap_or_default()
 }
 
-fn run(loaded: LoadOutcome, config: PathBuf, safe_gpu: bool) -> anyhow::Result<()> {
+fn run(loaded: LoadOutcome, config: PathBuf, safe_gpu: bool, diagnostics: Diagnostics) -> anyhow::Result<()> {
     let platform = os::platform();
     let known_hosts = platform.paths.ssh_dir().join("known_hosts");
     let data_dir = loaded.settings.data_dir.clone().unwrap_or_else(|| platform.paths.data_dir());
@@ -224,7 +268,7 @@ fn run(loaded: LoadOutcome, config: PathBuf, safe_gpu: bool) -> anyhow::Result<(
     // winit dlopens libxkbcommon(-x11) and panics when it is missing (e.g. a minimal Arch/Xfce
     // install): report that as a startup error; any other panic propagates unchanged.
     let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_window(options, config_path, loaded, platform, vault, known_hosts, gpu_start)
+        run_window(options, config_path, loaded, platform, vault, known_hosts, gpu_start, diagnostics)
     }));
     run.unwrap_or_else(|panic| match missing_library(panic.as_ref()) {
         Some(lib) => Err(anyhow::anyhow!("cannot open the window: {lib} is not installed")),
@@ -238,6 +282,7 @@ fn missing_library(panic: &(dyn std::any::Any + Send)) -> Option<&str> {
     msg.strip_prefix("Library ")?.strip_suffix(" could not be loaded.")
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_window(
     options: eframe::NativeOptions,
     config_path: PathBuf,
@@ -246,6 +291,7 @@ fn run_window(
     vault: Arc<rxt_ui::Vault>,
     known_hosts: PathBuf,
     gpu_start: rxt_ui::GpuStart,
+    diagnostics: Diagnostics,
 ) -> anyhow::Result<()> {
     eframe::run_native(
         "rustxterm",
@@ -266,7 +312,7 @@ fn run_window(
             let engine = Engine::start(config, waker)?;
             let app =
                 rxt_ui::App::new(cc.storage, platform, engine).with_settings(loaded, config_path).with_vault(vault);
-            let app = app.with_gpu_start(gpu_start);
+            let app = app.with_gpu_start(gpu_start).with_diagnostics(Box::new(diagnostics));
             Ok(Box::new(app))
         }),
     )
@@ -403,32 +449,5 @@ mod tests {
         assert_eq!(super::missing_library(p.as_ref()), Some("libxkbcommon-x11.so"));
         let other: Box<dyn std::any::Any + Send> = Box::new(String::from("index out of bounds"));
         assert_eq!(super::missing_library(other.as_ref()), None);
-    }
-}
-
-#[cfg(all(test, unix))]
-mod debug_log_tests {
-    use std::os::unix::fs::PermissionsExt;
-
-    #[test]
-    fn debug_log_is_private_and_refuses_links() {
-        let dir = std::env::temp_dir().join(format!("rxt-debug-log-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        let log = dir.join("rustxterm-debug.log");
-        drop(super::open_debug_log(&log).unwrap());
-        std::fs::set_permissions(&log, std::fs::Permissions::from_mode(0o644)).unwrap();
-        drop(super::open_debug_log(&log).unwrap());
-        assert_eq!(std::fs::metadata(&log).unwrap().permissions().mode() & 0o777, 0o600);
-
-        let target = dir.join("target");
-        std::fs::write(&target, b"").unwrap();
-        let link = dir.join("link.log");
-        std::os::unix::fs::symlink(&target, &link).unwrap();
-        assert!(super::open_debug_log(&link).is_err());
-        let hard = dir.join("hard.log");
-        std::fs::hard_link(&target, &hard).unwrap();
-        assert!(super::open_debug_log(&hard).is_err());
-        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

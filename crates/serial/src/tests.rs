@@ -69,6 +69,15 @@ async fn local_echo_shows_typed_input_once() {
 }
 
 #[tokio::test]
+async fn local_echo_is_tagged_apart_from_device_output() {
+    let (fake, mut s) = setup(|o| o.local_echo = true);
+    s.writer().write(b"pw\r").await.unwrap();
+    assert_eq!(s.read_tagged().await.unwrap().unwrap(), (b"pw\r\n".to_vec(), true));
+    fake.send(USB0, b"ok");
+    assert_eq!(s.read_tagged().await.unwrap().unwrap(), (b"ok".to_vec(), false));
+}
+
+#[tokio::test]
 async fn break_lines_and_initial_state() {
     let (fake, s) = setup(|o| {
         o.dtr = Some(true);
