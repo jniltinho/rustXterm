@@ -68,6 +68,18 @@ async fn rdp_windows_nla_wrong_password_fails_in_credssp() {
     assert!(matches!(&e, rxt_core::Error::Auth(m) if m.contains("CredSSP")), "{e:?}");
 }
 
+/// `.\\user` (a local account) logs in with the domain `.`, which the server resolves to its own
+/// accounts; an empty domain is forwarded to the domain on a domain-joined server.
+#[tokio::test]
+#[ignore = "windows-vm"]
+async fn rdp_windows_nla_dot_local_account() {
+    let script = Script::new(HostKeyDecision::AcceptOnce, Some("vagrant"));
+    let mut d = rxt_rdp::connect(&session(".\\vagrant", VM), ctx(script, Arc::new(Trust::default())), (1024, 768))
+        .await
+        .unwrap();
+    assert_eq!(next(&mut d, T).await, DesktopEvent::Resized { width: 1024, height: 768 });
+}
+
 /// Standard RDP Security: run with the VM's Security Layer set to RDP
 /// (`SecurityLayer=0`, `UserAuthentication=0`; recipe in `lab/vagrant/README.md`).
 /// Opted in: the legacy key prompt comes first, then login, input and resize work.

@@ -150,14 +150,17 @@ fn adjust(w: u32, h: u32) -> (u32, u32) {
     (w.clamp(200, MAX_EDGE) & !1, h.clamp(200, MAX_EDGE))
 }
 
-/// User name and domain. `DOMAIN\user` in the user field fills an empty Domain field, as in `mstsc`;
-/// `.\user` means a local account of the server (no domain).
+/// User name and domain. `DOMAIN\user` in the user field fills an empty Domain field, as in `mstsc`.
+/// `.\user` is a local account of the server: the domain `.` is sent as is, which Windows resolves to
+/// its own account database. An empty domain is not the same: a domain-joined server (an Oracle Cloud
+/// or migrated instance, say) passes it to its domain, and a local account then fails with
+/// `STATUS_LOGON_FAILURE`.
 fn account(session: &Session) -> (String, Option<String>) {
     let user = session.user.clone().unwrap_or_default();
     let domain = session.rdp.domain.clone().filter(|d| !d.is_empty());
     match user.split_once('\\') {
         Some((d, u)) if domain.is_none() && !u.is_empty() => {
-            (u.to_owned(), Some(d.to_owned()).filter(|d| !d.is_empty() && d != "."))
+            (u.to_owned(), Some(d.to_owned()).filter(|d| !d.is_empty()))
         }
         _ => (user, domain),
     }
@@ -344,6 +347,9 @@ async fn credssp(wire: &mut Wire<Tls>, connector: &mut ClientConnector, host: &s
     let ClientConnectorState::Credssp { selected_protocol } = connector.state else {
         return Err(Error::Protocol("invalid connector state for CredSSP".into()));
     };
+    if let Credentials::UsernamePassword { username, .. } = &connector.config.credentials {
+        tracing::debug!(host, user = %username, domain = ?connector.config.domain, ?selected_protocol, "RDP NLA (CredSSP/NTLM)");
+    }
     let (mut seq, mut request) = CredsspSequence::init(
         connector.config.credentials.clone(),
         connector.config.domain.as_deref(),
@@ -872,7 +878,9 @@ mod account_tests {
             account(&s)
         };
         assert_eq!(s("TRD-APP01\\administrator", None), ("administrator".into(), Some("TRD-APP01".into())));
-        assert_eq!(s(".\\administrator", None), ("administrator".into(), None));
+        // `.` reaches the server: an empty domain would send a local account to the server's domain.
+        assert_eq!(s(".\\administrator", None), ("administrator".into(), Some(".".into())));
+        assert_eq!(s("\\administrator", None), ("administrator".into(), None));
         assert_eq!(s("administrator", Some("LAB")), ("administrator".into(), Some("LAB".into())));
         // An explicit Domain field wins; the user name is then sent as typed.
         assert_eq!(s("A\\bob", Some("LAB")), ("A\\bob".into(), Some("LAB".into())));

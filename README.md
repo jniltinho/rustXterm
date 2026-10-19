@@ -152,10 +152,17 @@ Settings can be overridden with `--env-file` or `RXT_*` variables:
 |---|---|
 | `RXT_THEME` | `light`, `dark` or `system` |
 | `RXT_LOG_LEVEL` | Tracing filter, e.g. `info`, `debug` |
+| `RXT_DEBUG_LOG` | Full debug log file, same as `--debug-log PATH` (below) |
 | `RXT_DATA_DIR` | Data directory |
 | `RXT_AGENT_CONTROL` | Agent control on or off (`true`/`false`) |
 
 Precedence: CLI > environment / `.env` > TOML > defaults. Secret-like keys are refused.
+
+**Debug log.** `rustxterm --debug-log` writes a full debug log (every protocol, connection steps and
+errors) to `rustxterm-debug.log` in the current directory, or in the config folder when the current
+directory is not writable (an app started from Finder or a Windows shortcut); `--debug-log PATH`
+chooses the file. It is owner-only and never holds passwords, keys or NTLM/CredSSP messages; attach it
+to a bug report.
 
 If a graphics driver crashes while the window starts, the next launch picks a safer rendering
 backend by itself (Windows: OpenGL → DirectX 12 → Vulkan → software; Linux: Vulkan → OpenGL →

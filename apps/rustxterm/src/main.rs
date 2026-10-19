@@ -13,6 +13,9 @@ use rxt_engine::{Engine, EngineConfig, Records, Waker};
 use rxt_platform::Paths;
 use rxt_store::settings::{self, CliOverrides, LoadOutcome};
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::Layer;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 mod gpu;
 mod os;
@@ -30,6 +33,11 @@ struct Cli {
     /// Read `RXT_*` settings from this .env file (overrides config.toml, below the environment).
     #[arg(long, value_name = "PATH")]
     env_file: Option<PathBuf>,
+    /// Also write a full debug log (all of rustXterm, SSH, RDP and the other protocols) to this file,
+    /// `rustxterm-debug.log` in the current directory by default; `RXT_DEBUG_LOG=PATH` does the same.
+    /// Passwords and keys are never logged.
+    #[arg(long, value_name = "PATH", num_args = 0..=1, default_missing_value = DEBUG_LOG)]
+    debug_log: Option<PathBuf>,
     /// Print command results as stable JSON.
     #[arg(long, global = true)]
     json: bool,
@@ -52,11 +60,9 @@ pub fn main() -> ExitCode {
     if let Some(command) = cli.command {
         return run_agent(command, cli.json, &loaded);
     }
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&loaded.settings.log_level)),
-        )
-        .init();
+    let debug_log =
+        cli.debug_log.or_else(|| std::env::var_os("RXT_DEBUG_LOG").filter(|v| !v.is_empty()).map(PathBuf::from));
+    init_logging(&loaded.settings.log_level, debug_log.as_deref(), config.parent());
     match run(loaded, config, cli.safe_gpu) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
@@ -64,6 +70,73 @@ pub fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Default `--debug-log` file, relative to the current directory.
+const DEBUG_LOG: &str = "rustxterm-debug.log";
+
+/// Debug everywhere except the graphics stack, whose per-frame events would bury everything else, and
+/// the NTLM/CredSSP code, kept at `info`: `sspi` debug spans record return values, plaintext RDP
+/// credentials included (`write_password_credentials`), and `ironrdp_connector::credssp` logs the NTLM
+/// messages, whose NTLMv2 response allows offline password guessing.
+const DEBUG_FILTER: &str = "debug,sspi=info,picky=info,picky_krb=info,ironrdp_connector::credssp=info,wgpu=warn,wgpu_core=warn,wgpu_hal=warn,naga=warn,egui=info,eframe=info,egui_wgpu=info,winit=info,calloop=info,sctk=info";
+
+/// Console log at `level` (or `RUST_LOG`); with `debug_log`, also a full debug log appended to that
+/// file (owner-only on Unix). The default name falls back to `fallback_dir` (the config folder) when
+/// the current directory is not writable, as for an app started from Finder (`/`) or a Windows shortcut
+/// (`Program Files`). A file that cannot be opened is reported and the app starts anyway.
+fn init_logging(level: &str, debug_log: Option<&std::path::Path>, fallback_dir: Option<&std::path::Path>) {
+    let console = tracing_subscriber::fmt::layer()
+        .with_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level)));
+    let file = debug_log.and_then(|path| {
+        let fallback = fallback_dir.filter(|_| path == std::path::Path::new(DEBUG_LOG)).map(|d| d.join(DEBUG_LOG));
+        let open = |p: &std::path::Path| open_debug_log(p).map(|f| (p.to_path_buf(), f));
+        match open(path).or_else(|e| fallback.as_deref().map_or(Err(e), open)) {
+            Ok(opened) => Some(opened),
+            Err(e) => {
+                eprintln!("rustxterm: debug log {}: {e}", path.display());
+                None
+            }
+        }
+    });
+    let (path, file_layer) = match file {
+        Some((path, f)) => {
+            let layer = tracing_subscriber::fmt::layer()
+                .with_ansi(false)
+                .with_thread_ids(true)
+                .with_target(true)
+                .with_writer(std::sync::Mutex::new(f))
+                .with_filter(EnvFilter::new(DEBUG_FILTER));
+            (Some(path), Some(layer))
+        }
+        None => (None, None),
+    };
+    tracing_subscriber::registry().with(console).with(file_layer).init();
+    if let Some(path) = path {
+        let shown = std::path::absolute(&path).unwrap_or(path);
+        eprintln!("rustxterm: writing the debug log to {}", shown.display());
+        tracing::info!(
+            version = env!("CARGO_PKG_VERSION"),
+            os = std::env::consts::OS,
+            "debug log started: {}",
+            shown.display()
+        );
+    }
+}
+
+fn open_debug_log(path: &std::path::Path) -> std::io::Result<std::fs::File> {
+    if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
+        std::fs::create_dir_all(dir)?;
+    }
+    let mut options = std::fs::OpenOptions::new();
+    options.create(true).append(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let file = options.open(path)?;
+    // `mode` applies only on creation: an existing log is made owner-only as well.
+    #[cfg(unix)]
+    file.set_permissions(std::os::unix::fs::PermissionsExt::from_mode(0o600))?;
+    Ok(file)
 }
 
 const APP_ICON_PNG: &[u8] = include_bytes!("../../../assets/icons/rustxterm-256.png");

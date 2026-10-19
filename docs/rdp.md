@@ -13,7 +13,8 @@ prompts and the errors you can meet, with the fix for each.
    - `administrator` (with the domain, if any, in the RDP options' **Domain** field);
    - `TRD-APP01\administrator` or `CORP\alice`: the part before `\` is used as the domain when the
      **Domain** field is empty (a local account of server `TRD-APP01`, or domain `CORP`);
-   - `.\administrator`: a local account of the server you connect to;
+   - `.\administrator`: a local account of the server you connect to (the domain `.` is sent, so it
+     works on domain-joined servers too);
    - `alice@corp.example` (UPN), sent as typed.
 2. Connect. The first time, rustXterm shows the server's certificate (or key) fingerprint: compare it
    with the one your administrator gives you, then **Accept** (this time) or **Accept and save**.
@@ -134,9 +135,13 @@ a fix for the server.
 | `the server requires FIPS encryption` | Encryption level FIPS Compliant | Use Negotiate/SSL on the server (TLS works with FIPS) |
 | `The server only offers legacy TLS (TLS 1.0/1.1 …)` | Old, unpatched server | Update the server, or tick **Allow legacy TLS 1.0/1.1** |
 | `Connection reset by peer (os error 104)` | Old server (2008/2008 R2): only TLS 1.0, or RDP 8 features it does not understand | Tick **Allow legacy TLS 1.0/1.1** (see "Old servers" above) |
-| `authentication failed: CredSSP: … STATUS_LOGON_FAILURE` | Wrong user, domain or password (NLA) | Check the credentials and the domain field |
+| `authentication failed: CredSSP: … STATUS_LOGON_FAILURE` | Wrong user, domain or password (NLA); or a local account sent without a domain to a domain-joined server | Check the credentials and the domain field; for a local account use `.\user` (Oracle Cloud Windows: `.\opc`) |
 | `certificate of HOST:PORT changed` | The saved certificate differs | Confirm the new fingerprint with the administrator |
 | `HOST:PORT: connect timed out` | Port 3389 blocked, RDP disabled or wrong host | Check the firewall and "Allow remote connections to this computer" |
+
+For anything else, start rustXterm with `--debug-log` and try again: `rustxterm-debug.log` (current
+directory, or the config folder) shows the NLA user and domain sent, the negotiated protocol and every
+connection step, without passwords or the NTLM messages.
 
 ## Testing it yourself
 
