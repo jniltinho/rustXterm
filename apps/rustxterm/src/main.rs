@@ -33,9 +33,9 @@ struct Cli {
     /// Read `RXT_*` settings from this .env file (overrides config.toml, below the environment).
     #[arg(long, value_name = "PATH")]
     env_file: Option<PathBuf>,
-    /// Also write a full debug log (all of rustXterm, SSH, RDP and the other protocols) to this file,
-    /// `rustxterm-debug.log` in the current directory by default; `RXT_DEBUG_LOG=PATH` does the same.
-    /// Passwords and keys are never logged.
+    /// Also write a debug log (rustXterm's steps for every protocol, plus IronRDP) to this file,
+    /// `rustxterm-debug.log` in the current directory by default; the `RXT_DEBUG_LOG=PATH` environment
+    /// variable does the same. Passwords and keys are never logged.
     #[arg(long, value_name = "PATH", num_args = 0..=1, default_missing_value = DEBUG_LOG)]
     debug_log: Option<PathBuf>,
     /// Print command results as stable JSON.
