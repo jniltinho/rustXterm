@@ -32,11 +32,7 @@ The application SHALL offer a Diagnostics settings page that switches a diagnost
 - **THEN** that file receives the full debug log and the Diagnostics page shows the level as set by the command line
 
 ### Requirement: Session data-stream capture
-The application SHALL offer a "Record data stream" switch, turned on only after explicit consent each time, that saves each remote session's traffic after authentication to its own file with timestamps, direction and a hex and text dump; records sent bytes only when "Include typed input" is also chosen; never records credentials the application sends itself or Serial's synthetic local echo; records only message types and lengths for RDP and VNC; excludes local terminal tabs; is off at every start; and shows a status-bar indicator while it is on. Protocol tasks SHALL NOT block on file writes: records go through a bounded queue, and dropped records are counted in the file.
-
-#### Scenario: Received bytes only by default
-- **WHEN** stream recording is on without "Include typed input" and the user types a password at an SSH prompt
-- **THEN** the session's stream file contains the server's output but not the typed characters
+The application SHALL offer a "Record data stream" switch, turned on only after explicit consent each time, that saves each remote session's traffic after authentication to its own file with timestamps, direction and a hex and text dump. It is off at every start, excludes local terminal tabs and shows a status-bar indicator while it is on.
 
 #### Scenario: Off after restart
 - **WHEN** the user turns stream recording on and restarts rustXterm
@@ -46,6 +42,17 @@ The application SHALL offer a "Record data stream" switch, turned on only after 
 - **WHEN** stream recording is on
 - **THEN** the status bar shows a red "Recording stream" chip that opens the Diagnostics page
 
+#### Scenario: Local terminal excluded
+- **WHEN** stream recording is on and a local terminal tab is open
+- **THEN** no stream file is created for the local tab
+
+### Requirement: Data-stream capture safety
+Stream capture SHALL record sent bytes only when "Include typed input" is chosen, SHALL never record credentials the application sends itself or Serial's synthetic local echo, SHALL record only message types and lengths for RDP and VNC, and SHALL NOT block protocol tasks on file writes (a bounded queue, with dropped records counted in the file).
+
+#### Scenario: Received bytes only by default
+- **WHEN** stream recording is on without "Include typed input" and the user types a password at an SSH prompt
+- **THEN** the session's stream file contains the server's output but not the typed characters
+
 #### Scenario: Saved and automatic credentials never recorded
 - **WHEN** stream recording is on with "Include typed input" and a session logs in with a saved SSH password, and a Telnet session uses auto-login
 - **THEN** neither stream file contains either password in plain text, hex or Base64
@@ -53,10 +60,6 @@ The application SHALL offer a "Record data stream" switch, turned on only after 
 #### Scenario: Serial local echo not recorded
 - **WHEN** stream recording is on without "Include typed input" on a Serial session with local echo
 - **THEN** the typed characters do not appear in the stream file
-
-#### Scenario: Local terminal excluded
-- **WHEN** stream recording is on and a local terminal tab is open
-- **THEN** no stream file is created for the local tab
 
 #### Scenario: Slow disk does not stall a session
 - **WHEN** the stream queue is full
