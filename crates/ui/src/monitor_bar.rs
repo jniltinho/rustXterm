@@ -255,7 +255,14 @@ pub(crate) fn bar(
         if r.right() <= area.right() {
             last_fully_shown = i;
         }
-        clip.rect_stroke(r, 2.0, Stroke::new(1.0, color(tokens.border)), StrokeKind::Inside);
+        // MobaXterm-style: no box around each segment, just a thin divider between them.
+        if i > view.scroll {
+            clip.vline(
+                r.left() - gap / 2.0,
+                (rect.top() + 4.0)..=(rect.bottom() - 3.0),
+                Stroke::new(1.0, color(tokens.border_subtle)),
+            );
+        }
         let icon_rect = Rect::from_min_size(pos2(r.left() + 6.0, r.center().y - ICON / 2.0), vec2(ICON, ICON));
         if let Some(img) = icons.image(chip.icon, ICON)
             && icon_rect.right() <= area.right()
