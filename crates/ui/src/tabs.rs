@@ -40,6 +40,8 @@ pub(crate) struct Tab {
     pub no_sftp: bool,
     /// Remote monitoring bar state (SSH terminals).
     pub monitor: crate::monitor_bar::MonitorView,
+    /// A WSL tab's startup commands await the user's go-ahead (no prompt within the timeout).
+    pub wsl_startup_pending: bool,
 }
 
 impl Tab {
@@ -68,6 +70,7 @@ impl Tab {
             ssh_info: None,
             no_sftp: false,
             monitor: crate::monitor_bar::MonitorView::default(),
+            wsl_startup_pending: false,
         }
     }
 

@@ -322,10 +322,36 @@ impl Store {
 
     // ---- sessions ----
 
+    /// All saved sessions. A row whose protocol this build does not know (a newer version wrote it)
+    /// is skipped with a warning and left untouched (design W4a), so forward-compatible databases
+    /// still load; any other decode error fails the read.
     pub fn sessions(&self) -> Result<Vec<Session>> {
         let mut stmt = self.conn.prepare("SELECT id, folder, json FROM sessions ORDER BY name, id").map_err(db)?;
-        let rows = stmt.query_map([], session_row).map_err(db)?;
-        rows.map(|r| r.map_err(db)?).collect()
+        let rows = stmt
+            .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i64>>(1)?, r.get::<_, String>(2)?)))
+            .map_err(db)?;
+        let mut sessions = Vec::new();
+        for row in rows {
+            let (id, folder, text) = row.map_err(db)?;
+            match serde_json::from_str::<Session>(&text) {
+                Ok(s) => {
+                    sessions.push(Session { id: SessionId(id as u64), folder: opt_id(folder).map(FolderId), ..s });
+                }
+                Err(_) if is_unknown_protocol(&text) => {
+                    tracing::warn!("skipping session {id}: unknown protocol (written by a newer version)");
+                }
+                Err(e) => return Err(json(e)),
+            }
+        }
+        Ok(sessions)
+    }
+
+    /// Highest session id stored, including rows skipped by [`Self::sessions`] (unknown protocols).
+    /// The id allocator must stay above this so a new session never overwrites a skipped row.
+    pub fn max_session_id(&self) -> Result<u64> {
+        let max: i64 =
+            self.conn.query_row("SELECT COALESCE(MAX(id), 0) FROM sessions", [], |r| r.get(0)).map_err(db)?;
+        Ok(max as u64)
     }
 
     pub fn session(&self, id: SessionId) -> Result<Session> {
@@ -674,6 +700,19 @@ fn key_error() -> Error {
     Error::Auth("database key rejected".into())
 }
 
+/// Whether a stored session's JSON names a protocol this build does not know (so the row was
+/// written by a newer version): its `protocol` value is present but is not one of ours.
+fn is_unknown_protocol(json: &str) -> bool {
+    #[derive(serde::Deserialize)]
+    struct Peek {
+        protocol: Option<String>,
+    }
+    match serde_json::from_str::<Peek>(json) {
+        Ok(Peek { protocol: Some(p) }) => serde_json::from_str::<rxt_core::Protocol>(&format!("\"{p}\"")).is_err(),
+        _ => false,
+    }
+}
+
 /// Decode a session row; columns (id, folder) win over the JSON copy.
 fn session_row(r: &Row<'_>) -> rusqlite::Result<Result<Session>> {
     let id: i64 = r.get(0)?;
@@ -744,5 +783,68 @@ impl CertTrust for StoreHandle {
         if let Err(e) = self.lock().save_cert_trust(host, port, fingerprint) {
             tracing::warn!("cannot save cert trust for {host}:{port}: {e}");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use rxt_core::{Protocol, Session};
+    use zeroize::Zeroizing;
+
+    use super::*;
+    use crate::envelope::DbKey;
+
+    fn temp_store(tag: &str) -> (std::path::PathBuf, Store) {
+        let dir = std::env::temp_dir().join(format!("rxt-db-unit-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = Store::open(&dir, &DbKey(Zeroizing::new([3u8; 32]))).unwrap();
+        (dir, store)
+    }
+
+    #[test]
+    fn is_unknown_protocol_detects_new_and_known() {
+        assert!(is_unknown_protocol(r#"{"protocol":"quantumlink"}"#));
+        assert!(!is_unknown_protocol(r#"{"protocol":"wsl"}"#));
+        assert!(!is_unknown_protocol(r#"{"protocol":"ssh"}"#));
+        // No protocol field: not an unknown-protocol row (a different decode error).
+        assert!(!is_unknown_protocol(r#"{"host":"x"}"#));
+    }
+
+    #[test]
+    fn unknown_protocol_row_is_skipped_and_ssh_still_loads() {
+        let (dir, store) = temp_store("unknown");
+        store.save_session(&Session::new(Protocol::Ssh, "keep", None, None)).unwrap();
+        // A session written by a newer build (unknown protocol); the row is left untouched.
+        let future = r#"{"protocol":"quantumlink","host":"future","name":"from the future"}"#;
+        store
+            .conn
+            .execute("INSERT INTO sessions (name, host, json) VALUES ('from the future', 'future', ?1)", [future])
+            .unwrap();
+        let sessions = store.sessions().unwrap();
+        assert_eq!(sessions.len(), 1, "only the SSH session loads");
+        assert_eq!(sessions[0].host, "keep");
+        // The unknown row is still in the database.
+        let count: i64 = store.conn.query_row("SELECT COUNT(*) FROM sessions", [], |r| r.get(0)).unwrap();
+        assert_eq!(count, 2);
+        // The id allocator must stay above the skipped row so a new session never overwrites it.
+        assert_eq!(store.max_session_id().unwrap(), 2, "max id counts the skipped row");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn wsl_sessions_round_trip() {
+        let (dir, store) = temp_store("wsl");
+        let mut s = Session { protocol: Protocol::Wsl, name: "WSL Debian".into(), ..Session::default() };
+        s.wsl.distribution = Some("Debian".into());
+        s.wsl.user = Some("dev".into());
+        s.wsl.start_folder = Some("/srv/app".into());
+        let id = store.save_session(&s).unwrap();
+        let loaded = store.session(id).unwrap();
+        assert_eq!(loaded.protocol, Protocol::Wsl);
+        assert_eq!(loaded.wsl.distribution.as_deref(), Some("Debian"));
+        assert_eq!(loaded.wsl.user.as_deref(), Some("dev"));
+        assert_eq!(store.sessions().unwrap().len(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

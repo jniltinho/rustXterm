@@ -42,6 +42,7 @@ pub fn platform() -> Platform {
         opener: Arc::new(MacOpen),
         serial: Arc::new(MacSerial),
         local_pty: None,
+        wsl: None,
     }
 }
 

@@ -307,6 +307,7 @@ fn run_window(
                 control,
                 serial_ports: Some(platform.serial.clone()),
                 local_pty: platform.local_pty.clone(),
+                wsl: platform.wsl.clone(),
                 ..EngineConfig::default()
             };
             let engine = Engine::start(config, waker)?;

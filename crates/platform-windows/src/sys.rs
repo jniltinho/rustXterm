@@ -13,6 +13,7 @@ use std::ptr;
 use raw_window_handle::{
     DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, RawWindowHandle, Win32WindowHandle, WindowHandle,
 };
+use windows_sys::Win32::Foundation::ERROR_NO_MORE_ITEMS;
 use windows_sys::Win32::Foundation::{CloseHandle, ERROR_NOT_FOUND, ERROR_SUCCESS, HANDLE, LocalFree, WIN32_ERROR};
 use windows_sys::Win32::Security::Authorization::{
     ConvertSecurityDescriptorToStringSecurityDescriptorW, ConvertSidToStringSidW,
@@ -33,8 +34,8 @@ use windows_sys::Win32::Storage::FileSystem::{
 };
 use windows_sys::Win32::System::Pipes::{GetNamedPipeServerProcessId, ImpersonateNamedPipeClient};
 use windows_sys::Win32::System::Registry::{
-    HKEY, HKEY_CURRENT_USER, KEY_NOTIFY, REG_NOTIFY_CHANGE_LAST_SET, RRF_RT_REG_DWORD, RegCloseKey, RegGetValueW,
-    RegNotifyChangeKeyValue, RegOpenKeyExW,
+    HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_NOTIFY, KEY_READ, REG_NOTIFY_CHANGE_LAST_SET, RRF_RT_REG_DWORD,
+    RRF_RT_REG_SZ, RegCloseKey, RegEnumKeyExW, RegGetValueW, RegNotifyChangeKeyValue, RegOpenKeyExW,
 };
 use windows_sys::Win32::System::Threading::{
     GetCurrentProcess, GetCurrentThread, OpenProcess, OpenProcessToken, OpenThreadToken,
@@ -462,6 +463,103 @@ pub fn reg_dword(subkey: &str, value: &str) -> io::Result<u32> {
         )
     })?;
     Ok(data)
+}
+
+/// Registry root hives for the generic helpers below.
+pub const HKCU: HKEY = HKEY_CURRENT_USER;
+pub const HKLM: HKEY = HKEY_LOCAL_MACHINE;
+
+/// An open registry key, closed on drop.
+struct RegKey(HKEY);
+
+impl RegKey {
+    fn open(root: HKEY, subkey: &str) -> io::Result<Self> {
+        let key = wide(subkey);
+        let mut h: HKEY = ptr::null_mut();
+        // SAFETY: `key` is NUL-terminated; `h` receives a key handle owned by `RegKey`.
+        win32(unsafe { RegOpenKeyExW(root, key.as_ptr(), 0, KEY_READ, &mut h) })?;
+        Ok(Self(h))
+    }
+}
+
+impl Drop for RegKey {
+    fn drop(&mut self) {
+        // SAFETY: `self.0` is a key opened by `RegKey::open`, closed once.
+        unsafe { RegCloseKey(self.0) };
+    }
+}
+
+/// `<root>\<subkey>\<value>` as a string (REG_SZ), empty entries included.
+pub fn reg_sz(root: HKEY, subkey: &str, value: &str) -> io::Result<String> {
+    let (key, name) = (wide(subkey), wide(value));
+    let mut size = 0u32;
+    // SAFETY: size query with a null buffer; only `size` is written.
+    win32(unsafe {
+        RegGetValueW(root, key.as_ptr(), name.as_ptr(), RRF_RT_REG_SZ, ptr::null_mut(), ptr::null_mut(), &mut size)
+    })?;
+    let mut buf = vec![0u16; (size as usize).div_ceil(2).max(1)];
+    // SAFETY: `buf` holds at least `size` writable bytes; `key`/`name` are NUL-terminated.
+    win32(unsafe {
+        RegGetValueW(
+            root,
+            key.as_ptr(),
+            name.as_ptr(),
+            RRF_RT_REG_SZ,
+            ptr::null_mut(),
+            buf.as_mut_ptr().cast(),
+            &mut size,
+        )
+    })?;
+    Ok(from_wide(buf.as_ptr()))
+}
+
+/// `<root>\<subkey>\<value>` as a DWORD.
+pub fn reg_dword_at(root: HKEY, subkey: &str, value: &str) -> io::Result<u32> {
+    let (key, name) = (wide(subkey), wide(value));
+    let mut data = 0u32;
+    let mut size = 4u32;
+    let out: *mut u32 = &mut data;
+    // SAFETY: `key`/`name` are NUL-terminated; `out`/`size` describe a writable 4-byte buffer.
+    win32(unsafe {
+        RegGetValueW(root, key.as_ptr(), name.as_ptr(), RRF_RT_REG_DWORD, ptr::null_mut(), out.cast(), &mut size)
+    })?;
+    Ok(data)
+}
+
+/// Names of the immediate subkeys of `<root>\<subkey>`.
+pub fn reg_subkeys(root: HKEY, subkey: &str) -> io::Result<Vec<String>> {
+    let key = RegKey::open(root, subkey)?;
+    let mut names = Vec::new();
+    for i in 0u32.. {
+        // WSL distribution subkeys are GUIDs; 256 units is ample for any subkey name.
+        let mut buf = [0u16; 256];
+        let mut len = buf.len() as u32;
+        // SAFETY: `key.0` is an open key; `buf`/`len` describe a writable buffer; other out
+        // parameters are null (not requested).
+        let rc = unsafe {
+            RegEnumKeyExW(
+                key.0,
+                i,
+                buf.as_mut_ptr(),
+                &mut len,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        };
+        if rc == ERROR_NO_MORE_ITEMS {
+            break;
+        }
+        win32(rc)?;
+        names.push(String::from_utf16_lossy(&buf[..len as usize]));
+    }
+    Ok(names)
+}
+
+/// Whether `<root>\<subkey>` exists and opens for reading.
+pub fn reg_key_exists(root: HKEY, subkey: &str) -> bool {
+    RegKey::open(root, subkey).is_ok()
 }
 
 /// An open `HKCU` key watched for value changes.

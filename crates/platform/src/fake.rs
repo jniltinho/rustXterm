@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 pub use crate::local_pty::{FakePty, FakeShell};
 pub use crate::serial::{FakeDevice, FakeSerial};
+pub use crate::wsl::FakeWsl;
 use crate::*;
 
 /// Fake platform rooted at `root`, with a settable theme.
@@ -19,6 +20,9 @@ pub struct Fake {
     pub secrets: Mutex<HashMap<String, Vec<u8>>>,
     pub serial: crate::serial::FakeSerial,
     pub local_pty: crate::local_pty::FakePty,
+    pub wsl: crate::wsl::FakeWsl,
+    /// Build the platform with a WSL backend (as on Windows); off by default, like Linux/macOS.
+    pub with_wsl: std::sync::atomic::AtomicBool,
     /// Last [`FileDialogs::set_parent`] value.
     pub dialog_parent: Mutex<Option<String>>,
     /// Directories passed to [`Paths::make_private`].
@@ -59,6 +63,10 @@ impl Fake {
             opener: self.clone(),
             serial: Arc::new(self.serial.clone()),
             local_pty: Some(Arc::new(self.local_pty.clone())),
+            wsl: self
+                .with_wsl
+                .load(std::sync::atomic::Ordering::Relaxed)
+                .then(|| Arc::new(self.wsl.clone()) as Arc<dyn Wsl>),
         }
     }
 }

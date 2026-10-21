@@ -145,7 +145,11 @@ impl SessionStore {
 
     /// Remember an opened session (most recent first, deduplicated by target).
     pub(crate) fn push_recent(&mut self, s: &Session) {
-        let key = |x: &Session| (x.protocol, x.host.clone(), x.port, x.user.clone());
+        // WSL targets live in `wsl` (host/port/user are empty), so include them or different
+        // distributions and users would collapse into one recent entry.
+        let key = |x: &Session| {
+            (x.protocol, x.host.clone(), x.port, x.user.clone(), x.wsl.distribution.clone(), x.wsl.user.clone())
+        };
         self.recent.retain(|r| key(r) != key(s));
         self.recent.insert(0, s.clone());
         self.recent.truncate(RECENT_MAX);

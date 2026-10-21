@@ -754,6 +754,7 @@ fn saved_password_skips_prompt_and_rejected_one_is_forgotten() {
 
 mod agent;
 mod local;
+mod wsl;
 
 #[test]
 fn stream_capture_records_server_output_but_not_typed_passwords() {

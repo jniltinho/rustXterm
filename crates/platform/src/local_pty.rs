@@ -46,6 +46,8 @@ pub trait PtyControl: Send + Sync {
 /// State of one [`FakePty`] shell, as seen by tests.
 #[derive(Debug, Default)]
 pub struct FakeShell {
+    /// The launch the shell was started with (WSL passes its `wsl.exe` args here).
+    pub launch: LaunchInfo,
     pub cols: u16,
     pub rows: u16,
     pub cursor: (u16, u16),
@@ -87,6 +89,7 @@ impl FakePty {
             cwd: "/home/alice".into(),
             user: "alice".into(),
             host: "workstation".into(),
+            ..LaunchInfo::default()
         }
     }
 
@@ -127,10 +130,10 @@ impl LocalPty for FakePty {
         }
     }
 
-    fn spawn(&self, _: &LaunchInfo, cols: u16, rows: u16, cursor: (u16, u16)) -> Result<LocalShell> {
+    fn spawn(&self, info: &LaunchInfo, cols: u16, rows: u16, cursor: (u16, u16)) -> Result<LocalShell> {
         self.prepare()?;
         let block_writes = self.block_writes.load(std::sync::atomic::Ordering::Relaxed);
-        let shell = FakeShell { cols, rows, cursor, block_writes, ..FakeShell::default() };
+        let shell = FakeShell { launch: info.clone(), cols, rows, cursor, block_writes, ..FakeShell::default() };
         let shared: Shared = Arc::new((Mutex::new(shell), Condvar::new()));
         self.shells.lock().map_err(|_| Error::Io("fake pty lock poisoned".into()))?.push(shared.clone());
         Ok(LocalShell {

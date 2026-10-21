@@ -62,6 +62,8 @@ impl CommandId {
     pub const SERIAL_SEND_BREAK: Self = Self("serial.send_break");
     pub const SERIAL_SET_LINES: Self = Self("serial.set_lines");
     pub const SERIAL_LIST_PORTS: Self = Self("serial.list_ports");
+    /// List WSL distributions for the session editor (`Command::ListWslDistributions`); GUI-only.
+    pub const WSL_LIST_DISTRIBUTIONS: Self = Self("wsl.list_distributions");
     /// Turn remote monitoring of a tab on or off (`Command::SetMonitoring`); GUI-only.
     pub const MONITORING_TOGGLE: Self = Self("tab.monitoring.toggle");
     /// Remote monitoring refresh interval (`Command::SetMonitorInterval`); GUI-only.
@@ -88,7 +90,7 @@ impl CommandId {
     ];
 
     /// Every registered command id.
-    pub const ALL: [Self; 35] = [
+    pub const ALL: [Self; 36] = [
         Self::NEW_SESSION,
         Self::QUICK_CONNECT,
         Self::CLOSE_TAB,
@@ -120,6 +122,7 @@ impl CommandId {
         Self::SERIAL_SEND_BREAK,
         Self::SERIAL_SET_LINES,
         Self::SERIAL_LIST_PORTS,
+        Self::WSL_LIST_DISTRIBUTIONS,
         Self::MONITORING_TOGGLE,
         Self::MONITORING_INTERVAL,
         Self::FIND_SESSION,
@@ -275,6 +278,11 @@ pub enum Command {
         rows: u16,
         cursor: (u16, u16),
     },
+    /// Answer to `Event::WslStartupPending`: run the pending WSL startup commands now, or skip them.
+    WslStartup {
+        tab: TabId,
+        run: bool,
+    },
     /// Keyboard/pointer/clipboard input for an RDP/VNC tab (high-priority path).
     DesktopInput {
         tab: TabId,
@@ -357,6 +365,8 @@ pub enum Command {
     },
     /// Enumerate serial ports; answered with `Event::SerialPorts` (`serial.list_ports`).
     ListSerialPorts,
+    /// List WSL distributions and the install state; answered with `Event::WslDistributions`.
+    ListWslDistributions,
     /// Start or stop remote monitoring of an SSH tab for its current connection
     /// (`tab.monitoring.toggle`, GUI-only); not saved. Ignored for other tabs.
     SetMonitoring {
@@ -378,6 +388,7 @@ pub enum Command {
 
 /// What a local terminal will start, resolved before it starts (title and banner).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct LaunchInfo {
     /// Shell executable path.
     pub shell: String,
@@ -386,6 +397,9 @@ pub struct LaunchInfo {
     pub cwd: String,
     pub user: String,
     pub host: String,
+    /// Lines typed into the shell once it is ready, in order (WSL startup commands and the `cd`
+    /// fallback for an older WSL). Empty for a plain local terminal.
+    pub startup_lines: Vec<String>,
 }
 
 /// Facts of an established SSH connection, shown in the session banner.
@@ -432,6 +446,11 @@ pub enum Event {
     SshInfo {
         tab: TabId,
         info: Box<SshInfo>,
+    },
+    /// A WSL tab's startup commands could not be typed within the timeout (no prompt appeared); the
+    /// UI offers to run them now or skip them, answered with `Command::WslStartup`.
+    WslStartupPending {
+        tab: TabId,
     },
     /// New output is buffered for `tab`; the UI drains it on its next frame.
     Output {
@@ -500,6 +519,10 @@ pub enum Event {
     /// Answer to `Command::ListSerialPorts`.
     SerialPorts {
         result: Result<Vec<PortInfo>, crate::Error>,
+    },
+    /// Answer to `Command::ListWslDistributions`.
+    WslDistributions {
+        status: crate::WslStatus,
     },
     /// A new remote monitoring sample of `tab` waits in the engine's latest-sample slot
     /// (coalesced: sent only when the slot was empty). Never forwarded to agents.

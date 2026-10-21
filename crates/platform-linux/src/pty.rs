@@ -64,6 +64,7 @@ fn launch_info(env: &[(OsString, OsString)]) -> LaunchInfo {
         cwd,
         user,
         host: host.ok().filter(|h| !h.is_empty()).unwrap_or_else(|| "localhost".into()),
+        ..LaunchInfo::default()
     }
 }
 

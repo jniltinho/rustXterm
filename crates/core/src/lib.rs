@@ -26,6 +26,6 @@ pub use prompt::{CertTrust, Prompter};
 pub use session::{
     CursorShape, DataBits, FlowControl, Folder, FolderId, FtpOptions, FtpTls, JumpHost, LineConfig, Newline, Parity,
     PortInfo, Protocol, RdpOptions, RdpResolution, SerialEnter, SerialOptions, Session, SessionId, SshOptions,
-    StopBits, TelnetOptions, TerminalPrefs, Tunnel, TunnelKind, VncOptions,
+    StopBits, TelnetOptions, TerminalPrefs, Tunnel, TunnelKind, VncOptions, WslDistribution, WslOptions, WslStatus,
 };
 pub use theme::{Metrics, Rgba, TerminalScheme, ThemeMode, Tokens, TypeScale, UiScale};

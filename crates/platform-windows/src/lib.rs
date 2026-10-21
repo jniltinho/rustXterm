@@ -26,6 +26,8 @@ mod services;
 mod sys;
 #[cfg(windows)]
 mod theme;
+#[cfg(windows)]
+mod wsl;
 
 #[cfg(windows)]
 pub use conpty::ConPty;
@@ -39,6 +41,8 @@ pub use serial::WindowsSerial;
 pub use services::{KnownFolders, platform};
 #[cfg(windows)]
 pub use theme::RegistryTheme;
+#[cfg(windows)]
+pub use wsl::WindowsWsl;
 
 /// App subdirectory under the Known Folders.
 pub const APP_DIR: &str = "rustxterm";
@@ -365,10 +369,40 @@ pub fn local_shell(
     comspec.map(std::path::PathBuf::from).filter(|p| is_file(p)).map(|p| (p, Vec::new()))
 }
 
-/// `CreateProcessW` command line: the executable quoted (paths with spaces), then the arguments
-/// (simple flags, no quoting needed).
+/// `CreateProcessW` command line: the executable, then every argument, each quoted by the
+/// `CommandLineToArgvW` rules so a value with spaces or quotes (a WSL distribution, user or folder)
+/// reaches the child as one argument and nothing goes through a shell.
 pub fn command_line(exe: &str, args: &[String]) -> String {
-    std::iter::once(format!("\"{exe}\"")).chain(args.iter().cloned()).collect::<Vec<_>>().join(" ")
+    std::iter::once(quote_arg(exe)).chain(args.iter().map(|a| quote_arg(a))).collect::<Vec<_>>().join(" ")
+}
+
+/// Quote one argument by the `CommandLineToArgvW` rules: leave it bare when it has no space, tab,
+/// newline or `"`; otherwise wrap it in `"`, doubling the backslashes that precede a `"` or the
+/// closing quote and escaping each `"`.
+fn quote_arg(arg: &str) -> String {
+    if !arg.is_empty() && !arg.bytes().any(|b| matches!(b, b' ' | b'\t' | b'\n' | 0x0b | b'"')) {
+        return arg.to_string();
+    }
+    let mut out = String::from('"');
+    let mut backslashes = 0usize;
+    for c in arg.chars() {
+        match c {
+            '\\' => backslashes += 1,
+            '"' => {
+                out.extend(std::iter::repeat_n('\\', backslashes * 2 + 1));
+                backslashes = 0;
+                out.push('"');
+            }
+            _ => {
+                out.extend(std::iter::repeat_n('\\', backslashes));
+                backslashes = 0;
+                out.push(c);
+            }
+        }
+    }
+    out.extend(std::iter::repeat_n('\\', backslashes * 2));
+    out.push('"');
+    out
 }
 
 /// Environment block for `CREATE_UNICODE_ENVIRONMENT`: `vars` with `TERM=xterm-256color` and
@@ -460,6 +494,23 @@ mod tests {
             command_line(r"C:\Program Files\PowerShell\7\pwsh.exe", &["-NoLogo".into()]),
             r#""C:\Program Files\PowerShell\7\pwsh.exe" -NoLogo"#
         );
+    }
+
+    #[test]
+    fn command_line_quotes_every_argument() {
+        // A WSL launch: simple flags stay bare, a folder with a space is quoted as one argument.
+        assert_eq!(
+            command_line(
+                r"C:\Windows\System32\wsl.exe",
+                &["-d".into(), "Debian".into(), "--cd".into(), "/srv/my app".into()]
+            ),
+            r#"C:\Windows\System32\wsl.exe -d Debian --cd "/srv/my app""#
+        );
+        // Quotes and trailing backslashes follow the CommandLineToArgvW rules.
+        assert_eq!(quote_arg(r#"a"b"#), r#""a\"b""#);
+        assert_eq!(quote_arg(r"a b\"), r#""a b\\""#);
+        assert_eq!(quote_arg("plain"), "plain");
+        assert_eq!(quote_arg(""), r#""""#);
     }
 
     #[test]

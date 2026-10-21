@@ -341,11 +341,16 @@ struct Ctx {
     tunnel: Option<Tunnel>,
 }
 
-/// Local terminals are off limits to agents until echo-off masking exists (agent-control spec).
+/// Local and WSL terminals are off limits to agents until echo-off masking exists (agent-control
+/// spec; WSL gets the local terminal's protections, design W4).
 const LOCAL_DENIED: &str = "local terminals are not available to agents";
 
 fn not_local(session: Session) -> Result<Session, ControlError> {
-    if session.protocol == rxt_core::Protocol::Local { Err(ControlError::denied(LOCAL_DENIED)) } else { Ok(session) }
+    if matches!(session.protocol, rxt_core::Protocol::Local | rxt_core::Protocol::Wsl) {
+        Err(ControlError::denied(LOCAL_DENIED))
+    } else {
+        Ok(session)
+    }
 }
 
 fn op_tab(op: &AgentOp) -> Option<TabId> {
@@ -584,7 +589,8 @@ impl Shared {
             } else {
                 Vec::new()
             };
-            let local = |x: &crate::Tab| x.session.protocol == rxt_core::Protocol::Local;
+            let local =
+                |x: &crate::Tab| matches!(x.session.protocol, rxt_core::Protocol::Local | rxt_core::Protocol::Wsl);
             (
                 group.iter().filter(|(_, x)| !local(x)).map(|(t, x)| (*t, x.session.id)).collect(),
                 group.iter().filter(|(_, x)| local(x)).map(|(t, _)| t.0).collect(),

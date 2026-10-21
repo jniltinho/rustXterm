@@ -314,6 +314,7 @@ pub(crate) fn command_label(c: CommandId) -> &'static str {
         CommandId::SERIAL_SEND_BREAK => "Serial: send break",
         CommandId::SERIAL_SET_LINES => "Serial: toggle DTR",
         CommandId::SERIAL_LIST_PORTS => "Serial: list ports",
+        CommandId::WSL_LIST_DISTRIBUTIONS => "WSL: list distributions",
         _ => "Command",
     }
 }

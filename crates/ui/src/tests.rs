@@ -14,7 +14,7 @@ use egui_kittest::kittest::{NodeT, Queryable};
 use rxt_core::{
     Command, CommandId, ConnState, Direction, Event, FileEntry, FileKind, Folder, FolderId, Framebuffer,
     HostKeyDecision, JumpHost, PromptAnswer, PromptId, PromptKind, Protocol, Secret, Session, SessionId, TabId,
-    ThemeMode, TransferId, Tunnel, TunnelKind, TunnelState,
+    ThemeMode, TransferId, Tunnel, TunnelKind, TunnelState, WslDistribution, WslStatus,
 };
 use rxt_core::{DesktopEvent, DesktopInput, Rect};
 use rxt_platform::fake::Fake;
@@ -154,6 +154,16 @@ fn prints_scale() -> f32 {
 
 fn env() -> Env {
     env_with(None, None)
+}
+
+/// Env whose platform offers WSL (as on Windows), for the WSL editor and tabs.
+fn env_wsl() -> Env {
+    let platform = Arc::new(Fake { root: std::env::temp_dir().join("rxt-ui-tests"), ..Fake::default() });
+    platform.with_wsl.store(true, std::sync::atomic::Ordering::Relaxed);
+    let engine = TestEngine::default();
+    let app = App::new(None, platform.platform(), engine.clone());
+    let h = harness(app);
+    Env { h, engine, platform }
 }
 
 impl Env {
@@ -1590,6 +1600,39 @@ fn snapshot_m2_editors_and_certificate() {
     e.snap("dialog_legacy_rdp_key_unknown");
 }
 
+#[test]
+fn snapshot_wsl_editor_states() {
+    let mut e = env_wsl();
+    let mut s = Session { protocol: Protocol::Wsl, name: "WSL Debian".into(), ..Session::default() };
+    s.wsl.distribution = Some("Debian".into());
+    s.wsl.user = Some("dev".into());
+    s.wsl.start_folder = Some("/srv/app".into());
+    s.wsl.startup_commands = Some("source .venv/bin/activate".into());
+    e.app().editor = Some(Editor::new(s, true));
+    e.settle();
+    e.event(Event::WslDistributions {
+        status: WslStatus::Listed(vec![
+            WslDistribution { name: "Ubuntu".into(), default: true, version: Some(2), running: None },
+            WslDistribution { name: "Debian".into(), default: false, version: Some(2), running: None },
+        ]),
+    });
+    e.snap("editor_wsl");
+    e.event(Event::WslDistributions { status: WslStatus::NotInstalled { install_command: true } });
+    e.snap("editor_wsl_not_installed");
+    e.event(Event::WslDistributions { status: WslStatus::NoDistribution });
+    e.snap("editor_wsl_no_distribution");
+}
+
+#[test]
+fn snapshot_wsl_refused_outside_windows() {
+    // A WSL session from a shared database, opened where there is no WSL backend (Linux/macOS).
+    let mut e = env();
+    let s = Session { protocol: Protocol::Wsl, name: "WSL Debian".into(), ..Session::default() };
+    let tab = e.open(s);
+    e.event(Event::State { tab, state: ConnState::Error("WSL sessions run only on Windows".into()) });
+    e.snap("wsl_refused");
+}
+
 // ---- encrypted store ----
 
 /// Fresh, unique data directory for one test.
@@ -2458,6 +2501,23 @@ fn multiexec_and_session_log_on_telnet_tab() {
     term.feed(b"router> show version\r\n");
     term.stop_log();
     assert!(std::fs::read_to_string(&log).unwrap().contains("router> show version"));
+    std::fs::remove_file(&log).unwrap();
+}
+
+#[test]
+fn wsl_tab_writes_session_log() {
+    // A WSL tab logs per session like SSH (unlike a local terminal, which never logs).
+    let mut e = env_wsl();
+    let log = std::env::temp_dir().join(format!("rxt-wsl-log-{}.log", std::process::id()));
+    let mut s = Session { protocol: Protocol::Wsl, name: "WSL Debian".into(), ..Session::default() };
+    s.wsl.distribution = Some("Debian".into());
+    s.terminal.log_file = Some(log.to_string_lossy().into_owned());
+    let tab = e.connect(s);
+    let t = e.app().tabs.iter_mut().find(|t| t.id == tab).unwrap();
+    let term = t.term.as_mut().unwrap();
+    term.feed(b"dev@box:~$ ls\r\n");
+    term.stop_log();
+    assert!(std::fs::read_to_string(&log).unwrap().contains("ls"));
     std::fs::remove_file(&log).unwrap();
 }
 

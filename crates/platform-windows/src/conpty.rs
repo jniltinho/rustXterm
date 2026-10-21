@@ -221,6 +221,7 @@ impl LocalPty for ConPty {
             cwd,
             user: var("USERNAME").unwrap_or_else(|| "user".into()),
             host: var("COMPUTERNAME").unwrap_or_else(|| "localhost".into()),
+            ..LaunchInfo::default()
         })
     }
 

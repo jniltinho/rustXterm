@@ -23,6 +23,7 @@ pub fn platform() -> Platform {
         opener: Arc::new(ShellOpen),
         serial: Arc::new(WindowsSerial),
         local_pty: crate::ConPty::detect().map(|p| Arc::new(p) as Arc<dyn rxt_platform::LocalPty>),
+        wsl: crate::WindowsWsl::detect().map(|w| Arc::new(w) as Arc<dyn rxt_platform::Wsl>),
     }
 }
 

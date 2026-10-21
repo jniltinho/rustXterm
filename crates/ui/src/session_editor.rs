@@ -5,7 +5,7 @@
 use egui::{Rect, RichText, Sense, Stroke, StrokeKind, UiBuilder, WidgetInfo, WidgetType, pos2, vec2};
 use rxt_core::{
     CommandId, CursorShape, DataBits, FlowControl, Folder, FolderId, FtpTls, JumpHost, Metrics, Newline, Parity,
-    PortInfo, Protocol, RdpResolution, Secret, SerialEnter, Session, StopBits, Tokens, TypeScale,
+    PortInfo, Protocol, RdpResolution, Secret, SerialEnter, Session, StopBits, Tokens, TypeScale, WslStatus,
 };
 use rxt_store::db::Policy;
 
@@ -24,6 +24,8 @@ const TILE: egui::Vec2 = vec2(56.0, 56.0);
 const BIG_TILE: f32 = 64.0;
 /// Shown when the editor opens without a session type.
 pub(crate) const CHOOSE_TYPE: &str = "Choose a session type...";
+/// Id of the WSL startup-commands multiline editor; Enter there adds a line, never confirms.
+const WSL_STARTUP_EDIT_ID: &str = "editor-wsl-startup";
 
 /// Editor tab; `Advanced` is the protocol page of every type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,6 +66,12 @@ pub(crate) struct Editor {
     pub has_password: bool,
     /// Password typed for Telnet auto-login; saved in the encrypted store on OK.
     pub password: String,
+    /// Whether the platform offers WSL (the type tile and page appear only then).
+    pub wsl_available: bool,
+    /// WSL distributions and install state from the last `wsl.list_distributions`.
+    pub wsl_status: Option<WslStatus>,
+    /// The WSL distribution list was requested for this editor.
+    pub wsl_requested: bool,
 }
 
 impl Editor {
@@ -85,6 +93,9 @@ impl Editor {
             ports_requested: false,
             has_password: false,
             password: String::new(),
+            wsl_available: false,
+            wsl_status: None,
+            wsl_requested: false,
         }
     }
 
@@ -110,6 +121,8 @@ impl Editor {
         match s.protocol {
             Protocol::Serial if s.serial.port.trim().is_empty() => Some(SERIAL_PORT_ERROR),
             Protocol::Serial => None,
+            // WSL has no host or port (the distribution, default or named, is chosen in the editor).
+            Protocol::Wsl => None,
             _ if self.parsed_port().is_none() => Some(PORT_ERROR),
             Protocol::Telnet if s.telnet.auto_login && s.user.as_deref().is_none_or(|u| u.trim().is_empty()) => {
                 Some(AUTO_LOGIN_USER_ERROR)
@@ -144,6 +157,14 @@ impl Editor {
             let s = &mut self.session;
             if self.error.is_none() && s.name.trim().is_empty() {
                 s.name = s.serial.title();
+            }
+            return self.error.is_none();
+        }
+        if self.session.protocol == Protocol::Wsl {
+            self.error = self.problem().map(str::to_owned);
+            let s = &mut self.session;
+            if self.error.is_none() && s.name.trim().is_empty() {
+                s.name = format!("WSL: {}", s.wsl.label());
             }
             return self.error.is_none();
         }
@@ -215,6 +236,7 @@ fn label(p: Protocol) -> &'static str {
         Protocol::Vnc => "VNC",
         Protocol::Telnet => "Telnet",
         Protocol::Serial => "Serial",
+        Protocol::Wsl => "WSL",
         Protocol::Local => "Local terminal",
     }
 }
@@ -229,6 +251,7 @@ fn description(p: Protocol) -> &'static str {
         Protocol::Vnc => "Remote desktop (VNC) session",
         Protocol::Telnet => "Telnet or raw TCP session (unencrypted)",
         Protocol::Serial => "Serial console (COM) session",
+        Protocol::Wsl => "WSL distribution shell (Windows)",
         Protocol::Local => "Shell on this computer",
     }
 }
@@ -245,6 +268,10 @@ pub(crate) fn window(
     // Read before showing, so open combos keep their Escape (see `dialog_keys`).
     let keys = dialog_keys(ctx);
     let frame = egui::Frame::new().fill(color(tokens.panel)).stroke(Stroke::new(M.stroke, color(tokens.border)));
+    // Enter inside the multiline startup-commands editor inserts a newline; it must not confirm the
+    // dialog and start the session with half-typed commands. Escape still cancels.
+    let in_startup_edit = ctx.memory(|m| m.focused()) == Some(egui::Id::new(WSL_STARTUP_EDIT_ID));
+    let keys = keys.filter(|ok| !ok || !in_startup_edit);
     let mut result = keys.filter(|ok| !ok || ed.can_save());
     let modal = egui::Modal::new(egui::Id::new("session-editor")).frame(frame);
     modal.backdrop_color(egui::Color32::TRANSPARENT).show(ctx, |ui| {
@@ -290,6 +317,10 @@ pub(crate) fn window(
         ed.ports_requested = true;
         out.push(Action::Run(CommandId::SERIAL_LIST_PORTS));
     }
+    if ed.typed && ed.session.protocol == Protocol::Wsl && !ed.wsl_requested {
+        ed.wsl_requested = true;
+        out.push(Action::Run(CommandId::WSL_LIST_DISTRIBUTIONS));
+    }
     match result {
         Some(true) if ed.validate() => {
             out.push(Action::SaveSession { session: Box::new(ed.session.clone()), connect: ed.is_new });
@@ -311,10 +342,13 @@ pub(crate) fn window(
 /// Left/Right move the selection along the row while no text field has focus; an untyped
 /// editor starts from the first tile, so the first Right chooses the second type.
 fn type_tiles(ui: &mut egui::Ui, ed: &mut Editor, icons: &Icons, tokens: &Tokens) {
-    let mut tiles = Vec::with_capacity(Protocol::ALL.len());
+    // WSL is a saved protocol but offered only where the platform has a WSL backend (Windows).
+    let protocols: Vec<Protocol> =
+        Protocol::ALL.into_iter().filter(|p| *p != Protocol::Wsl || ed.wsl_available).collect();
+    let mut tiles = Vec::with_capacity(protocols.len());
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = M.space[1];
-        for p in Protocol::ALL {
+        for p in protocols.iter().copied() {
             let chosen = ed.typed && ed.session.protocol == p;
             let (rect, r) = ui.allocate_exact_size(TILE, Sense::click());
             if ui.is_rect_visible(rect) {
@@ -358,9 +392,9 @@ fn type_tiles(ui: &mut egui::Ui, ed: &mut Editor, icons: &Icons, tokens: &Tokens
     } else {
         return;
     };
-    let current = Protocol::ALL.iter().position(|p| ed.typed && *p == ed.session.protocol).unwrap_or(0);
-    let next = current.saturating_add_signed(delta).min(Protocol::ALL.len() - 1);
-    ed.set_type(Protocol::ALL[next]);
+    let current = protocols.iter().position(|p| ed.typed && *p == ed.session.protocol).unwrap_or(0);
+    let next = current.saturating_add_signed(delta).min(protocols.len() - 1);
+    ed.set_type(protocols[next]);
     if let Some(r) = tiles.get(next) {
         r.request_focus();
     }
@@ -394,8 +428,10 @@ fn typed_body(
     out: &mut Vec<Action>,
 ) {
     let p = ed.session.protocol;
-    group_box(ui, icons, Some(p.icon()), &format!("Basic {} settings", label(p)), |ui| {
-        if p == Protocol::Serial { serial_basic(ui, ed, icons, out) } else { basic(ui, ed, icons, tokens) }
+    group_box(ui, icons, Some(p.icon()), &format!("Basic {} settings", label(p)), |ui| match p {
+        Protocol::Serial => serial_basic(ui, ed, icons, out),
+        Protocol::Wsl => wsl_basic(ui, ed, icons, out),
+        _ => basic(ui, ed, icons, tokens),
     });
     ui.add_space(M.space[5]);
     let tab_rect = tabs(ui, ed, icons, tokens);
@@ -539,6 +575,7 @@ fn page(ui: &mut egui::Ui, ed: &mut Editor, folders: &[Folder], icons: &Icons, t
         (_, Protocol::Vnc) => vnc(ui, s),
         (_, Protocol::Telnet) => telnet(ui, s, &mut ed.password, ed.has_password, tokens),
         (_, Protocol::Serial) => serial(ui, s),
+        (_, Protocol::Wsl) => wsl(ui, s),
         // Never edited: local terminals are not saved sessions.
         (_, Protocol::Local) => {}
     }
@@ -947,6 +984,83 @@ fn serial(ui: &mut egui::Ui, s: &mut Session) {
     );
 }
 
+/// WSL distribution picker (with the three not-available states and a refresh) and user.
+fn wsl_basic(ui: &mut egui::Ui, ed: &mut Editor, icons: &Icons, out: &mut Vec<Action>) {
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = M.space[3];
+        ui.add_space(M.space[5]);
+        let l = ui.label("Distribution");
+        let dist = &mut ed.session.wsl.distribution;
+        let note = match &ed.wsl_status {
+            Some(WslStatus::Listed(distros)) => {
+                let default_name = distros.iter().find(|d| d.default).map(|d| d.name.clone());
+                let selected = match dist.as_deref() {
+                    None => default_name.as_deref().map_or("Default".to_string(), |n| format!("Default ({n})")),
+                    Some(name) => name.to_string(),
+                };
+                let r = egui::ComboBox::from_id_salt("editor-wsl-dist").selected_text(selected).width(240.0).show_ui(
+                    ui,
+                    |ui| {
+                        let default_label =
+                            default_name.as_deref().map_or("Default".to_string(), |n| format!("Default ({n})"));
+                        ui.selectable_value(dist, None, default_label);
+                        for d in distros {
+                            ui.selectable_value(dist, Some(d.name.clone()), &d.name);
+                        }
+                    },
+                );
+                r.response.labelled_by(l.id);
+                None
+            }
+            Some(WslStatus::NotInstalled { install_command: true }) => {
+                Some("WSL is not installed (run: wsl --install)".to_string())
+            }
+            Some(WslStatus::NotInstalled { install_command: false }) => {
+                Some("WSL is not installed (see Microsoft's install guide)".to_string())
+            }
+            Some(WslStatus::NoDistribution) => Some("No WSL distribution is installed".to_string()),
+            Some(WslStatus::CouldNotQuery(e)) => Some(format!("Could not query WSL: {e}")),
+            None => Some("Listing WSL distributions...".to_string()),
+        };
+        if let Some(mut note) = note {
+            ui.add_enabled(false, egui::TextEdit::singleline(&mut note).desired_width(300.0)).labelled_by(l.id);
+        }
+        ui.add_space(-M.space[2]);
+        if icon_button(ui, icons, "refresh", "Refresh distributions", None).clicked() {
+            out.push(Action::Run(CommandId::WSL_LIST_DISTRIBUTIONS));
+        }
+        ui.add_space(M.space[6]);
+        let l = ui.label("Username");
+        let mut user = ed.session.wsl.user.clone().unwrap_or_default();
+        if ui.add(egui::TextEdit::singleline(&mut user).desired_width(140.0)).labelled_by(l.id).changed() {
+            ed.session.wsl.user = (!user.trim().is_empty()).then_some(user);
+        }
+    });
+}
+
+/// WSL startup folder and startup commands (typed into the shell, visible, not secret).
+fn wsl(ui: &mut egui::Ui, s: &mut Session) {
+    let o = &mut s.wsl;
+    grid(ui, "editor-wsl", |ui| {
+        opt_text_row(ui, "Startup folder", &mut o.start_folder);
+    });
+    ui.add_space(M.space[3]);
+    ui.label("Execute the following commands at startup:");
+    let mut cmds = o.startup_commands.clone().unwrap_or_default();
+    // A stable id so Enter here inserts a newline instead of confirming the dialog (see `window`).
+    let edit = egui::TextEdit::multiline(&mut cmds)
+        .id(egui::Id::new(WSL_STARTUP_EDIT_ID))
+        .desired_rows(4)
+        .desired_width(f32::INFINITY);
+    if ui.add(edit).changed() {
+        o.startup_commands = (!cmds.trim().is_empty()).then_some(cmds);
+    }
+    ui.add_space(M.space[1]);
+    ui.label(
+        RichText::new("Typed into the shell once it is ready, like keyboard input. Not saved as credentials.").weak(),
+    );
+}
+
 fn network(ui: &mut egui::Ui, s: &mut Session, icons: &Icons) {
     let o = &mut s.ssh;
     group_box(ui, icons, Some("network-nodes"), "SSH gateway (jump hosts)", |ui| {
@@ -1180,7 +1294,9 @@ mod tests {
         assert!(has(&h, CHOOSE_TYPE));
         assert!(!has(&h, "Remote host"), "only the prompt below the tiles");
         let toggled = |h: &Harness<'_, State>, l: &str| h.get_by_label(l).accesskit_node().toggled();
-        assert!(Protocol::ALL.iter().all(|p| toggled(&h, label(*p)) == Some(egui::accesskit::Toggled::False)));
+        // WSL is only offered where the platform has a backend (not in this harness).
+        let offered = Protocol::ALL.iter().filter(|p| **p != Protocol::Wsl);
+        assert!(offered.map(|p| toggled(&h, label(*p))).all(|t| t == Some(egui::accesskit::Toggled::False)));
         assert!(h.get_by_label("OK").accesskit_node().is_disabled(), "OK needs a type");
         h.get_by_label("SSH").click();
         h.run_steps(4);
@@ -1190,6 +1306,25 @@ mod tests {
         assert!(!has(&h, CHOOSE_TYPE));
         assert!(has(&h, "Basic SSH settings"));
         assert_eq!(toggled(&h, "SSH"), Some(egui::accesskit::Toggled::True));
+    }
+
+    #[test]
+    fn wsl_startup_editor_enter_adds_a_line_not_confirm() {
+        let mut ed = Editor::new(Session { protocol: Protocol::Wsl, name: "wsl".into(), ..Session::default() }, true);
+        ed.wsl_available = true;
+        let mut h = harness(ed, Tokens::light());
+        assert!(has(&h, "Execute the following commands at startup:"));
+        // Focus the multiline startup editor and press Enter: the dialog stays open (Enter adds a
+        // line, it does not confirm and start the session with half-typed commands).
+        h.ctx.memory_mut(|m| m.request_focus(egui::Id::new(WSL_STARTUP_EDIT_ID)));
+        h.run_steps(2);
+        h.key_press(egui::Key::Enter);
+        h.run_steps(2);
+        assert!(h.state().ed.is_some(), "Enter inside the multiline editor must not confirm the dialog");
+        // Escape still cancels.
+        h.key_press(egui::Key::Escape);
+        h.run_steps(2);
+        assert!(h.state().ed.is_none(), "Escape still cancels");
     }
 
     #[test]

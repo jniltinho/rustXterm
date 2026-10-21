@@ -79,6 +79,29 @@ fn each_supported_type_and_ssh_fields() {
 }
 
 #[test]
+fn wsl_bookmarks_import_distribution_and_options() {
+    let r = import("wsl.ini");
+    let get = |n: &str| &r.sessions.iter().find(|(_, s)| s.name == n).unwrap().1;
+    // Real observed layout: a named distribution, and "Default" → the default distribution (None).
+    let alpine = get("WSL-Alpine");
+    assert_eq!((alpine.protocol, alpine.wsl.distribution.as_deref()), (Protocol::Wsl, Some("Alpine")));
+    let default = get("WSL-Default");
+    assert_eq!((default.protocol, default.wsl.distribution.as_deref()), (Protocol::Wsl, None));
+    // Inferred fields: username, startup folder and startup commands.
+    let full = get("wsl-full");
+    assert_eq!(full.wsl.distribution.as_deref(), Some("Debian"));
+    assert_eq!(full.wsl.user.as_deref(), Some("dev"));
+    assert_eq!(full.wsl.start_folder.as_deref(), Some("/srv/app"));
+    assert_eq!(full.wsl.startup_commands.as_deref(), Some("source .venv/bin/activate"));
+    // A graphical desktop is out of scope: imported as the interactive shell, with a warning.
+    let desktop = get("wsl-desktop");
+    assert_eq!(desktop.wsl.distribution.as_deref(), Some("Ubuntu"));
+    let warn = |n: &str| r.warnings.iter().filter(|w| w.name == n).map(|w| w.reason.as_str()).collect::<Vec<_>>();
+    assert!(warn("wsl-desktop").iter().any(|w| w.contains("Full desktop")), "{:?}", warn("wsl-desktop"));
+    assert!(warn("WSL-Alpine").is_empty() && warn("wsl-full").is_empty());
+}
+
+#[test]
 fn telnet_bookmarks_import_without_auto_login() {
     let r = import("telnet_serial.ini");
     let get = |n: &str| &r.sessions.iter().find(|(_, s)| s.name == n).unwrap().1;
@@ -158,7 +181,7 @@ fn crlf_and_latin1() {
 
 #[test]
 fn source_file_is_byte_identical_after_import() {
-    for name in ["basic.ini", "types.ini", "malformed.ini", "secrets.ini", "crlf.ini", "telnet_serial.ini"] {
+    for name in ["basic.ini", "types.ini", "malformed.ini", "secrets.ini", "crlf.ini", "telnet_serial.ini", "wsl.ini"] {
         let path = fixture(name);
         let before = std::fs::read(&path).unwrap();
         let modified = std::fs::metadata(&path).unwrap().modified().unwrap();

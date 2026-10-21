@@ -23,22 +23,27 @@ pub enum Protocol {
     Rdp,
     Vnc,
     Serial,
+    /// WSL distribution shell (Windows only). Saved and serialized on every platform so shared
+    /// databases and exports keep it, but offered and started only where [`crate::Protocol::Wsl`]
+    /// has a backend (see the Windows-only availability gate).
+    Wsl,
     /// Local shell in a pseudo-terminal ("+" in the tab strip). Never saved: outside [`Self::ALL`],
     /// refused by the store and import.
     Local,
 }
 
 impl Protocol {
-    /// Protocols of saved sessions, in UI order ([`Self::Local`] is not one).
-    pub const ALL: [Protocol; 8] =
-        [Self::Ssh, Self::Telnet, Self::Sftp, Self::Ftp, Self::Ftps, Self::Rdp, Self::Vnc, Self::Serial];
+    /// Protocols of saved sessions, in UI order ([`Self::Local`] is not one). [`Self::Wsl`] is
+    /// saved but offered only where it has a backend (Windows).
+    pub const ALL: [Protocol; 9] =
+        [Self::Ssh, Self::Telnet, Self::Sftp, Self::Ftp, Self::Ftps, Self::Rdp, Self::Vnc, Self::Serial, Self::Wsl];
 
     /// Default TCP port. FTPS uses the implicit-TLS port; Serial has none (0).
     pub fn default_port(self) -> u16 {
         match self {
             Self::Ssh | Self::Sftp => 22,
             Self::Telnet => 23,
-            Self::Serial | Self::Local => 0,
+            Self::Serial | Self::Local | Self::Wsl => 0,
             Self::Ftp => 21,
             Self::Ftps => 990,
             Self::Rdp => 3389,
@@ -57,6 +62,7 @@ impl Protocol {
             Self::Ftps => "ftps",
             Self::Rdp => "rdp",
             Self::Vnc => "vnc",
+            Self::Wsl => "wsl",
             Self::Local => "local",
         }
     }
@@ -72,13 +78,14 @@ impl Protocol {
             Self::Telnet => "terminal",
             Self::Serial => "plug",
             Self::Local => "terminal-shell",
+            Self::Wsl => "tux",
             _ => self.scheme(),
         }
     }
 
     /// Whether tabs of this protocol host a terminal.
     pub fn is_terminal(self) -> bool {
-        matches!(self, Self::Ssh | Self::Telnet | Self::Serial | Self::Local)
+        matches!(self, Self::Ssh | Self::Telnet | Self::Serial | Self::Local | Self::Wsl)
     }
 
     /// Whether the protocol sends everything, credentials included, in clear text.
@@ -555,6 +562,52 @@ impl SerialOptions {
     }
 }
 
+/// WSL session options (design W1). Windows only; saved on every platform.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct WslOptions {
+    /// `None` runs the default distribution.
+    pub distribution: Option<String>,
+    /// `None` uses the distribution's default user.
+    pub user: Option<String>,
+    /// Linux startup folder, e.g. `~` or `/srv/app`; `None` keeps the distribution default.
+    pub start_folder: Option<String>,
+    /// Lines typed into the shell once it is ready; it then stays open. Visible, not secret.
+    pub startup_commands: Option<String>,
+}
+
+impl WslOptions {
+    /// Distribution name for display, or `Default` for the default distribution.
+    pub fn label(&self) -> &str {
+        self.distribution.as_deref().unwrap_or("Default")
+    }
+}
+
+/// One WSL distribution, as listed from the per-user registry (`Lxss`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WslDistribution {
+    pub name: String,
+    pub default: bool,
+    /// WSL version (1 or 2); `None` when the registry does not say.
+    pub version: Option<u8>,
+    /// Running (from `--list --verbose`); `None` when not probed.
+    pub running: Option<bool>,
+}
+
+/// Result of listing WSL distributions. The editor tells these four apart (design W2).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WslStatus {
+    /// No WSL service registered (with or without `wsl.exe`). `install_command` is true on builds
+    /// whose `wsl.exe` supports `wsl --install` (otherwise the editor links the install guide).
+    NotInstalled { install_command: bool },
+    /// A WSL service is registered but there is no distribution.
+    NoDistribution,
+    /// Registry (or probe) access failed; carries a short reason.
+    CouldNotQuery(String),
+    /// One row per distribution, the default marked.
+    Listed(Vec<WslDistribution>),
+}
+
 /// A saved or quick-connect session definition. Never holds secrets.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
@@ -574,6 +627,7 @@ pub struct Session {
     pub vnc: VncOptions,
     pub telnet: TelnetOptions,
     pub serial: SerialOptions,
+    pub wsl: WslOptions,
     pub terminal: TerminalPrefs,
 }
 
@@ -596,6 +650,10 @@ impl Session {
         if self.protocol == Protocol::Local {
             let user = self.user.as_deref().map(|u| format!("{u}@")).unwrap_or_default();
             return format!("Local terminal {user}{}", self.host);
+        }
+        if self.protocol == Protocol::Wsl {
+            let user = self.wsl.user.as_deref().map(|u| format!("{u}@")).unwrap_or_default();
+            return format!("wsl://{user}{}", self.wsl.label());
         }
         let user = self.user.as_deref().map(|u| format!("{u}@")).unwrap_or_default();
         format!("{}://{user}{}:{}", self.protocol.scheme(), self.host, self.port)

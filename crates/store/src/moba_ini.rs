@@ -60,6 +60,17 @@ const SERIAL_STOP_BITS: usize = 5;
 const SERIAL_FLOW: usize = 6;
 const TERM_FONT: usize = 0;
 const TERM_FONT_SIZE: usize = 1;
+// WSL (type 14), observed on MobaXterm 26.5 Portable (docs/gates/wsl.md): a saved bookmark is
+// `#<icon>#14%<distribution>%<username>%<graphical env>%<startup folder>%<startup commands>%<flag>`
+// (e.g. `#151#14%Default%%Interactive shell%%%0#...`; a minimal one is just `#151#14%Alpine%`). The
+// distribution (field 1) is confirmed against the real file; the username, startup folder and
+// commands positions are inferred from the field order (field 3 is the confirmed graphical
+// environment). "Default" is the default distribution.
+const WSL_DISTRIBUTION: usize = 1;
+const WSL_USERNAME: usize = 2;
+const WSL_GRAPHICAL_ENV: usize = 3;
+const WSL_STARTUP_FOLDER: usize = 4;
+const WSL_STARTUP_COMMANDS: usize = 5;
 
 /// Read `path` (read-only) and build the preview. Windows-1252/Latin-1 files are decoded
 /// byte-for-byte when they are not valid UTF-8.
@@ -144,6 +155,7 @@ fn bookmark(name: &str, value: &str) -> std::result::Result<(Session, Vec<String
         7 => Protocol::Sftp,
         1 => Protocol::Telnet,
         8 => return serial(name, &fields),
+        14 => return wsl(name, &fields),
         2 => return Err("unsupported session type rsh (2)".into()),
         11 => return Err("unsupported session type browser (11)".into()),
         other => return Err(format!("unsupported session type {other}")),
@@ -236,5 +248,24 @@ fn serial(name: &str, fields: &[String]) -> std::result::Result<(Session, Vec<St
     }
     let mut s = Session::serial(port, line);
     s.name = name.to_owned();
+    Ok((s, warnings))
+}
+
+/// WSL bookmark (type 14): import the distribution (confirmed field), plus the username, startup
+/// folder and startup commands at their inferred positions. The graphical environment (X server /
+/// full desktop) is out of scope — only the interactive shell is used, and anything else is
+/// reported.
+fn wsl(name: &str, fields: &[String]) -> std::result::Result<(Session, Vec<String>), String> {
+    let get = |i: usize| fields.get(i).map(|s| s.trim()).filter(|s| !s.is_empty());
+    let mut warnings = Vec::new();
+    let mut s = Session { protocol: Protocol::Wsl, name: name.to_owned(), ..Session::default() };
+    // "Default" (and empty) mean the default distribution.
+    s.wsl.distribution = get(WSL_DISTRIBUTION).filter(|d| !d.eq_ignore_ascii_case("Default")).map(str::to_owned);
+    s.wsl.user = get(WSL_USERNAME).map(str::to_owned);
+    s.wsl.start_folder = get(WSL_STARTUP_FOLDER).map(str::to_owned);
+    s.wsl.startup_commands = get(WSL_STARTUP_COMMANDS).map(str::to_owned);
+    if let Some(env) = get(WSL_GRAPHICAL_ENV).filter(|e| !e.eq_ignore_ascii_case("Interactive shell")) {
+        warnings.push(format!("graphical environment `{env}` is not supported; the interactive shell is used"));
+    }
     Ok((s, warnings))
 }

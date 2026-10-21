@@ -779,15 +779,24 @@ impl App {
     /// Load sessions from the freshly unlocked database, migrate eframe sessions, rebuild recents.
     fn on_unlocked(&mut self) {
         let Some(vault) = self.vault.clone() else { return };
-        let loaded = vault.with(|s| Ok((s.sessions()?, s.folders()?, s.tunnels()?, s.history(0, 200)?)));
-        let (sessions, folders, tunnels, history) = match loaded {
+        let loaded =
+            vault.with(|s| Ok((s.sessions()?, s.folders()?, s.tunnels()?, s.history(0, 200)?, s.max_session_id()?)));
+        let (sessions, folders, tunnels, history, max_session_id) = match loaded {
             Ok(l) => l,
             Err(e) => {
                 self.status = format!("Cannot read the session database: {e}");
                 return;
             }
         };
-        let next_id = sessions.iter().map(|s| s.id.0).chain(folders.iter().map(|f| f.id.0)).max().unwrap_or(0);
+        // Include `max_session_id` (which counts rows skipped as unknown protocols) so a new
+        // session never reuses and overwrites a skipped row's id.
+        let next_id = sessions
+            .iter()
+            .map(|s| s.id.0)
+            .chain(folders.iter().map(|f| f.id.0))
+            .chain(std::iter::once(max_session_id))
+            .max()
+            .unwrap_or(0);
         let store = SessionStore { sessions, folders, tunnels, recent: Vec::new(), next_id };
         self.persisted = Some(store.clone());
         self.store = store;
@@ -845,8 +854,14 @@ impl App {
     /// Record an opened connection in the database history.
     fn history(&mut self, s: &Session) {
         let Some(vault) = self.vault.as_ref().filter(|v| v.is_unlocked()) else { return };
-        let user = s.user.as_deref().map(|u| format!("{u}@")).unwrap_or_default();
-        let action = format!("open {}://{user}{}:{}", s.protocol.scheme(), s.host, s.port);
+        // WSL targets live in `wsl` (host/port are empty); encode them so quick-connect can parse
+        // the entry back when the session was not saved (its id is 0).
+        let action = if s.protocol == Protocol::Wsl {
+            format!("open wsl://{}", s.wsl.distribution.as_deref().unwrap_or_default())
+        } else {
+            let user = s.user.as_deref().map(|u| format!("{u}@")).unwrap_or_default();
+            format!("open {}://{user}{}:{}", s.protocol.scheme(), s.host, s.port)
+        };
         let id = (s.id.0 != 0).then_some(s.id);
         if let Err(e) = vault.with(|db| db.append_history(id, &action)) {
             tracing::warn!("history: {e}");
@@ -1147,6 +1162,9 @@ impl App {
                         // A new login starts a new shell and browser, and new monitoring.
                         t.cwd = None;
                         t.monitor = Default::default();
+                        // A stale WSL startup offer must not survive into the next run (its engine
+                        // receiver is gone, so its buttons would do nothing).
+                        t.wsl_startup_pending = false;
                     }
                     t.state = state;
                 }
@@ -1263,6 +1281,16 @@ impl App {
                         }
                         Err(e) => ed.ports_note = Some(e.to_string()),
                     }
+                }
+            }
+            Event::WslDistributions { status } => {
+                if let Some(ed) = &mut self.editor {
+                    ed.wsl_status = Some(status);
+                }
+            }
+            Event::WslStartupPending { tab } => {
+                if let Some(t) = self.tabs.iter_mut().find(|t| t.id == tab) {
+                    t.wsl_startup_pending = true;
                 }
             }
             // The sample is taken while the bar is painted; the event only asks for a frame.
@@ -1540,7 +1568,8 @@ impl App {
         let t = &mut self.tabs[pos];
         let wanted = match t.session.protocol {
             Protocol::Ssh | Protocol::Telnet => local.is_none(),
-            Protocol::Local => local.is_some(),
+            // WSL, like a local terminal, starts via `LocalReady`: its banner prints then.
+            Protocol::Local | Protocol::Wsl => local.is_some(),
             _ => false,
         };
         if !wanted {
@@ -1764,6 +1793,7 @@ impl App {
                 }
             }
             CommandId::SERIAL_LIST_PORTS => self.send(Command::ListSerialPorts),
+            CommandId::WSL_LIST_DISTRIBUTIONS => self.send(Command::ListWslDistributions),
             EXIT => {
                 if let Some(ctx) = &self.ctx {
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -2576,6 +2606,24 @@ impl App {
                 });
             });
         }
+        if tab.wsl_startup_pending {
+            egui::Frame::new().fill(color(tokens.hover)).inner_margin(6).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("Run the startup commands now?");
+                    let mut answer = None;
+                    if ui.button("Run").clicked() {
+                        answer = Some(true);
+                    }
+                    if ui.button("Skip").clicked() {
+                        answer = Some(false);
+                    }
+                    if let Some(run) = answer {
+                        tab.wsl_startup_pending = false;
+                        out.push(Action::Engine(Command::WslStartup { tab: id, run }));
+                    }
+                });
+            });
+        }
         if let Some(files) = tab.files.as_mut() {
             let transfers = tab_transfers(&self.transfers, Some(tab.id));
             file_tab::show(ui, files, &tab.session, &transfers, &self.icons, tokens, out);
@@ -2684,6 +2732,7 @@ impl App {
         }
         if let Some(ed) = &mut self.editor {
             ed.port_hint = self.platform.serial.example_port();
+            ed.wsl_available = self.platform.wsl.is_some();
         }
         if let Some(ed) = &mut self.editor
             && !session_editor::window(ctx, ed, &self.store.folders, &self.icons, &self.tokens, out)

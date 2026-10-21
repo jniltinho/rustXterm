@@ -67,6 +67,7 @@ fn sample() -> Export {
             dtr: Some(false),
             ..SerialOptions::default()
         },
+        wsl: rxt_core::WslOptions::default(),
         terminal: TerminalPrefs {
             font_family: Some("Hack".into()),
             font_size: Some(12.5),

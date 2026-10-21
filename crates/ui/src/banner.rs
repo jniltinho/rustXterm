@@ -80,6 +80,17 @@ pub(crate) fn render(info: &BannerInfo, cols: usize, scheme: &TerminalScheme) ->
             lines.push(vec![(None, "Telnet session to ".into()), (Some(TARGET), target)]);
             lines.push(check(false, "Encryption", "traffic and passwords are sent in clear text".into()));
         }
+        Protocol::Wsl => {
+            lines.push(vec![(None, "WSL: ".into()), (Some(TARGET), clean(s.wsl.label()))]);
+            if let Some(user) = &s.wsl.user {
+                lines.push(vec![(Some(MUTED), "User:   ".into()), (None, clean(user))]);
+            }
+            if let Some(folder) = &s.wsl.start_folder {
+                lines.push(vec![(Some(MUTED), "Folder: ".into()), (None, clean(folder))]);
+            }
+            let bullet = if u { "• " } else { "* " };
+            lines.extend(info.tips.iter().map(|t| vec![(Some(MUTED), format!("{bullet}{}", clean(t)))]));
+        }
         _ => {
             let user = s.user.as_deref().map(|u| format!("{}@", clean(u))).unwrap_or_default();
             let target = format!("{user}{}", host_port(&s.host, s.port, 22));

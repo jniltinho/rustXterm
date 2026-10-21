@@ -23,6 +23,9 @@ pub fn parse_for(input: &str, windows: bool) -> Result<Session> {
     if protocol == Protocol::Serial {
         return parse_serial(rest, windows);
     }
+    if protocol == Protocol::Wsl {
+        return parse_wsl(rest);
+    }
     let rest = rest.trim_end_matches('/');
     let (user, hostport) = match rest.rsplit_once('@') {
         Some((u, h)) if !u.is_empty() => (Some(u.to_string()), h),
@@ -68,6 +71,20 @@ fn parse_serial(rest: &str, windows: bool) -> Result<Session> {
         }
     }
     Ok(Session::serial(path, line))
+}
+
+/// `wsl://` (default distribution) or `wsl://<distribution>`. The distribution is validated at
+/// launch; here only whitespace is rejected.
+fn parse_wsl(rest: &str) -> Result<Session> {
+    let dist = rest.trim_end_matches('/').trim();
+    if dist.chars().any(char::is_whitespace) {
+        return Err(Error::Invalid(format!("invalid distribution '{dist}'")));
+    }
+    let distribution = (!dist.is_empty()).then(|| dist.to_string());
+    let mut s = Session { protocol: Protocol::Wsl, ..Session::default() };
+    s.name = distribution.clone().unwrap_or_else(|| "WSL".into());
+    s.wsl.distribution = distribution;
+    Ok(s)
 }
 
 fn split_host_port(s: &str) -> Result<(&str, Option<u16>)> {
@@ -149,6 +166,20 @@ mod tests {
             (Protocol::Telnet, "router.lab", 2323, Some("alice"))
         );
         assert!(!s.telnet.auto_login);
+    }
+
+    #[test]
+    fn wsl_default_and_named() {
+        let s = parse("wsl://").unwrap();
+        assert_eq!((s.protocol, s.wsl.distribution.as_deref(), s.name.as_str()), (Protocol::Wsl, None, "WSL"));
+        let s = parse("wsl://Debian").unwrap();
+        assert_eq!(
+            (s.protocol, s.wsl.distribution.as_deref(), s.name.as_str()),
+            (Protocol::Wsl, Some("Debian"), "Debian")
+        );
+        let s = parse("WSL://Ubuntu-22.04/").unwrap();
+        assert_eq!(s.wsl.distribution.as_deref(), Some("Ubuntu-22.04"));
+        assert!(parse("wsl://a b").is_err());
     }
 
     #[test]

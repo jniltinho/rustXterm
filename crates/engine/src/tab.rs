@@ -112,7 +112,7 @@ async fn connect_and_run(
     let tab_prompter = Arc::new(TabPrompter::new(sh.clone(), Some(tab), session, cancel.clone()));
     let prompter: Arc<dyn Prompter> = tab_prompter.clone();
     match session.protocol {
-        Protocol::Ssh | Protocol::Sftp | Protocol::Telnet | Protocol::Serial | Protocol::Local => {}
+        Protocol::Ssh | Protocol::Sftp | Protocol::Telnet | Protocol::Serial | Protocol::Local | Protocol::Wsl => {}
         Protocol::Ftp | Protocol::Ftps => {
             let fs = tokio::select! {
                 () = cancel.cancelled() => return (End::Failed(Error::Cancelled), false),
@@ -128,9 +128,15 @@ async fn connect_and_run(
             return run_desktop(sh, tab, generation, session, &tab_prompter, cancel).await;
         }
     }
-    let link = if session.protocol == Protocol::Local {
-        match crate::local::start(sh, tab, generation, cancel).await {
-            Ok(link) => link,
+    // WSL runs through the local ConPTY path too; its launch comes from the WSL backend and it may
+    // have startup lines to type once a prompt shows.
+    let mut wsl_startup = Vec::new();
+    let link = if matches!(session.protocol, Protocol::Local | Protocol::Wsl) {
+        match crate::local::start(sh, tab, generation, session, cancel).await {
+            Ok((link, lines)) => {
+                wsl_startup = lines;
+                link
+            }
             Err(e) => return (End::Failed(e), false),
         }
     } else {
@@ -158,6 +164,10 @@ async fn connect_and_run(
     let auth_banner = link.take_auth_banner();
     let conn = Arc::new(Conn::new(link.clone()));
     let (tx, rx) = mpsc::channel(INPUT_QUEUE);
+    // WSL startup typing: a tee of the shell output and the tab's own input channel (so the lines
+    // echo like typed text and skip data-stream capture).
+    let startup_input = (!wsl_startup.is_empty()).then(|| tx.clone());
+    let (startup_out_tx, startup_out_rx) = mpsc::channel::<Vec<u8>>(256);
     let Some(out) = sh.set_conn(tab, generation, conn.clone(), Some(tx)) else {
         return (End::Failed(Error::Cancelled), false);
     };
@@ -208,14 +218,24 @@ async fn connect_and_run(
     if !auth_banner.is_empty() && out.push(auth_banner.as_bytes()) {
         sh.emit(Event::Output { tab }).await;
     }
-    // Data-stream capture (after authentication; local terminals never write log files).
-    let tap = (session.protocol != Protocol::Local).then(|| crate::stream::Tap::new(session));
+    // Data-stream capture (after authentication; local and WSL terminals never write stream files).
+    let tap = (!matches!(session.protocol, Protocol::Local | Protocol::Wsl)).then(|| crate::stream::Tap::new(session));
+    // WSL startup commands are typed once a prompt shows; this task never ends the run.
+    let has_startup = startup_input.is_some();
+    let startup = async {
+        if let Some(input) = startup_input {
+            crate::wsl::run_startup(sh, tab, generation, wsl_startup, startup_out_rx, input, cancel).await;
+        }
+        std::future::pending::<End>().await
+    };
+    let startup_tee = has_startup.then_some(&startup_out_tx);
     let end = tokio::select! {
         () = cancel.cancelled() => End::Failed(Error::Cancelled),
-        end = pump_output(sh, tab, &out, reader, session, tap.as_ref()) => end,
+        end = pump_output(sh, tab, &out, reader, session, tap.as_ref(), startup_tee) => end,
         end = pump_input(writer, rx, tap.as_ref()) => end,
         end = follow => end,
         end = monitor => end,
+        end = startup => end,
     };
     (end, true)
 }
@@ -223,7 +243,7 @@ async fn connect_and_run(
 /// Automatic reconnect after a dropped connection (serial unplug is handled separately).
 fn auto_reconnect(session: &Session) -> bool {
     match session.protocol {
-        Protocol::Serial | Protocol::Local => false,
+        Protocol::Serial | Protocol::Local | Protocol::Wsl => false,
         _ => session.ssh.auto_reconnect,
     }
 }
@@ -373,6 +393,7 @@ async fn pump_output(
     mut reader: Box<dyn ShellRead>,
     session: &Session,
     tap: Option<&crate::stream::Tap>,
+    startup: Option<&mpsc::Sender<Vec<u8>>>,
 ) -> End {
     let mut exit = None;
     loop {
@@ -383,6 +404,11 @@ async fn pump_output(
             Some(ShellMsg::Data(bytes)) => {
                 if let Some(t) = tap.filter(|_| !reader.last_was_local_echo() && !reader.capture_paused()) {
                     t.received(&bytes);
+                }
+                // Tee to the WSL startup watcher; dropping on a full/closed channel is fine (it
+                // only needs recent output and stops once it has typed or been answered).
+                if let Some(s) = startup {
+                    let _ = s.try_send(bytes.clone());
                 }
                 if out.push(&bytes) {
                     sh.emit(Event::Output { tab }).await;

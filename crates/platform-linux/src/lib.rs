@@ -46,6 +46,7 @@ pub fn platform() -> Platform {
         opener: Arc::new(XdgOpen),
         serial: Arc::new(LinuxSerial::default()),
         local_pty: Some(Arc::new(LinuxPty)),
+        wsl: None,
     }
 }
 

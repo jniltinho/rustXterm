@@ -122,12 +122,16 @@ pub struct Platform {
     pub serial: Arc<dyn SerialPorts>,
     /// Local shell backend; `None` where the platform has none ("+" opens New session).
     pub local_pty: Option<Arc<dyn LocalPty>>,
+    /// WSL backend; `Some` only on Windows. `None` makes WSL sessions refuse to start.
+    pub wsl: Option<Arc<dyn Wsl>>,
 }
 
 pub mod control;
 pub mod fake;
 pub mod local_pty;
 pub mod serial;
+pub mod wsl;
 
 pub use local_pty::{LocalPty, LocalShell, PtyControl, PtyReader, PtyWriter};
 pub use serial::{PortInfo, SerialPorts, SerialStream};
+pub use wsl::{FakeWsl, Wsl, WslDistribution, WslStatus};

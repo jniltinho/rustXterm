@@ -30,18 +30,37 @@ const EXIT_POLL: Duration = Duration::from_millis(250);
 const FINAL_OUTPUT: Duration = Duration::from_millis(200);
 
 /// Start sequence of one run; `Err(Cancelled)` when the tab closed before the shell started.
+/// Returns the link and the startup lines to type once a prompt shows (WSL; empty otherwise).
 pub(crate) async fn start(
     sh: &Arc<Shared>,
     tab: TabId,
     generation: u64,
+    session: &Session,
     cancel: &CancellationToken,
-) -> Result<Arc<dyn Link>> {
+) -> Result<(Arc<dyn Link>, Vec<String>)> {
+    let is_wsl = session.protocol == rxt_core::Protocol::Wsl;
+    // For WSL, require its backend first (Windows only), so the diagnostic is correct even where
+    // there is no local PTY either (macOS has neither backend).
+    if is_wsl && sh.config.wsl.is_none() {
+        return Err(Error::Unsupported("WSL sessions run only on Windows".into()));
+    }
     let pty =
         sh.config.local_pty.clone().ok_or_else(|| Error::Unsupported("local terminals on this platform".into()))?;
-    let p = pty.clone();
-    let info = tokio::select! {
-        () = cancel.cancelled() => return Err(Error::Cancelled),
-        r = tokio::task::spawn_blocking(move || p.prepare()) => r.map_err(|e| Error::Io(e.to_string()))??,
+    // WSL resolves its launch through the WSL backend (Windows only); a plain local terminal uses
+    // the shell backend's own `prepare`.
+    let info = if is_wsl {
+        let wsl = sh.config.wsl.clone().ok_or_else(|| Error::Unsupported("WSL sessions run only on Windows".into()))?;
+        let opts = session.wsl.clone();
+        tokio::select! {
+            () = cancel.cancelled() => return Err(Error::Cancelled),
+            r = tokio::task::spawn_blocking(move || wsl.launch_info(&opts)) => r.map_err(|e| Error::Io(e.to_string()))??,
+        }
+    } else {
+        let p = pty.clone();
+        tokio::select! {
+            () = cancel.cancelled() => return Err(Error::Cancelled),
+            r = tokio::task::spawn_blocking(move || p.prepare()) => r.map_err(|e| Error::Io(e.to_string()))??,
+        }
     };
     let (tx, rx) = oneshot::channel();
     {
@@ -49,6 +68,7 @@ pub(crate) async fn start(
         let t = tabs.get_mut(&tab).filter(|t| t.generation == generation).ok_or(Error::Cancelled)?;
         t.local_start = Some(tx);
     }
+    let startup_lines = info.startup_lines.clone();
     sh.emit(Event::LocalReady { tab, info: Box::new(info.clone()) }).await;
     let (cols, rows, cursor) = tokio::select! {
         () = cancel.cancelled() => return Err(Error::Cancelled),
@@ -61,7 +81,7 @@ pub(crate) async fn start(
             r.map_err(|e| Error::Io(e.to_string()))??
         }
     };
-    Ok(Arc::new(LocalLink(Mutex::new(Some(shell)))))
+    Ok((Arc::new(LocalLink(Mutex::new(Some(shell)))), startup_lines))
 }
 
 struct LocalLink(Mutex<Option<LocalShell>>);

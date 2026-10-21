@@ -42,6 +42,7 @@ mod tail;
 mod tests;
 mod transport;
 mod workspace;
+mod wsl;
 
 pub use control::{ControlError, Decision, authorize, session_json};
 
@@ -109,6 +110,8 @@ pub struct EngineConfig {
     pub serial_ports: Option<Arc<dyn rxt_platform::SerialPorts>>,
     /// Local shell backend; `None` makes local terminals fail as unsupported.
     pub local_pty: Option<Arc<dyn rxt_platform::LocalPty>>,
+    /// WSL backend; `None` makes WSL sessions fail with "WSL sessions run only on Windows".
+    pub wsl: Option<Arc<dyn rxt_platform::Wsl>>,
 }
 
 impl Default for EngineConfig {
@@ -123,6 +126,7 @@ impl Default for EngineConfig {
             agent_files: PathBuf::new(),
             serial_ports: None,
             local_pty: None,
+            wsl: None,
         }
     }
 }
@@ -212,6 +216,11 @@ impl EngineHandle {
                     if let Some(tx) = t.local_start.take() {
                         let _ = tx.send((cols, rows, cursor));
                     }
+                }
+            }
+            Command::WslStartup { tab, run } => {
+                if let Some(tx) = self.shared.tabs.lock().get_mut(&tab).and_then(|t| t.wsl_run.take()) {
+                    let _ = tx.send(run);
                 }
             }
             Command::DesktopInput { tab, input } => self.shared.desktop_input(tab, input),
@@ -429,6 +438,8 @@ struct Tab {
     monitor: Arc<monitor::Monitor>,
     /// Local terminal run waiting for `Command::LocalStart`.
     local_start: Option<oneshot::Sender<LocalStart>>,
+    /// WSL run whose startup commands await `Command::WslStartup` (the 10 s offer bar).
+    wsl_run: Option<oneshot::Sender<bool>>,
 }
 
 /// `Command::LocalStart` values: cols, rows and the 0-based start cursor (row, column).
@@ -582,6 +593,11 @@ impl Shared {
             let tabs = self.tabs.lock();
             for target in targets {
                 let Some(t) = tabs.get(&target) else { continue };
+                // Local and WSL terminals receive no MultiExec input from other tabs (local-shell
+                // spec; WSL design W4). The tab the user is typing in still gets its own input.
+                if target != tab && matches!(t.session.protocol, rxt_core::Protocol::Local | rxt_core::Protocol::Wsl) {
+                    continue;
+                }
                 let Some(tx) = t.input.as_ref() else { continue };
                 if tx.try_send(InputMsg::Bytes(bytes.clone())).is_err() {
                     dropped.push(target);
@@ -699,6 +715,7 @@ impl Shared {
             follow_kick: None,
             monitor: Arc::new(monitor::Monitor::new(self.monitor_interval.clone())),
             local_start: None,
+            wsl_run: None,
         };
         self.tabs.lock().insert(tab, entry);
         self.emit(Event::TabOpened { tab, session: Box::new(session) }).await;
@@ -728,6 +745,7 @@ impl Shared {
         t.follow = t.session.ssh.follow_terminal_folder;
         t.follow_kick = None;
         t.local_start = None;
+        t.wsl_run = None;
         // Decided at connect: the session's choice overrides the global setting (design M5).
         let monitored = t.session.ssh.remote_monitoring.unwrap_or(self.monitor_default.load(Ordering::Relaxed));
         t.monitor = Arc::new(monitor::Monitor::new(self.monitor_interval.clone()));
@@ -839,6 +857,16 @@ impl Shared {
         tokio::task::spawn_blocking(move || ports.list()).await.map_err(|e| Error::Io(e.to_string()))?
     }
 
+    /// List WSL distributions off the UI thread; "could not query" when there is no backend.
+    async fn list_wsl_distributions(&self) -> rxt_core::WslStatus {
+        let Some(wsl) = self.config.wsl.clone() else {
+            return rxt_core::WslStatus::CouldNotQuery("WSL sessions run only on Windows".into());
+        };
+        tokio::task::spawn_blocking(move || wsl.status())
+            .await
+            .unwrap_or_else(|e| rxt_core::WslStatus::CouldNotQuery(e.to_string()))
+    }
+
     async fn handle(self: &Arc<Self>, cmd: Command) {
         match cmd {
             Command::Open { session } => {
@@ -912,6 +940,13 @@ impl Shared {
                     sh.emit(Event::SerialPorts { result }).await;
                 });
             }
+            Command::ListWslDistributions => {
+                let sh = self.clone();
+                self.spawn_guarded(None, None, async move {
+                    let status = sh.list_wsl_distributions().await;
+                    sh.emit(Event::WslDistributions { status }).await;
+                });
+            }
             // Only the GUI produces commands; agents never reach this channel.
             Command::AnswerApproval { id, approve } => self.approvals.lock().answer(id, approve),
             Command::Shutdown => self.root.cancel(),
@@ -920,6 +955,7 @@ impl Shared {
             | Command::Resize { .. }
             | Command::Reply { .. }
             | Command::LocalStart { .. }
+            | Command::WslStartup { .. }
             | Command::SetMultiExec { .. }
             | Command::SelectMultiExec { .. }
             | Command::DesktopInput { .. }
